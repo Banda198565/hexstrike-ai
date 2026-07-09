@@ -1,0 +1,14 @@
+# Python virtual environment (created by setup / update script)
+hexstrike-env/
+hexstrike_env/
+.venv/
+venv/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Runtime logs
+hexstrike.log
+*.log
