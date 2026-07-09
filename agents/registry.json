@@ -16,7 +16,9 @@
         "Agent-Web-04",
         "Agent-Graph-01",
         "Agent-Infra-01",
-        "Agent-Contract-02"
+        "Agent-Contract-02",
+        "Agent-Vuln-05",
+        "Agent-Report-06"
       ]
     },
     "Agent-OSINT-03": {
@@ -28,6 +30,12 @@
           "output": "artifacts/infra-targets.json",
           "methods": ["github_dorking", "ens_resolve", "metadata_extract", "ip_history"],
           "constraints": ["read-only", "passive", "no-nmap"]
+        },
+        "entity-resolution": {
+          "script": "scripts/agents/agent_osint_03_entity.py",
+          "output": "artifacts/entity-id.json",
+          "methods": ["arkham_intelligence", "first_funder_analysis", "bscan_labels", "github_org_mapping"],
+          "constraints": ["read-only", "passive"]
         }
       },
       "mcp_tools": [],
@@ -85,6 +93,29 @@
         }
       },
       "mcp_servers": ["evm-rpc-mcp", "block-explorer-mcp"]
+    },
+    "Agent-Vuln-05": {
+      "role": "vuln-intel",
+      "description": "Passive CVE correlation — no exploit",
+      "tasks": {
+        "passive-cve-check": {
+          "script": "scripts/agents/agent_vuln_05.py",
+          "output": "artifacts/jenkins-cve-report.json",
+          "sources": ["cve.mitre.org", "nvd.nist.gov", "jenkins-security-advisories"],
+          "constraints": ["no-exploit", "read-only"]
+        }
+      }
+    },
+    "Agent-Report-06": {
+      "role": "reporting",
+      "description": "Defensive audit checklist for responsible disclosure",
+      "tasks": {
+        "generate-defensive-checklist": {
+          "script": "scripts/agents/agent_report_06.py",
+          "output": "artifacts/defensive-audit-template.md",
+          "include": ["hardening", "access-control", "secret-management"]
+        }
+      }
     }
   }
 }
