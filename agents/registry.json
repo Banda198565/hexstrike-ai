@@ -36,6 +36,12 @@
           "output": "artifacts/entity-id.json",
           "methods": ["arkham_intelligence", "first_funder_analysis", "bscan_labels", "github_org_mapping"],
           "constraints": ["read-only", "passive"]
+        },
+        "blockscan-cluster": {
+          "script": "scripts/agents/agent_osint_03_multichain.py",
+          "output": "artifacts/multichain-cluster.json",
+          "methods": ["blockscan_multichain", "basescan_portfolio", "bsc_outflow_sample"],
+          "constraints": ["read-only", "passive"]
         }
       },
       "mcp_tools": [],

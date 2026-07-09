@@ -61,6 +61,14 @@
     "github_org_mapping": {
       "status": "inconclusive",
       "github_code_search": "requires GITHUB_TOKEN; prior phase B: no public leaks"
+    },
+    "blockscan_multichain": {
+      "status": "done",
+      "artifact": "artifacts/multichain-cluster.json",
+      "net_worth_usd": 1122486.21,
+      "allocation": "56.55% BASE USDC + 43.42% BSC BSC-USD",
+      "tx_volume": {"bsc": 59035, "base": 57345},
+      "url": "https://blockscan.com/address/0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA"
     }
   },
   "behavioral_profile": {
