@@ -2,7 +2,7 @@
 # E: Local crypto key-surface audit (run on Mac)
 set -euo pipefail
 ROOT="${CRYPTO_HOME:-$HOME}"
-REPORT="${1:-/tmp/crypto-audit-$(date +%Y%m%d-%H%M%S).txt}"
+REPORT="${1:-${OUTPUT:-/tmp/crypto-audit-$(date +%Y%m%d-%H%M%S).txt}}"
 
 {
   echo "=== CRYPTO KEY SURFACE AUDIT ==="

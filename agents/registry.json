@@ -129,6 +129,11 @@
           "script": "scripts/agents/agent_report_06.py",
           "output": "artifacts/defensive-audit-template.md",
           "include": ["hardening", "access-control", "secret-management"]
+        },
+        "operator-crypto-audit": {
+          "script": "scripts/crypto-audit.sh",
+          "output": "artifacts/operator-crypto-audit.txt",
+          "constraints": ["local-only", "no-secret-dump", "mac-operator-lab"]
         }
       }
     }

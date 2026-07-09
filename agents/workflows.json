@@ -5,9 +5,10 @@
     "operator-lab": {
       "description": "Your operator wallet — audit + on-chain read (signing stays manual on Mac)",
       "steps": [
+        {"agent": "Agent-Report-06", "task": "operator-crypto-audit", "optional": true},
         {"agent": "Agent-Report-06", "task": "generate-defensive-checklist", "optional": true}
       ],
-      "note": "Run crypto-audit.sh on Mac separately; orchestrator does not touch proof-key.txt"
+      "note": "operator-crypto-audit writes report path to artifacts/operator-audit-path.txt; uses bash (no +x required)"
     },
     "entity-id-pipeline": {
       "description": "Passive entity ID: multichain + entity JSON + web fingerprint",
