@@ -346,6 +346,28 @@ def list_workflows() -> None:
         print(f"{name:24} ({n} steps) — {spec.get('description', '')}")
 
 
+VPS_RUN_ALL = ["vps-full-readonly"]
+
+
+def run_all(env: dict | None = None, print_all: bool = True) -> int:
+    """Run VPS-oriented workflow chain to completion."""
+    print("=" * 60)
+    print("HEXSTRIKE VPS FULL RUN")
+    print("=" * 60)
+    failed = 0
+    for name in VPS_RUN_ALL:
+        code = run_workflow(name, env, print_all=print_all)
+        if code != 0:
+            failed += 1
+    print("\n" + "=" * 60)
+    print(f"VPS RUN COMPLETE — workflows={len(VPS_RUN_ALL)} failed={failed}")
+    master = ROOT / "artifacts" / "vps-master-report.json"
+    if master.exists():
+        print(f"Master report: {master}")
+    print("=" * 60 + "\n")
+    return 1 if failed else 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="HexStrike Orchestrator — agent dispatcher")
     sub = p.add_subparsers(dest="cmd")
@@ -367,6 +389,8 @@ def main() -> int:
     enq.add_argument("job_file")
 
     sub.add_parser("watch", help="Process agents/queue/*.json")
+
+    sub.add_parser("run-all", help="Run full VPS workflow chain (vps-full-readonly)")
 
     st = sub.add_parser("status", help="Show last orchestrator run")
     st.add_argument("--run-id")
@@ -409,6 +433,8 @@ def main() -> int:
             watch_queue()
         except KeyboardInterrupt:
             return 0
+    if args.cmd == "run-all":
+        return run_all(env or None, print_all=not getattr(args, "quiet", False))
     if args.cmd == "status":
         path = LOG_DIR / (f"{args.run_id}.json" if args.run_id else "latest.json")
         if not path.exists():

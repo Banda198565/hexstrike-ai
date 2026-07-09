@@ -134,6 +134,11 @@
           "script": "scripts/crypto-audit.sh",
           "output": "artifacts/operator-crypto-audit.txt",
           "constraints": ["local-only", "no-secret-dump", "mac-operator-lab"]
+        },
+        "generate-vps-master-report": {
+          "script": "scripts/agents/agent_report_vps_master.py",
+          "output": "artifacts/vps-master-report.json",
+          "include": ["all-artifacts", "orchestrator-latest", "highlights"]
         }
       }
     }

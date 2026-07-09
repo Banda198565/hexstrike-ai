@@ -77,8 +77,8 @@ else
   log "WARN: service not active — check: journalctl -u hexstrike-orchestrator -n 30"
 fi
 
-log "Running initial workflow: full-recon-readonly"
-"$INSTALL_DIR/hexstrike-orchestrator" run full-recon-readonly || log "WARN: initial run failed (network?)"
+log "Running initial workflow: vps-full-readonly (all agents)"
+"$INSTALL_DIR/hexstrike-orchestrator" run-all || log "WARN: run-all had failures — check artifacts/orchestrator/"
 
 log "=== DONE ==="
 echo "  systemctl status hexstrike-orchestrator"
