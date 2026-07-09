@@ -1,0 +1,48 @@
+{
+  "mcpServers": {
+    "hexstrike-ai": {
+      "command": "/workspace/hexstrike-env/bin/python3",
+      "args": [
+        "/workspace/hexstrike_mcp.py",
+        "--server",
+        "http://127.0.0.1:8888"
+      ],
+      "env": {
+        "EVM_RPC_URL": "http://51.222.42.220:8545",
+        "EVM_CHAIN_ID": "56"
+      },
+      "description": "HexStrike pentest MCP (localhost tunnel to VPS)",
+      "timeout": 300
+    },
+    "evm-rpc-mcp": {
+      "command": "/workspace/hexstrike-env/bin/python3",
+      "args": ["/workspace/mcp/evm_rpc_mcp.py"],
+      "env": {
+        "EVM_RPC_URL": "http://51.222.42.220:8545",
+        "EVM_CHAIN_ID": "56"
+      },
+      "description": "Read-only EVM RPC: balances, eth_call, bytecode",
+      "timeout": 120
+    },
+    "block-explorer-mcp": {
+      "command": "/workspace/hexstrike-env/bin/python3",
+      "args": ["/workspace/mcp/block_explorer_mcp.py"],
+      "env": {
+        "EVM_RPC_URL": "http://51.222.42.220:8545",
+        "EVM_CHAIN_ID": "56"
+      },
+      "description": "On-chain graph, token verify, transfer logs",
+      "timeout": 180
+    },
+    "defi-dex-mcp": {
+      "command": "/workspace/hexstrike-env/bin/python3",
+      "args": ["/workspace/mcp/defi_dex_mcp.py"],
+      "env": {
+        "EVM_RPC_URL": "http://51.222.42.220:8545",
+        "EVM_CHAIN_ID": "56"
+      },
+      "description": "Pancake liquidity + flash-loan exposure heuristics",
+      "timeout": 120
+    }
+  }
+}

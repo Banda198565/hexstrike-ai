@@ -1,0 +1,48 @@
+{
+  "version": "1",
+  "mode": "read-only",
+  "default_rpc": "http://51.222.42.220:8545",
+  "default_chain_id": 56,
+  "agents": {
+    "Agent-Infra-01": {
+      "task": "deploy-mcp",
+      "servers": ["evm-rpc-mcp", "block-explorer-mcp", "defi-dex-mcp"],
+      "config": "mcp-config.json",
+      "isolate_network": true,
+      "deploy_script": "scripts/deploy-blockchain-mcp.sh"
+    },
+    "Agent-Graph-01": {
+      "task": "bind-mcp-tools",
+      "target": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+      "token": "0x55d398326f99059fF775485246999027B3197955",
+      "tools": {
+        "block-explorer-mcp": [
+          "get_token_transfers",
+          "verify_erc20_token",
+          "address_graph_summary",
+          "get_contract_abi_stub"
+        ],
+        "defi-dex-mcp": [
+          "check_dex_liquidity",
+          "check_flashloan_exposure"
+        ],
+        "evm-rpc-mcp": [
+          "get_erc20_balance",
+          "get_contract_code",
+          "eth_call_read"
+        ]
+      },
+      "workflows": {
+        "usdt_flash_verification": [
+          "verify_erc20_token",
+          "check_dex_liquidity",
+          "get_erc20_balance"
+        ],
+        "onchain_graph": [
+          "get_token_transfers",
+          "address_graph_summary"
+        ]
+      }
+    }
+  }
+}
