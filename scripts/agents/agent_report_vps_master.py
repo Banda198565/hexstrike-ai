@@ -41,9 +41,9 @@ def highlights(data: dict) -> list[str]:
             lines.append(f"Net worth: ${nw:,.0f}" if isinstance(nw, (int, float)) else f"Net worth: {nw}")
     ent = data.get("entity-id.json") or {}
     if isinstance(ent, dict):
-        e = ent.get("entity") or ent.get("resolution", {})
+        e = ent.get("entity_resolution") or ent.get("entity") or ent.get("resolution", {})
         if isinstance(e, dict):
-            name = e.get("name") or e.get("status", "UNIDENTIFIED")
+            name = e.get("status") or e.get("name", "UNIDENTIFIED")
             conf = e.get("confidence", "?")
             lines.append(f"Entity: {name} (confidence: {conf})")
     jenkins = data.get("jenkins-cve-report.json") or {}
