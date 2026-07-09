@@ -9,8 +9,17 @@
   "agents": {
     "Agent-Orchestrator": {
       "role": "orchestrator",
-      "description": "Routes tasks to specialized agents; no direct tool execution",
-      "tasks": ["dispatch"],
+      "description": "Routes tasks via hexstrike-orchestrator (not Cursor chat)",
+      "runner": "scripts/hexstrike-orchestrator.py",
+      "cli": "./hexstrike-orchestrator",
+      "tasks": {
+        "dispatch": {
+          "note": "Use: hexstrike-orchestrator run <workflow> | dispatch <agent> <task> | watch"
+        }
+      },
+      "workflows_file": "agents/workflows.json",
+      "queue_dir": "agents/queue",
+      "log_dir": "artifacts/orchestrator",
       "delegates_to": [
         "Agent-OSINT-03",
         "Agent-Web-04",

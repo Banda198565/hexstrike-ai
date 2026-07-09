@@ -1,0 +1,45 @@
+{
+  "version": "1",
+  "description": "Predefined multi-agent workflows for hexstrike-orchestrator",
+  "workflows": {
+    "operator-lab": {
+      "description": "Your operator wallet — audit + on-chain read (signing stays manual on Mac)",
+      "steps": [
+        {"agent": "Agent-Report-06", "task": "generate-defensive-checklist", "optional": true}
+      ],
+      "note": "Run crypto-audit.sh on Mac separately; orchestrator does not touch proof-key.txt"
+    },
+    "entity-id-pipeline": {
+      "description": "Passive entity ID: multichain + entity JSON + web fingerprint",
+      "steps": [
+        {"agent": "Agent-OSINT-03", "task": "blockscan-cluster"},
+        {"agent": "Agent-OSINT-03", "task": "entity-resolution", "depends_on": "blockscan-cluster"},
+        {"agent": "Agent-Web-04", "task": "stealth-recon", "depends_on": "entity-resolution"}
+      ]
+    },
+    "defensive-disclosure": {
+      "description": "CVE report + hardening template for infra owner outreach",
+      "steps": [
+        {"agent": "Agent-Vuln-05", "task": "passive-cve-check"},
+        {"agent": "Agent-Report-06", "task": "generate-defensive-checklist"}
+      ]
+    },
+    "infra-passive": {
+      "description": "Infra map only (no web probes)",
+      "steps": [
+        {"agent": "Agent-OSINT-03", "task": "infra-mapping"}
+      ]
+    },
+    "full-recon-readonly": {
+      "description": "Full passive recon chain from phases A–E artifacts",
+      "steps": [
+        {"agent": "Agent-OSINT-03", "task": "infra-mapping"},
+        {"agent": "Agent-OSINT-03", "task": "blockscan-cluster"},
+        {"agent": "Agent-OSINT-03", "task": "entity-resolution"},
+        {"agent": "Agent-Web-04", "task": "stealth-recon"},
+        {"agent": "Agent-Vuln-05", "task": "passive-cve-check"},
+        {"agent": "Agent-Report-06", "task": "generate-defensive-checklist"}
+      ]
+    }
+  }
+}
