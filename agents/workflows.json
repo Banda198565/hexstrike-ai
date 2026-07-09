@@ -3,12 +3,13 @@
   "description": "Predefined multi-agent workflows for hexstrike-orchestrator",
   "workflows": {
     "operator-lab": {
-      "description": "Your operator wallet — audit + on-chain read (signing stays manual on Mac)",
+      "description": "Operator preflight: balance check + crypto audit + checklist",
       "steps": [
+        {"agent": "Agent-Report-06", "task": "operator-balance-check"},
         {"agent": "Agent-Report-06", "task": "operator-crypto-audit", "optional": true},
         {"agent": "Agent-Report-06", "task": "generate-defensive-checklist", "optional": true}
       ],
-      "note": "operator-crypto-audit writes report path to artifacts/operator-audit-path.txt; uses bash (no +x required)"
+      "note": "Cannot withdraw from Binance — balance step prints exact deposit instructions"
     },
     "entity-id-pipeline": {
       "description": "Passive entity ID: multichain + entity JSON + web fingerprint",

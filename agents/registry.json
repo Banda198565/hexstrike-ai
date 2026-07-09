@@ -130,6 +130,11 @@
           "output": "artifacts/defensive-audit-template.md",
           "include": ["hardening", "access-control", "secret-management"]
         },
+        "operator-balance-check": {
+          "script": "scripts/agents/agent_operator_balance.py",
+          "output": "artifacts/operator-balance.json",
+          "constraints": ["read-only", "no-exchange-access"]
+        },
         "operator-crypto-audit": {
           "script": "scripts/crypto-audit.sh",
           "output": "artifacts/operator-crypto-audit.txt",
