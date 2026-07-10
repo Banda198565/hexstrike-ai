@@ -1,0 +1,15 @@
+{
+  "primary": "http://51.222.42.220:8545",
+  "fallbacks": [
+    "http://45.33.17.6:8545",
+    "http://173.255.192.47:8545"
+  ],
+  "monitoring": {
+    "target_contracts": [
+      "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+      "0x730ea0231808f42a20f8921ba7fbc788226768f5"
+    ],
+    "poll_interval_seconds": 1
+  },
+  "cex_cluster_map": "config/cex-cluster-map.json"
+}

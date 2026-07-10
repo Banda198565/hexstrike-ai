@@ -2,8 +2,9 @@
 """
 Read-only Geth JSON-RPC orchestrator for operator lab / threat intel.
 
-Probes public :8545 endpoints from Shodan report (passive capability assessment).
-Does NOT call account-unlock, signing, or admin mutation methods.
+Modes:
+  probe    — assess 18 Shodan :8545 nodes (default)
+  monitor  — mempool watch via config/rpc_config.json + optional CEX correlation
 """
 
 from __future__ import annotations
@@ -16,9 +17,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import requests
+
+DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "config" / "rpc_config.json"
 
 # 18 Geth :8545 hosts — SHODAN_ОТЧЕТ_2026-07-08.md §4.3
 GETH_NODES: list[dict[str, str]] = [
@@ -300,16 +303,247 @@ def run_orchestrator(output_dir: Path, workers: int = 6, timeout: float = 8.0) -
     return summary
 
 
+def load_config(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def normalize_addr(addr: str | None) -> str:
+    if not addr:
+        return ""
+    return addr.lower().strip()
+
+
+def load_cex_cluster_map(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {"loaded": False, "path": str(path), "clusters": {}, "deposit_addresses": set()}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    deposits: set[str] = set()
+    clusters = data if isinstance(data, dict) else {}
+    # Support flat list or {exchange: [addrs]} or {clusters: [{exchange, addresses}]}
+    if "clusters" in clusters and isinstance(clusters["clusters"], list):
+        for c in clusters["clusters"]:
+            for a in c.get("addresses", c.get("deposit_addresses", [])):
+                deposits.add(normalize_addr(a))
+            if c.get("exchange"):
+                for a in c.get("wallets", []):
+                    deposits.add(normalize_addr(a))
+    else:
+        for key, val in clusters.items():
+            if key in ("loaded", "path", "meta", "description"):
+                continue
+            if isinstance(val, list):
+                for a in val:
+                    deposits.add(normalize_addr(str(a)))
+            elif isinstance(val, dict):
+                for a in val.get("addresses", val.get("deposit_addresses", [])):
+                    deposits.add(normalize_addr(str(a)))
+    return {"loaded": True, "path": str(path), "clusters": clusters, "deposit_addresses": deposits}
+
+
+def rpc_with_fallback(endpoints: list[str], method: str, params: list[Any], timeout: float = 8.0) -> tuple[str, dict[str, Any]]:
+    last_err: Exception | None = None
+    for url in endpoints:
+        try:
+            return url, rpc_call(url, method, params, timeout=timeout)
+        except Exception as exc:
+            last_err = exc
+            continue
+    raise RuntimeError(f"all RPC endpoints failed: {last_err}")
+
+
+def iter_txpool_txs(content: dict[str, Any]) -> Iterator[dict[str, Any]]:
+    pending = content.get("pending") or {}
+    queued = content.get("queued") or {}
+    for pool_name, by_account in [("pending", pending), ("queued", queued)]:
+        if not isinstance(by_account, dict):
+            continue
+        for _account, by_nonce in by_account.items():
+            if not isinstance(by_nonce, dict):
+                continue
+            for _nonce, tx in by_nonce.items():
+                if isinstance(tx, dict):
+                    yield {"pool": pool_name, **tx}
+
+
+def tx_touches_targets(tx: dict[str, Any], targets: set[str]) -> list[str]:
+    hits: list[str] = []
+    fields = [
+        normalize_addr(tx.get("from")),
+        normalize_addr(tx.get("to")),
+    ]
+    for addr in fields:
+        if addr and addr in targets:
+            hits.append(addr)
+    # input calldata — contract interaction with target as `to` already covered
+    return hits
+
+
+def build_alert(
+    tx: dict[str, Any],
+    hits: list[str],
+    cex_map: dict[str, Any],
+    rpc_url: str,
+) -> dict[str, Any]:
+    frm = normalize_addr(tx.get("from"))
+    to = normalize_addr(tx.get("to"))
+    cex_hits: list[str] = []
+    deposits = cex_map.get("deposit_addresses") or set()
+    if deposits:
+        if frm in deposits:
+            cex_hits.append(f"from_cex:{frm}")
+        if to in deposits:
+            cex_hits.append(f"to_cex:{to}")
+
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "rpc": rpc_url,
+        "pool": tx.get("pool"),
+        "hash": tx.get("hash"),
+        "from": tx.get("from"),
+        "to": tx.get("to"),
+        "value": tx.get("value"),
+        "gas": tx.get("gas"),
+        "gasPrice": tx.get("gasPrice") or tx.get("maxFeePerGas"),
+        "input_prefix": (tx.get("input") or "")[:66],
+        "target_hits": hits,
+        "cex_hits": cex_hits,
+        "alert_type": "CEX_CORRELATION" if cex_hits else "TARGET_MEMPOOL",
+    }
+
+
+def run_monitor(
+    config_path: Path,
+    output_dir: Path,
+    duration_seconds: int | None = None,
+    timeout: float = 8.0,
+) -> dict[str, Any]:
+    cfg = load_config(config_path)
+    endpoints = [cfg["primary"], *cfg.get("fallbacks", [])]
+    mon = cfg.get("monitoring", {})
+    targets = {normalize_addr(a) for a in mon.get("target_contracts", [])}
+    interval = float(mon.get("poll_interval_seconds", 1))
+    cex_rel = cfg.get("cex_cluster_map", "config/cex-cluster-map.json")
+    cex_path = Path(cex_rel)
+    if not cex_path.is_absolute():
+        base = config_path.resolve().parent.parent
+        cex_path = base / cex_rel
+
+    cex_map = load_cex_cluster_map(cex_path)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    alerts_file = output_dir / "mempool_alerts.jsonl"
+    state_file = output_dir / "monitor_state.json"
+
+    seen_hashes: set[str] = set()
+    if state_file.is_file():
+        try:
+            state = json.loads(state_file.read_text(encoding="utf-8"))
+            seen_hashes = set(state.get("seen_hashes", []))
+        except json.JSONDecodeError:
+            seen_hashes = set()
+
+    print(f"🔗 Primary RPC: {cfg['primary']}")
+    print(f"🎯 Targets: {', '.join(sorted(targets))}")
+    print(f"📂 CEX map: {cex_path} — {'loaded' if cex_map['loaded'] else 'NOT FOUND'}")
+    if cex_map["loaded"]:
+        print(f"   Deposit addresses indexed: {len(cex_map['deposit_addresses'])}")
+    print(f"⏱️  Poll interval: {interval}s | Alerts: {alerts_file}")
+    if duration_seconds:
+        print(f"🧪 Test run duration: {duration_seconds}s")
+
+    start = time.time()
+    polls = 0
+    alerts_count = 0
+    active_rpc = cfg["primary"]
+
+    try:
+        while True:
+            polls += 1
+            try:
+                active_rpc, resp = rpc_with_fallback(endpoints, "txpool_content", [], timeout=timeout)
+                content = resp.get("result") or {}
+            except RuntimeError as exc:
+                print(f"⚠️  poll {polls}: {exc}")
+                time.sleep(interval)
+                if duration_seconds and time.time() - start >= duration_seconds:
+                    break
+                continue
+
+            for tx in iter_txpool_txs(content):
+                tx_hash = tx.get("hash")
+                if not tx_hash or tx_hash in seen_hashes:
+                    continue
+                hits = tx_touches_targets(tx, targets)
+                alert = None
+                if hits:
+                    alert = build_alert(tx, hits, cex_map, active_rpc)
+                elif cex_map["loaded"]:
+                    frm = normalize_addr(tx.get("from"))
+                    to = normalize_addr(tx.get("to"))
+                    deposits = cex_map["deposit_addresses"]
+                    if frm in targets or to in targets or frm in deposits or to in deposits:
+                        alert = build_alert(tx, hits, cex_map, active_rpc)
+
+                if alert:
+                    seen_hashes.add(tx_hash)
+                    alerts_count += 1
+                    line = json.dumps(alert, ensure_ascii=False)
+                    with alerts_file.open("a", encoding="utf-8") as fh:
+                        fh.write(line + "\n")
+                    tag = alert["alert_type"]
+                    print(f"🚨 [{tag}] {tx_hash} from={alert['from']} to={alert['to']} hits={alert['target_hits']} cex={alert['cex_hits']}")
+
+            if polls % 10 == 0:
+                state_file.write_text(
+                    json.dumps({"seen_hashes": list(seen_hashes)[-5000:], "last_poll": polls, "rpc": active_rpc}, indent=2),
+                    encoding="utf-8",
+                )
+
+            if duration_seconds and time.time() - start >= duration_seconds:
+                break
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("\n⏹️  Monitor stopped")
+
+    summary = {
+        "mode": "monitor",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "config": str(config_path),
+        "primary": cfg["primary"],
+        "polls": polls,
+        "alerts": alerts_count,
+        "cex_map_loaded": cex_map["loaded"],
+        "cex_map_path": str(cex_path),
+        "targets": list(targets),
+        "artifacts": {"alerts": str(alerts_file), "state": str(state_file)},
+    }
+    summary_path = output_dir / "monitor_summary.json"
+    summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    return summary
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Read-only Geth RPC orchestrator")
-    parser.add_argument(
-        "--output",
-        default="/workspace/artifacts/crypto-rpc",
-        help="Output directory for JSON/Markdown reports",
-    )
-    parser.add_argument("--workers", type=int, default=6)
-    parser.add_argument("--timeout", type=float, default=8.0)
+    sub = parser.add_subparsers(dest="mode")
+
+    probe_p = sub.add_parser("probe", help="Probe 18 Shodan Geth nodes")
+    probe_p.add_argument("--output", default="/workspace/artifacts/crypto-rpc")
+    probe_p.add_argument("--workers", type=int, default=6)
+    probe_p.add_argument("--timeout", type=float, default=8.0)
+
+    mon_p = sub.add_parser("monitor", help="Mempool monitor via config/rpc_config.json")
+    mon_p.add_argument("--config", default=str(DEFAULT_CONFIG))
+    mon_p.add_argument("--output", default="/workspace/artifacts/crypto-rpc/monitor")
+    mon_p.add_argument("--duration", type=int, default=None, help="Seconds to run (omit for continuous)")
+    mon_p.add_argument("--timeout", type=float, default=8.0)
+
     args = parser.parse_args()
+    mode = args.mode or "probe"
+
+    if mode == "monitor":
+        summary = run_monitor(Path(args.config), Path(args.output), args.duration, args.timeout)
+        print(f"\n✅ Monitor done — polls={summary['polls']} alerts={summary['alerts']}")
+        print(f"📁 {summary['artifacts']['alerts']}")
+        return 0
 
     print(f"🔍 Probing {len(GETH_NODES)} Geth nodes (read-only)...")
     summary = run_orchestrator(Path(args.output), workers=args.workers, timeout=args.timeout)
