@@ -1,0 +1,19 @@
+{
+  "provider": "mirohost.net",
+  "host_alias": "hexstrike-vps",
+  "ipv4": "78.27.235.70",
+  "ipv6": "2a02:2279:1235::25",
+  "os": "Ubuntu 22.04",
+  "user": "root",
+  "install_dir": "/opt/hexstrike-ai",
+  "branch": "cursor/hexstrike-modules-mcp-be22",
+  "repo": "https://github.com/Banda198565/hexstrike-ai.git",
+  "role": "remote_agents",
+  "mac_orchestrator": {
+    "note": "Mac runs hexstrike_orchestrator.py + Ollama; VPS runs legacy agent pipeline",
+    "ollama_on_mac": true,
+    "rag_on_mac_eva": true
+  },
+  "workflows": ["vps-full-readonly"],
+  "systemd_service": "hexstrike-orchestrator"
+}
