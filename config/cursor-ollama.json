@@ -1,0 +1,30 @@
+{
+  "integration": "cursor-ollama-deepseek-r1",
+  "version": "1.0.0",
+  "operator": "Banda198565",
+  "ollama": {
+    "host_env": "OLLAMA_HOST",
+    "default_host": "http://127.0.0.1:11434",
+    "model": "deepseek-r1",
+    "pull_command": "ollama pull deepseek-r1"
+  },
+  "cursor": {
+    "settings_file": ".cursor/settings.json",
+    "default_models": {
+      "chat": "deepseek-r1",
+      "composer": "deepseek-r1",
+      "maxMode": "deepseek-r1"
+    },
+    "ui_steps": [
+      "Settings → Models → Add model: deepseek-r1",
+      "Override OpenAI Base URL → ${OLLAMA_PUBLIC_BASE_URL}/v1",
+      "OpenAI API Key → ollama",
+      "Set deepseek-r1 as default for Chat and Composer"
+    ],
+    "localhost_limitation": "Cursor cloud routes via its backend — use cloudflared/ngrok tunnel for remote Cursor"
+  },
+  "verification": {
+    "script": "scripts/verify-ollama-handshake.sh",
+    "setup_mac": "scripts/setup-cursor-ollama-mac.sh"
+  }
+}

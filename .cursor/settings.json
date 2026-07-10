@@ -1,0 +1,47 @@
+{
+  "$schema": "https://cursor.com/schemas/settings.json",
+  "_comment": "HexStrike local LLM brain — deepseek-r1 via Ollama. Requires Ollama on host + tunnel for Cursor cloud backend.",
+  "AUTHORIZED_OPERATOR_MODE": false,
+  "ollama": {
+    "host": "http://127.0.0.1:11434",
+    "model": "deepseek-r1",
+    "openai_compatible_base": "http://127.0.0.1:11434/v1",
+    "api_key_placeholder": "ollama"
+  },
+  "cursor": {
+    "chat": {
+      "defaultModel": "deepseek-r1",
+      "useLocalLlm": true
+    },
+    "composer": {
+      "defaultModel": "deepseek-r1",
+      "useLocalLlm": true
+    },
+    "maxMode": {
+      "defaultModel": "deepseek-r1",
+      "preferHighReasoning": true,
+      "routeToLocal": true
+    },
+    "models": {
+      "custom": [
+        {
+          "id": "deepseek-r1",
+          "name": "deepseek-r1",
+          "provider": "openai-compatible",
+          "baseUrl": "${OLLAMA_PUBLIC_BASE_URL:-http://127.0.0.1:11434/v1}",
+          "supportsChainOfThought": true
+        }
+      ],
+      "disabled": []
+    },
+    "openai": {
+      "overrideBaseUrl": true,
+      "baseUrl": "${OLLAMA_PUBLIC_BASE_URL:-http://127.0.0.1:11434/v1}",
+      "apiKey": "ollama"
+    }
+  },
+  "env": {
+    "OLLAMA_HOST": "http://127.0.0.1:11434",
+    "OLLAMA_ORIGINS": "*"
+  }
+}
