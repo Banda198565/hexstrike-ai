@@ -16,9 +16,9 @@ const { ethers } = require('ethers');
 
 const OPERATOR = process.env.FROM || '0x85dB346BE1d9d5D8ec4F57acf0067FbE53a6E846';
 const RPC = process.env.BSC_RPC || 'https://bsc-dataseed.binance.org/';
-const ROUTER = '0x10ED43C718714eb63d5aB7E8d58b0B6B0a0b54852';
-const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2DE08d91793bc95c';
-const USDT = '0x55d398326f99059fF775485246999027B3197955';
+const ROUTER = ethers.getAddress('0x10ED43C718714eb63d5aB7E8d58b0B6B0a0b54852');
+const WBNB = ethers.getAddress('0xbb4cdb9cbd36b01bd1cbaebf2de08d91793bc95c');
+const USDT = ethers.getAddress('0x55d398326f99059fF775485246999027B3197955');
 const KEY_PATH = process.env.PROOF_KEY || path.join(process.env.HOME, 'proof-key.txt');
 const BNB_AMOUNT = process.env.BNB_AMOUNT || '0.005';
 
