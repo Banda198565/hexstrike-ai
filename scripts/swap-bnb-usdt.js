@@ -9,6 +9,12 @@ const { ethers } = require('ethers');
 const fs = require('fs');
 const path = require('path');
 
+// ethers lives in ~/node_modules (operator-signing), not on Eva repo path
+const homeModules = path.join(process.env.HOME || '', 'node_modules');
+if (homeModules && !module.paths.includes(homeModules)) {
+  module.paths.unshift(homeModules);
+}
+
 const OPERATOR = process.env.FROM || '0x85dB346BE1d9d5D8ec4F57acf0067FbE53a6E846';
 const RPC = process.env.BSC_RPC || 'https://bsc-dataseed.binance.org/';
 const ROUTER = '0x10ED43C718714eb63d5aB7E8d58b0B6B0a0b54852';
