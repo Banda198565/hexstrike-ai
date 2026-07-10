@@ -49,7 +49,13 @@ ADDR_RE = re.compile(r"0x[a-fA-F0-9]{40}")
 
 RECONNECT_DELAY = 5.0
 INDEXER_COOLDOWN_SEC = 60
+DEDUP_WINDOW_SEC = 20 * 60
 IGNORE_RE = re.compile(r"^IGNORE:\s*(0x[a-fA-F0-9]{64})", re.IGNORECASE)
+
+SEVERITY_INFO = "INFO"
+SEVERITY_WARN = "WARN"
+SEVERITY_CRITICAL = "CRITICAL"
+LOGGED_SEVERITIES = frozenset({SEVERITY_WARN, SEVERITY_CRITICAL})
 
 
 def load_feedback_ignored(state: dict[str, Any]) -> set[str]:
@@ -267,40 +273,78 @@ def rag_lookup(tx: dict[str, Any]) -> tuple[list[dict[str, Any]], bool]:
     return hits, unknown
 
 
+def pair_key(frm: str, to: str) -> str:
+    return f"{normalize_addr(frm)}:{normalize_addr(to)}"
+
+
+def prune_dedup_pairs(pairs: dict[str, float], now: float | None = None) -> dict[str, float]:
+    """Drop from+to pairs older than DEDUP_WINDOW_SEC."""
+    cutoff = (now or time.time()) - DEDUP_WINDOW_SEC
+    return {key: ts for key, ts in pairs.items() if ts >= cutoff}
+
+
+def is_deduped_pair(frm: str, to: str, pairs: dict[str, float]) -> bool:
+    key = pair_key(frm, to)
+    last_seen = pairs.get(key)
+    if last_seen is None:
+        return False
+    return (time.time() - last_seen) < DEDUP_WINDOW_SEC
+
+
+def record_dedup_pair(frm: str, to: str, pairs: dict[str, float]) -> dict[str, float]:
+    pairs = prune_dedup_pairs(pairs)
+    pairs[pair_key(frm, to)] = time.time()
+    return pairs
+
+
+def classify_severity(high_risk: bool, risk_reason: str, unknown_pattern: bool) -> str:
+    if risk_reason == "interaction_with_known_sink":
+        return SEVERITY_CRITICAL
+    if high_risk and unknown_pattern:
+        return SEVERITY_CRITICAL
+    if high_risk or unknown_pattern:
+        return SEVERITY_WARN
+    return SEVERITY_INFO
+
+
 def write_alert(alert: dict[str, Any]) -> None:
-    ALERTS_LOG.parent.mkdir(parents=True, exist_ok=True)
-    line = json.dumps(alert, ensure_ascii=False)
-    with ALERTS_LOG.open("a", encoding="utf-8") as fh:
-        fh.write(line + "\n")
-
+    severity = alert.get("severity", SEVERITY_WARN)
     payload = json.dumps(alert, indent=2, ensure_ascii=False) + "\n"
-    DESKTOP_ALERT.parent.mkdir(parents=True, exist_ok=True)
-    DESKTOP_ALERT.write_text(payload, encoding="utf-8")
 
-    if EVA_ALERT.parent.parent.exists():
-        EVA_ALERT.parent.mkdir(parents=True, exist_ok=True)
-        EVA_ALERT.write_text(payload, encoding="utf-8")
+    if severity in LOGGED_SEVERITIES:
+        ALERTS_LOG.parent.mkdir(parents=True, exist_ok=True)
+        line = json.dumps(alert, ensure_ascii=False)
+        with ALERTS_LOG.open("a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
 
-    pending = {
-        "status": "awaiting_operator_review",
-        "created_at": alert.get("timestamp"),
-        "alert_type": alert.get("alert_type"),
-        "message": alert.get("message"),
-        "transaction": {
-            "hash": alert.get("hash"),
-            "from": alert.get("from"),
-            "to": alert.get("to"),
-            "value": alert.get("value"),
-            "pool": alert.get("pool"),
-        },
-        "rag_context": alert.get("rag_hits", [])[:2],
-        "recommended_actions": [
-            "Review alert in artifacts/alerts.log",
-            "Cross-check RAG snippets against master_context.json",
-            "Manual decision required — no auto-broadcast",
-        ],
-    }
-    PENDING_ACTION.write_text(json.dumps(pending, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        DESKTOP_ALERT.parent.mkdir(parents=True, exist_ok=True)
+        DESKTOP_ALERT.write_text(payload, encoding="utf-8")
+
+        if EVA_ALERT.parent.parent.exists():
+            EVA_ALERT.parent.mkdir(parents=True, exist_ok=True)
+            EVA_ALERT.write_text(payload, encoding="utf-8")
+
+        pending = {
+            "status": "awaiting_operator_review",
+            "created_at": alert.get("timestamp"),
+            "alert_type": alert.get("alert_type"),
+            "severity": severity,
+            "message": alert.get("message"),
+            "transaction": {
+                "hash": alert.get("hash"),
+                "from": alert.get("from"),
+                "to": alert.get("to"),
+                "value": alert.get("value"),
+                "pool": alert.get("pool"),
+            },
+            "rag_context": alert.get("rag_hits", [])[:2],
+            "recommended_actions": [
+                "Review alert in artifacts/alerts.log",
+                "Cross-check RAG snippets against master_context.json",
+                "Manual decision required — no auto-broadcast",
+            ],
+        }
+        PENDING_ACTION.write_text(json.dumps(pending, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def trigger_indexer() -> dict[str, Any]:
@@ -320,11 +364,14 @@ def trigger_indexer() -> dict[str, Any]:
 
 def load_state() -> dict[str, Any]:
     if not STATE_FILE.is_file():
-        return {"seen_hashes": [], "last_indexer_run": 0}
+        return {"seen_hashes": [], "last_indexer_run": 0, "dedup_pairs": {}}
     try:
-        return json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        state = json.loads(STATE_FILE.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
-        return {"seen_hashes": [], "last_indexer_run": 0}
+        return {"seen_hashes": [], "last_indexer_run": 0, "dedup_pairs": {}}
+    state.setdefault("dedup_pairs", {})
+    state["dedup_pairs"] = prune_dedup_pairs(state["dedup_pairs"])
+    return state
 
 
 def save_state(state: dict[str, Any]) -> None:
@@ -371,9 +418,12 @@ def process_transaction(
     else:
         message = f"UNKNOWN pattern: {tx.get('from')} -> {tx.get('to')} — not in RAG history"
 
+    severity = classify_severity(high_risk, risk_reason, unknown_pattern)
+
     return {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "alert_type": alert_type,
+        "severity": severity,
         "message": message,
         "rpc": rpc_url,
         "pool": tx.get("pool"),
@@ -414,6 +464,7 @@ def run_monitor(
     ignored_hashes = load_feedback_ignored(state)
     seen_hashes: set[str] = set(state.get("seen_hashes", []))
     last_indexer_run = float(state.get("last_indexer_run", 0))
+    dedup_pairs: dict[str, float] = dict(state.get("dedup_pairs", {}))
 
     print(f"[monitor] RPC primary: {cfg['primary']}")
     print(f"[monitor] Watching {len(watched)} addresses | sinks={len(sinks)}")
@@ -425,6 +476,7 @@ def run_monitor(
     start = time.time()
     polls = 0
     alerts_count = 0
+    dedup_skipped = 0
     txs_seen = 0
     active_rpc = cfg["primary"]
 
@@ -454,9 +506,15 @@ def run_monitor(
             if not alert:
                 continue
 
+            if is_deduped_pair(alert.get("from", ""), alert.get("to", ""), dedup_pairs):
+                dedup_skipped += 1
+                print(f"[dedup] Skipped {tx_hash} — pair seen in last {DEDUP_WINDOW_SEC // 60}m")
+                continue
+
             alerts_count += 1
+            dedup_pairs = record_dedup_pair(alert.get("from", ""), alert.get("to", ""), dedup_pairs)
             write_alert(alert)
-            print(f"[ALERT] {alert['alert_type']} {tx_hash}")
+            print(f"[ALERT] [{alert.get('severity', '?')}] {alert['alert_type']} {tx_hash}")
             print(f"        {alert['message']}")
             if alert.get("rag_hits"):
                 top = alert["rag_hits"][0]
@@ -474,6 +532,7 @@ def run_monitor(
                 "last_indexer_run": last_indexer_run,
                 "last_poll": polls,
                 "rpc": active_rpc,
+                "dedup_pairs": prune_dedup_pairs(dedup_pairs),
                 "feedback_processed": state.get("feedback_processed", []),
                 "feedback_ignored": list(ignored_hashes),
             })
@@ -487,6 +546,7 @@ def run_monitor(
         "last_indexer_run": last_indexer_run,
         "last_poll": polls,
         "rpc": active_rpc,
+        "dedup_pairs": prune_dedup_pairs(dedup_pairs),
         "feedback_processed": state.get("feedback_processed", []),
         "feedback_ignored": list(ignored_hashes),
     })
@@ -495,6 +555,7 @@ def run_monitor(
         "polls": polls,
         "txs_seen": txs_seen,
         "alerts": alerts_count,
+        "dedup_skipped": dedup_skipped,
         "duration_sec": round(time.time() - start, 1),
     }
 
