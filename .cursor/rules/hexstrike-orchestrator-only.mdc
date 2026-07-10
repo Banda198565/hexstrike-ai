@@ -1,0 +1,60 @@
+---
+description: HexStrike — только orchestrator + VPS, без standalone-скриптов
+alwaysApply: true
+---
+
+# HexStrike Execution Protocol
+
+**Запрещено** выполнять forensic/recon/ops задачи напрямую (standalone Python, curl RPC, ad-hoc eth_getLogs).
+
+**Обязательный путь:**
+
+```
+Mac:  python3 hexstrike_orchestrator.py <command>
+VPS:  ssh hexstrike-vps → /opt/hexstrike-ai → legacy pipeline
+```
+
+## Mac — orchestrator (entry point)
+
+| Задача | Команда |
+|--------|---------|
+| Статус | `python3 hexstrike_orchestrator.py status` |
+| Forensics analyze | `python3 hexstrike_orchestrator.py analyze <0x...>` |
+| Rhino bridge P2 | `python3 hexstrike_orchestrator.py bridge-decode` |
+| RPC recon | `python3 hexstrike_orchestrator.py recon` |
+| Infra trace | `python3 hexstrike_orchestrator.py trace-infra --target-ip <ip>` |
+| RAG search | `rag-env/bin/python scripts/rag_core.py --search "..."` |
+
+## VPS — remote agents
+
+```bash
+ssh hexstrike-vps
+cd /opt/hexstrike-ai && ./scripts/vps-status.sh
+cd /opt/hexstrike-ai && ./hexstrike-orchestrator run-all   # legacy pipeline
+```
+
+Host: `78.27.235.70` · alias: `hexstrike-vps` · install: `/opt/hexstrike-ai`
+
+## MCP / agents (через orchestrator, не вручную)
+
+- `mcp_rpc_gateway` — RPC (lab: `config/rpc_config.json`)
+- `mcp_rag_memory` — Eva HDD LanceDB
+- `core.forensics` + `forensics.md`
+- `mcp_blockscout_api`, `mcp_shodan` — только read-only
+
+## Worker-скрипты
+
+`scripts/*.py` — **только** как worker-модули, вызываемые orchestrator/VPS pipeline.
+Не запускать их напрямую, если есть команда orchestrator.
+
+## Артефакты
+
+- Repo: `artifacts/forensics/`, `artifacts/2026-07-10/`
+- Desktop mirror: `~/Desktop/on-chain-forensics/artifacts/`
+- RAG index после новых артефактов: `./scripts/index-rag.sh`
+
+## Исключения
+
+- Read-only просмотр файлов/артефактов без side effects — OK
+- Git commit/push/PR — OK
+- Если orchestrator/VPS недоступен — сообщить оператору, **не** обходить pipeline
