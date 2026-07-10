@@ -3,15 +3,28 @@
 
 import argparse
 import json
+import os
 import requests
 import sys
 from typing import Dict, Any, Optional
 
 class HexStrikeClient:
-    def __init__(self, server_url: str = "http://localhost:8888", timeout: int = 300):
+    def __init__(self, server_url: str = "http://localhost:8888", timeout: int = 300, api_key: str | None = None):
         self.server_url = server_url.rstrip('/')
         self.timeout = timeout
         self.session = requests.Session()
+
+        key = api_key or os.environ.get("HEXSTRIKE_API_KEY", "")
+        if not key:
+            env_path = os.path.join(os.path.dirname(__file__), ".env")
+            if os.path.isfile(env_path):
+                for line in open(env_path, encoding="utf-8"):
+                    if line.strip().startswith("HEXSTRIKE_API_KEY="):
+                        key = line.strip().split("=", 1)[1].strip().strip('"').strip("'")
+                        break
+        if key:
+            self.session.headers["X-API-KEY"] = key
+
         try:
             response = self.session.get(f"{self.server_url}/health", timeout=5)
             if response.status_code == 200:
