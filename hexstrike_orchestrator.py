@@ -223,6 +223,35 @@ class HexStrikeOrchestrator:
 
         return {"mode": "orchestrator", "txs": txs, "alerts": alerts, "dedup_skipped": dedup_skipped}
 
+    def run_trace_infra(
+        self,
+        target_ip: str,
+        *,
+        mode: str = "deep-osint",
+        output: Path | None = None,
+        wallet_address: str | None = None,
+    ) -> dict[str, Any]:
+        from hexstrike.skills.infra_tracer import InfraTracer
+
+        tracer = InfraTracer(bus=self.bus)
+        report = tracer.trace(target_ip, mode=mode, wallet_address=wallet_address)
+
+        if wallet_address:
+            analysis = self.run_analyze(wallet_address)
+            report["forensics_correlation"] = {
+                "wallet": wallet_address,
+                "entity": analysis.get("entity"),
+                "labels": analysis.get("entity", {}).get("labels", []),
+                "rag_hits": len(analysis.get("rag_hits", [])),
+            }
+
+        out_path = output or (ROOT / "artifacts" / "infra-trace-final.json")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        report["output_path"] = str(out_path)
+        self.bus.publish("orchestrator.trace_infra", {"ip": target_ip, "path": str(out_path)}, source="orchestrator")
+        return report
+
     def status(self) -> dict[str, Any]:
         return {
             "version": "8.0.0",
@@ -285,6 +314,12 @@ def main() -> int:
     stress_p.add_argument("--ip", default="51.250.97.223")
     stress_p.add_argument("--monitor-duration", type=int, default=45)
 
+    trace_p = sub.add_parser("trace-infra", help="Deep infrastructure OSINT trace (read-only)")
+    trace_p.add_argument("--target-ip", required=True)
+    trace_p.add_argument("--mode", default="deep-osint")
+    trace_p.add_argument("--output", default="artifacts/infra-trace-final.json")
+    trace_p.add_argument("--wallet", default="0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a")
+
     args = parser.parse_args()
     orch = HexStrikeOrchestrator(config_path=Path(args.config))
 
@@ -337,6 +372,15 @@ def main() -> int:
             "--monitor-duration", str(args.monitor_duration),
         ]
         return subprocess.call(cmd, cwd=str(ROOT))
+    if args.command == "trace-infra":
+        result = orch.run_trace_infra(
+            args.target_ip,
+            mode=args.mode,
+            output=Path(args.output),
+            wallet_address=args.wallet,
+        )
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
 
     return 1
 
