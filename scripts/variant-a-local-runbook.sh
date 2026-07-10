@@ -91,7 +91,7 @@ fi
 
 CHAT_RESP="$(curl -sf --max-time 120 "${LOCAL_BASE}/chat/completions" \
   -H "Content-Type: application/json" \
-  -d "{\"model\":\"${MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply: pong\"}],\"stream\":false}" 2>&1)" && CHAT_OK=1 || CHAT_OK=0
+  -d "{\"model\":\"${MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply: pong\"}],\"stream\":false,\"options\":{\"num_thread\":16,\"num_predict\":16}}" 2>&1)" && CHAT_OK=1 || CHAT_OK=0
 if [[ "$CHAT_OK" == "1" ]]; then
   echo "[OK]   POST /v1/chat/completions — inference works on iMac"
 else

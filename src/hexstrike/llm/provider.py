@@ -13,6 +13,16 @@ from typing import Any
 
 DEFAULT_HOST = "http://127.0.0.1:11434"
 DEFAULT_MODEL = "deepseek-r1"
+DEFAULT_NUM_THREAD = 16
+DEFAULT_NUM_PREDICT = 16
+
+
+def ollama_request_options() -> dict[str, int]:
+    """Runtime options for deepseek-r1 — tune via OLLAMA_NUM_THREAD / OLLAMA_NUM_PREDICT."""
+    return {
+        "num_thread": int(os.environ.get("OLLAMA_NUM_THREAD", DEFAULT_NUM_THREAD)),
+        "num_predict": int(os.environ.get("OLLAMA_NUM_PREDICT", DEFAULT_NUM_PREDICT)),
+    }
 
 
 @dataclass(frozen=True)
@@ -109,6 +119,7 @@ class LocalLlmProvider:
             "local_inference": local_ok,
             "deepseek_r1_available": has_deepseek_r1(models),
             "models": models,
+            "options": ollama_request_options(),
         }
 
     def measure_hook_latency(self, *, probe: str = "models") -> dict[str, Any]:
@@ -120,6 +131,7 @@ class LocalLlmProvider:
                     "model": self.config.model,
                     "messages": [{"role": "user", "content": "ping"}],
                     "stream": False,
+                    "options": ollama_request_options(),
                 }
             ).encode()
             headers = {"Content-Type": "application/json"}

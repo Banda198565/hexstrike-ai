@@ -7,7 +7,11 @@
     "host_env": "OLLAMA_HOST",
     "default_host": "http://127.0.0.1:11434",
     "model": "deepseek-r1",
-    "pull_command": "ollama pull deepseek-r1"
+    "pull_command": "ollama pull deepseek-r1",
+    "options": {
+      "num_thread": 16,
+      "num_predict": 16
+    }
   },
   "cursor": {
     "settings_file": ".cursor/settings.json",

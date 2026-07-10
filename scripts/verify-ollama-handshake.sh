@@ -107,7 +107,7 @@ fi
 
 CHAT_RESP="$(curl -sf --max-time 120 "${OLLAMA_HOST}/v1/chat/completions" \
   -H "Content-Type: application/json" \
-  -d "{\"model\":\"${CHAT_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with exactly: pong\"}],\"stream\":false}" 2>&1)" && CHAT_OK=1 || CHAT_OK=0
+  -d "{\"model\":\"${CHAT_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with exactly: pong\"}],\"stream\":false,\"options\":{\"num_thread\":${OLLAMA_NUM_THREAD:-16},\"num_predict\":${OLLAMA_NUM_PREDICT:-16}}}" 2>&1)" && CHAT_OK=1 || CHAT_OK=0
 if [[ "$CHAT_OK" == "1" ]]; then
   check "chat_completion" 1 "POST /v1/chat/completions OK (model=${CHAT_MODEL})"
   if echo "$CHAT_RESP" | grep -qi "think\|pong"; then
@@ -160,7 +160,7 @@ fi
 
 # 8. Latency self-diagnostic
 MODELS_MS="$(measure_ms "${OLLAMA_HOST}/v1/models")"
-CHAT_MS="$(measure_ms "${OLLAMA_HOST}/v1/chat/completions" POST "{\"model\":\"${CHAT_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],\"stream\":false}")"
+CHAT_MS="$(measure_ms "${OLLAMA_HOST}/v1/chat/completions" POST "{\"model\":\"${CHAT_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],\"stream\":false,\"options\":{\"num_thread\":${OLLAMA_NUM_THREAD:-16},\"num_predict\":${OLLAMA_NUM_PREDICT:-16}}}")"
 echo ""
 echo "=== Latency (model-to-hook round-trip) ==="
 if [[ "$MODELS_MS" != "nan" ]]; then

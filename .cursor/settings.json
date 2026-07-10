@@ -5,23 +5,27 @@
   "AUTHORIZED_OPERATOR_MODE": false,
   "ollama": {
     "host": "http://127.0.0.1:11434",
-    "model": "deepseek-r1:1.5b",
+    "model": "deepseek-r1:latest",
     "openai_compatible_base": "http://127.0.0.1:11434/v1",
-    "api_key_placeholder": "ollama"
+    "api_key_placeholder": "ollama",
+    "options": {
+      "num_thread": 16,
+      "num_predict": 16
+    }
   },
   "cursor": {
     "chat": {
-      "defaultModel": "deepseek-r1:1.5b",
+      "defaultModel": "deepseek-r1:latest",
       "useLocalLlm": true,
       "model_type": "openai_compatible"
     },
     "composer": {
-      "defaultModel": "deepseek-r1:1.5b",
+      "defaultModel": "deepseek-r1:latest",
       "useLocalLlm": true,
       "model_type": "openai_compatible"
     },
     "maxMode": {
-      "defaultModel": "deepseek-r1:1.5b",
+      "defaultModel": "deepseek-r1:latest",
       "preferHighReasoning": true,
       "routeToLocal": true,
       "model_type": "openai_compatible"
@@ -29,12 +33,16 @@
     "models": {
       "custom": [
         {
-          "id": "deepseek-r1:1.5b",
-          "name": "deepseek-r1:1.5b",
+          "id": "deepseek-r1:latest",
+          "name": "deepseek-r1:latest",
           "provider": "openai-compatible",
           "model_type": "openai_compatible",
           "baseUrl": "http://127.0.0.1:11434/v1",
-          "supportsChainOfThought": true
+          "supportsChainOfThought": true,
+          "options": {
+            "num_thread": 16,
+            "num_predict": 16
+          }
         }
       ],
       "disabled": []
@@ -59,7 +67,9 @@
     "OLLAMA_BYPASS_TUNNEL": "true",
     "LLM_PROVIDER": "ollama-local",
     "LLM_BASE_URL": "http://127.0.0.1:11434/v1",
-    "LLM_MODEL": "deepseek-r1:1.5b",
+    "LLM_MODEL": "deepseek-r1:latest",
+    "OLLAMA_NUM_THREAD": "16",
+    "OLLAMA_NUM_PREDICT": "16",
     "CURSOR_INTEGRATION_MODE": "OFFLINE_PRIMARY"
   }
 }
