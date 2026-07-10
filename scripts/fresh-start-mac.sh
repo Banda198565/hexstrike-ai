@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-MODEL="${HEXSTRIKE_MODEL:-qwen2.5-coder:1.5b}"
+MODEL="${HEXSTRIKE_MODEL:-deepseek-r1:1.5b}"
 HOST="http://127.0.0.1:11434"
 LOG="/tmp/hexstrike-cloudflared.log"
 
