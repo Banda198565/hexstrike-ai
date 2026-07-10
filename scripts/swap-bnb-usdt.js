@@ -5,15 +5,14 @@
  *   CONFIRM=yes node ~/swap-bnb-usdt.js
  *   BNB_AMOUNT=0.005 CONFIRM=yes node ~/swap-bnb-usdt.js
  */
-const { ethers } = require('ethers');
 const fs = require('fs');
 const path = require('path');
 
-// ethers lives in ~/node_modules (operator-signing), not on Eva repo path
+// ethers in ~/node_modules (operator-signing package.json)
 const homeModules = path.join(process.env.HOME || '', 'node_modules');
-if (homeModules && !module.paths.includes(homeModules)) {
-  module.paths.unshift(homeModules);
-}
+if (homeModules) module.paths.unshift(homeModules);
+
+const { ethers } = require('ethers');
 
 const OPERATOR = process.env.FROM || '0x85dB346BE1d9d5D8ec4F57acf0067FbE53a6E846';
 const RPC = process.env.BSC_RPC || 'https://bsc-dataseed.binance.org/';
