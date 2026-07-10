@@ -486,6 +486,59 @@ class HexStrikeOrchestrator:
         self.bus.publish("forensics.bridge_exit_correlate", report, source="orchestrator")
         return report
 
+    def run_bridge_exit_hop_trace(self) -> dict[str, Any]:
+        """P6: Base hop-trace from Rhino withdrawal recipients toward hot wallet."""
+        bridge = "0xb80a582fa430645a043bb4f6135321ee01005fef"
+        hot = "0x4943f5e7f4e450d48ae82026163ecde8a52c53da"
+        script = ROOT / "scripts" / "bsc-bridge-exit-hop-trace-p6.py"
+        if not script.is_file():
+            return {"error": f"missing script: {script}"}
+
+        rag_hits = self.rag_mcp.search("base usdc hop trace rhino recipient hot wallet treasury")
+        rpc_health = self.rpc_mcp.health()
+
+        proc = subprocess.run(
+            [sys.executable, str(script)],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            env={**os.environ},
+            timeout=900,
+        )
+
+        p6_path = ROOT / "artifacts" / "2026-07-10" / "p6-bridge-exit-hop-trace.json"
+        p6_payload: dict[str, Any] = {}
+        if p6_path.is_file():
+            p6_payload = json.loads(p6_path.read_text(encoding="utf-8"))
+
+        report = {
+            "operation": "bridge_exit_hop_trace_p6",
+            "policy": "read_only",
+            "hexstrike": {
+                "orchestrator": "8.0.0",
+                "agent": "core.forensics",
+                "instruction": "forensics.md",
+                "mcps_used": ["mcp_rag_memory"],
+                "rpc_health": rpc_health,
+            },
+            "entity_bridge": self.forensics.resolve_entity(bridge),
+            "entity_hot_wallet": self.forensics.resolve_entity(hot),
+            "rag_hits": rag_hits[:5],
+            "p6_hop_trace": p6_payload,
+            "script": {
+                "path": str(script),
+                "returncode": proc.returncode,
+                "stderr_tail": (proc.stderr or "")[-500:],
+            },
+            "artifact": str(p6_path),
+        }
+
+        out = ROOT / "artifacts" / "forensics" / "p6-bridge-exit-hop-trace.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        self.bus.publish("forensics.bridge_exit_hop_trace", report, source="orchestrator")
+        return report
+
     def run_monitor_loop(
         self,
         *,
@@ -657,6 +710,7 @@ def main() -> int:
     sub.add_parser("bridge-exit-trace", help="P3 cross-chain exit trace (calldata + VPS multichain)")
     sub.add_parser("bridge-quote-decode", help="P4 Rhino signed quote decode (signer recovery + API)")
     sub.add_parser("bridge-exit-correlate", help="P5 cross-chain exit correlate (Rhino API + Base on-chain)")
+    sub.add_parser("bridge-exit-hop-trace", help="P6 Base hop-trace Rhino recipients → hot wallet")
 
     recon_p = sub.add_parser("recon", help="Passive RPC recon scan")
     recon_p.add_argument("--limit", type=int, default=3)
@@ -723,6 +777,9 @@ def main() -> int:
         return 0
     if args.command == "bridge-exit-correlate":
         print(json.dumps(orch.run_bridge_exit_correlate(), indent=2))
+        return 0
+    if args.command == "bridge-exit-hop-trace":
+        print(json.dumps(orch.run_bridge_exit_hop_trace(), indent=2))
         return 0
     if args.command == "recon":
         print(json.dumps(orch.run_recon(limit=args.limit), indent=2))
