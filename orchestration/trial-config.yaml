@@ -1,0 +1,143 @@
+# HexStrike AI — Trial Orchestration Configuration
+# Managed by Cursor Agent during the trial period.
+
+trial:
+  start_date: "2026-06-21"
+  duration_days: 14
+  end_date: "2026-07-05"
+  status: active
+  orchestrator: cursor-agent
+  version: "6.0.0"
+
+endpoints:
+  base_url: "http://127.0.0.1:8888"
+  health: "/health"
+  intelligence:
+    analyze_target: "/api/intelligence/analyze-target"
+    select_tools: "/api/intelligence/select-tools"
+    optimize_parameters: "/api/intelligence/optimize-parameters"
+    create_attack_chain: "/api/intelligence/create-attack-chain"
+    smart_scan: "/api/intelligence/smart-scan"
+    technology_detection: "/api/intelligence/technology-detection"
+  bugbounty:
+    reconnaissance: "/api/bugbounty/reconnaissance-workflow"
+    vulnerability_hunting: "/api/bugbounty/vulnerability-hunting-workflow"
+    business_logic: "/api/bugbounty/business-logic-workflow"
+    osint: "/api/bugbounty/osint-workflow"
+    file_upload: "/api/bugbounty/file-upload-testing"
+    comprehensive: "/api/bugbounty/comprehensive-assessment"
+  ctf:
+    create_challenge: "/api/ctf/create-challenge-workflow"
+    auto_solve: "/api/ctf/auto-solve-challenge"
+    team_strategy: "/api/ctf/team-strategy"
+    suggest_tools: "/api/ctf/suggest-tools"
+    cryptography: "/api/ctf/cryptography-solver"
+    forensics: "/api/ctf/forensics-analyzer"
+    binary: "/api/ctf/binary-analyzer"
+  vuln_intel:
+    cve_monitor: "/api/vuln-intel/cve-monitor"
+    exploit_generate: "/api/vuln-intel/exploit-generate"
+    attack_chains: "/api/vuln-intel/attack-chains"
+    threat_feeds: "/api/vuln-intel/threat-feeds"
+    zero_day_research: "/api/vuln-intel/zero-day-research"
+
+responsibilities:
+  health_monitoring:
+    description: "Ensure HexStrike API on port 8888 is healthy before any security task"
+    script: "~/hexstrike-ai/scripts/hexstrike-status.sh"
+    restore_script: "~/hexstrike-ai/scripts/hexstrike-restore.sh"
+    check_interval_minutes: 5
+    auto_restore: true
+
+  tool_selection:
+    description: "Use IntelligentDecisionEngine to pick optimal tools"
+    primary_endpoint: "/api/intelligence/select-tools"
+    fallback_endpoint: "/api/intelligence/analyze-target"
+    objectives:
+      - comprehensive
+      - quick
+      - stealth
+
+  workflow_routing:
+    description: "Route tasks to specialized workflow managers"
+    rules:
+      - pattern: "bug.?bounty|recon|osint|vuln.?hunt|business.?logic|file.?upload"
+        manager: BugBountyWorkflowManager
+        base_path: "/api/bugbounty/"
+      - pattern: "ctf|challenge|crypto|forensics|binary|pwn"
+        manager: CTFWorkflowManager
+        base_path: "/api/ctf/"
+      - pattern: "cve|exploit|vuln.?intel|zero.?day|threat.?feed"
+        manager: VulnIntel
+        base_path: "/api/vuln-intel/"
+      - pattern: "scan|recon|assess|pentest|smart.?scan"
+        manager: IntelligentDecisionEngine
+        base_path: "/api/intelligence/"
+        default_endpoint: "/api/intelligence/smart-scan"
+
+  failure_recovery:
+    description: "Recover from tool/server failures using GracefulDegradation chains"
+    restore_script: "~/hexstrike-ai/scripts/hexstrike-restore.sh"
+    mcp_reload_hint: "Cmd+Shift+P → MCP: Reload Servers"
+    fallback_chains:
+      network_discovery: ["nmap", "rustscan", "masscan", "ping"]
+      web_discovery: ["gobuster", "feroxbuster", "dirsearch", "curl"]
+      vulnerability_scanning: ["nuclei", "jaeles", "nikto", "curl"]
+      subdomain_enumeration: ["subfinder", "amass", "assetfinder", "dig"]
+      parameter_discovery: ["arjun", "paramspider", "x8", "ffuf"]
+    max_retries: 3
+    retry_delay_seconds: 5
+
+escalation:
+  log_file: "~/hexstrike-ai/logs/orchestration.log"
+  metrics_file: "~/hexstrike-ai/orchestration/metrics.json"
+
+  auto_actions:
+    - condition: "health_check_failed"
+      action: "run hexstrike-restore.sh"
+    - condition: "tool_execution_failed"
+      action: "apply GracefulDegradation fallback chain"
+    - condition: "mcp_disconnected"
+      action: "prompt user to reload MCP servers"
+
+  ask_permission:
+    - condition: "target_is_production"
+      message: "Цель выглядит как production — подтвердите scope"
+    - condition: "destructive_exploit"
+      message: "Эксплуатация может повредить систему — нужно явное «Да»"
+    - condition: "remote_vps_operation"
+      message: "Операция на VPS luckyserver (195.137.245.232) — подтвердите"
+    - condition: "mass_scan"
+      message: "Массовое сканирование (>10 хостов) — подтвердите scope"
+
+  notify_user:
+    - condition: "trial_expiring_soon"
+      days_before_end: 3
+      message: "Пробный период оркестрации заканчивается через 3 дня"
+
+metrics:
+  track:
+    - health_checks_total
+    - health_checks_failed
+    - workflows_run
+    - tools_selected
+    - smart_scans_executed
+    - fallback_chains_used
+    - recovery_actions
+    - success_rate
+
+scripts:
+  status: "~/hexstrike-ai/scripts/hexstrike-status.sh"
+  orchestrate: "~/hexstrike-ai/scripts/hexstrike-orchestrate.sh"
+  start: "~/hexstrike-ai/scripts/hexstrike-start.sh"
+  stop: "~/hexstrike-ai/scripts/hexstrike-stop.sh"
+  restart: "~/hexstrike-ai/scripts/hexstrike-restart.sh"
+  restore: "~/hexstrike-ai/scripts/hexstrike-restore.sh"
+
+mcp:
+  client: "~/hexstrike-ai/hexstrike_mcp.py"
+  config_files:
+    - "~/.cursor/mcp.json"
+    - "~/.cursor/mcp-hub.json"
+  expected_port: 8888
+  tools_count: 127
