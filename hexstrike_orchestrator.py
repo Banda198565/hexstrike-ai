@@ -265,6 +265,100 @@ class HexStrikeOrchestrator:
         self.bus.publish("forensics.bridge_decode", report, source="orchestrator")
         return report
 
+    def run_bridge_exit_trace(self) -> dict[str, Any]:
+        """P3: cross-chain exit trace — calldata decode + bridge events + VPS multichain."""
+        bridge = "0xb80a582fa430645a043bb4f6135321ee01005fef"
+        hot = "0x4943f5e7f4e450d48ae82026163ecde8a52c53da"
+        script = ROOT / "scripts" / "bsc-bridge-exit-trace-p3.py"
+        if not script.is_file():
+            return {"error": f"missing script: {script}"}
+
+        rag_hits = self.rag_mcp.search("base usdc multichain exit rhino bridge hot wallet")
+        rpc_health = self.rpc_mcp.health()
+        primary_rpc = rpc_health.get("active_rpc", "http://51.222.42.220:8545")
+
+        env = {**os.environ, "HEXSTRIKE_RPC": primary_rpc}
+        proc = subprocess.run(
+            [sys.executable, str(script)],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+
+        p3_path = ROOT / "artifacts" / "2026-07-10" / "p3-bridge-exit-trace.json"
+        p3_payload: dict[str, Any] = {}
+        if p3_path.is_file():
+            p3_payload = json.loads(p3_path.read_text(encoding="utf-8"))
+
+        # Blockscout read-only (if API keys configured)
+        explorer: dict[str, Any] = {}
+        for chain in ("bsc", "base", "ethereum"):
+            summary = self.blockscout_mcp.address_summary(hot, chain=chain)
+            if summary.get("balance", {}).get("success") is not False:
+                explorer[chain] = summary
+            else:
+                explorer[chain] = {"status": "skipped", "reason": summary.get("error", "no_key")}
+
+        # VPS multichain agent (legacy pipeline worker)
+        vps_result: dict[str, Any] = {"status": "not_run"}
+        vps_host = "hexstrike-vps"
+        vps_script = "scripts/agents/agent_osint_03_multichain.py"
+        try:
+            vps_proc = subprocess.run(
+                [
+                    "ssh",
+                    "-o",
+                    "BatchMode=yes",
+                    "-o",
+                    "ConnectTimeout=15",
+                    vps_host,
+                    f"cd /opt/hexstrike-ai && python3 {vps_script}",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            vps_result = {
+                "status": "ok" if vps_proc.returncode == 0 else "error",
+                "returncode": vps_proc.returncode,
+                "stdout_tail": (vps_proc.stdout or "")[-800:],
+                "stderr_tail": (vps_proc.stderr or "")[-400:],
+            }
+        except Exception as exc:
+            vps_result = {"status": "unreachable", "error": str(exc)}
+
+        report = {
+            "operation": "bridge_exit_trace_p3",
+            "policy": "read_only",
+            "hexstrike": {
+                "orchestrator": "8.0.0",
+                "agent": "core.forensics",
+                "instruction": "forensics.md",
+                "mcps_used": ["mcp_rpc_gateway", "mcp_rag_memory", "mcp_blockscout_api"],
+                "rpc_health": rpc_health,
+                "vps_host": vps_host,
+            },
+            "entity_bridge": self.forensics.resolve_entity(bridge),
+            "entity_hot_wallet": self.forensics.resolve_entity(hot),
+            "rag_hits": rag_hits[:5],
+            "p3_trace": p3_payload,
+            "explorer_probe": explorer,
+            "vps_multichain": vps_result,
+            "script": {
+                "path": str(script),
+                "returncode": proc.returncode,
+                "stderr_tail": (proc.stderr or "")[-500:],
+            },
+            "artifact": str(p3_path),
+        }
+
+        out = ROOT / "artifacts" / "forensics" / "p3-bridge-exit-trace.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        self.bus.publish("forensics.bridge_exit_trace", report, source="orchestrator")
+        return report
+
     def run_monitor_loop(
         self,
         *,
@@ -433,6 +527,7 @@ def main() -> int:
     analyze_p.add_argument("address", help="Target address (0x...)")
 
     sub.add_parser("bridge-decode", help="P2 Rhino.fi cross-chain decode (forensics pipeline)")
+    sub.add_parser("bridge-exit-trace", help="P3 cross-chain exit trace (calldata + VPS multichain)")
 
     recon_p = sub.add_parser("recon", help="Passive RPC recon scan")
     recon_p.add_argument("--limit", type=int, default=3)
@@ -490,6 +585,9 @@ def main() -> int:
         return 0
     if args.command == "bridge-decode":
         print(json.dumps(orch.run_bridge_decode(), indent=2))
+        return 0
+    if args.command == "bridge-exit-trace":
+        print(json.dumps(orch.run_bridge_exit_trace(), indent=2))
         return 0
     if args.command == "recon":
         print(json.dumps(orch.run_recon(limit=args.limit), indent=2))

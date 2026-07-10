@@ -21,6 +21,7 @@ VPS:  ssh hexstrike-vps → /opt/hexstrike-ai → legacy pipeline
 | Статус | `python3 hexstrike_orchestrator.py status` |
 | Forensics analyze | `python3 hexstrike_orchestrator.py analyze <0x...>` |
 | Rhino bridge P2 | `python3 hexstrike_orchestrator.py bridge-decode` |
+| Cross-chain exit P3 | `python3 hexstrike_orchestrator.py bridge-exit-trace` |
 | RPC recon | `python3 hexstrike_orchestrator.py recon` |
 | Infra trace | `python3 hexstrike_orchestrator.py trace-infra --target-ip <ip>` |
 | RAG search | `rag-env/bin/python scripts/rag_core.py --search "..."` |

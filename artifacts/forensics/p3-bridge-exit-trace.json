@@ -1,0 +1,532 @@
+{
+  "operation": "bridge_exit_trace_p3",
+  "policy": "read_only",
+  "hexstrike": {
+    "orchestrator": "8.0.0",
+    "agent": "core.forensics",
+    "instruction": "forensics.md",
+    "mcps_used": [
+      "mcp_rpc_gateway",
+      "mcp_rag_memory",
+      "mcp_blockscout_api"
+    ],
+    "rpc_health": {
+      "status": "ok",
+      "active_rpc": "http://51.222.42.220:8545",
+      "chain_id": "0x38",
+      "stealth": {
+        "enabled": true,
+        "proxy": false,
+        "verify_tls": true,
+        "jitter_ms": [
+          50,
+          250
+        ]
+      }
+    },
+    "vps_host": "hexstrike-vps"
+  },
+  "entity_bridge": {
+    "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+    "labels": [],
+    "sources": []
+  },
+  "entity_hot_wallet": {
+    "address": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+    "labels": [],
+    "sources": []
+  },
+  "rag_hits": [
+    {
+      "source_file": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/entity-id.json",
+      "timestamp": "2026-07-10T19:24:26Z",
+      "chunk_index": 2,
+      "snippet": "       \"total_usdt\": 0.0\n        },\n        {\n          \"address\": \"0xf64046d018a29f7a042b16485acb495354d2ef19\",\n          \"label\": null,\n          \"total_usdt\": 0.0\n        }\n      ]\n    },\n    \"bscan_labels\": {\n      \"status\": \"done\",\n      \"hot_wallet_label\": null,\n      \"hot_wallet_tags\": \"none public on BscScan\",\n      \"multichain_activity\": {\n        \"label\": \"Active multichain ops wallet (unlabeled)\",\n        \"bnb\": 0.111,\n        \"usdt_bsc\": 568847.3,\n        \"nonce\": 58882,\n        \"mul",
+      "score": 0.5495348572731018,
+      "label": ""
+    },
+    {
+      "source_file": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/infra-targets.json",
+      "timestamp": "2026-07-10T19:24:26Z",
+      "chunk_index": 1,
+      "snippet": "ffchain_links\": {\n    \"direct_domain_from_address\": null,\n    \"ens_reverse\": null,\n    \"bscscan_public_label_hot\": null,\n    \"bscscan_public_label_hub\": \"Rhino.fi: Bridge (per prior recon / BscScan tag)\",\n    \"puissant_entity\": {\n      \"identified\": true,\n      \"name\": \"48Club Puissant MEV Builder\",\n      \"docs\": \"https://docs.48.club/puissant-builder/send-bundle\",\n      \"relation_to_hot\": \"none confirmed — separate infrastructure\"\n    },\n    \"business_inference\": {\n      \"hot_wallet_role\": \"Hig",
+      "score": 0.5583217740058899,
+      "label": ""
+    },
+    {
+      "source_file": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/multichain-cluster.json",
+      "timestamp": "2026-07-10T19:24:26Z",
+      "chunk_index": 5,
+      "snippet": "ll,\n      \"role\": \"EIP-7702 authority delegate\"\n    }\n  ],\n  \"entity_signals\": {\n    \"multichain_treasury\": true,\n    \"payroll_pattern_bsc\": \"high-frequency small/medium USDT outflows\",\n    \"base_usdc_cluster\": \"634k USDC \\u2014 parallel rail to BSC BSC-USD\",\n    \"spam_airdrops\": \"100+ worthless tokens on BSC and BASE (common for active EOAs)\",\n    \"public_name_tag\": null\n  },\n  \"arkham\": {\n    \"manual_url\": \"https://platform.arkhamintelligence.com/explorer/address/0x4943F5E7F4e450d48Ae82026163e",
+      "score": 0.5691841244697571,
+      "label": ""
+    },
+    {
+      "source_file": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/infra-targets.json",
+      "timestamp": "2026-07-10T19:24:26Z",
+      "chunk_index": 7,
+      "snippet": "ed)\",\n      \"link_to_hot_wallet\": \"user lab — not target infra\",\n      \"priority\": \"N/A\"\n    }\n  ],\n  \"domains_candidates\": [\n    {\n      \"domain\": \"rhino.fi\",\n      \"link\": \"on-chain hub 0xb80a582f... identified as Rhino.fi bridge\",\n      \"relation_to_hot_keys\": \"bridge protocol — NOT hot wallet key custody\",\n      \"passive_check\": \"https://rhino.fi/ reachable\"\n    },\n    {\n      \"domain\": \"48.club\",\n      \"link\": \"Puissant validator documentation only\",\n      \"relation_to_hot_keys\": \"none conf",
+      "score": 0.5833330154418945,
+      "label": ""
+    },
+    {
+      "source_file": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/multichain-cluster.json",
+      "timestamp": "2026-07-10T19:24:26Z",
+      "chunk_index": 4,
+      "snippet": "    },\n    {\n      \"address\": \"0x1bb8088d6f7b5e864a2817c190375d5ba335eb39\",\n      \"label\": null,\n      \"usdt_total\": 1500.0\n    },\n    {\n      \"address\": \"0x50d68d7bd2380168c63d22d63beb9bcdbcf41736\",\n      \"label\": null,\n      \"usdt_total\": 1492.5\n    }\n  ],\n  \"labeled_counterparties\": [\n    {\n      \"address\": \"0x161ba15a5f335c9f06bb5bbb0a9ce14076fbb645\",\n      \"label\": \"Binance Hot Wallet 11\",\n      \"role\": \"primary treasury funding\"\n    },\n    {\n      \"address\": \"0xb80a582fa430645a043bb4f61353",
+      "score": 0.5914415717124939,
+      "label": ""
+    }
+  ],
+  "p3_trace": {
+    "meta": {
+      "timestamp": "2026-07-10T21:36:30.216776+00:00",
+      "policy": "read_only_p3",
+      "rpc": "http://51.222.42.220:8545",
+      "block_range": [
+        108941522,
+        109041522
+      ],
+      "worker": "scripts/bsc-bridge-exit-trace-p3.py",
+      "invoked_by": "hexstrike_orchestrator bridge-exit-trace"
+    },
+    "exit_mechanism": {
+      "relayer": "0x90502666e33d71483302f81c8349a6185572db42",
+      "batch_method": "execute((address,uint256,bytes)[])",
+      "inner_bridge_call": "0x6171d1c9 (signed Rhino quote + USDT.transfer to bridge)",
+      "on_chain_deposit_event": "BridgedDepositWithId — NOT emitted for USDT batched top-3 in same block window",
+      "on_chain_withdrawal_event": "BridgedWithdrawal — destination string empty (379/379); recipient is bridge/internal router",
+      "cross_chain_binding": "EIP-712 signed quote in calldata; exact chainOut requires Rhino API JWT or quote signature decode"
+    },
+    "top3_summary": {
+      "transfer_count": 14,
+      "total_usdt": 46559.32,
+      "unique_batch_txs": 14,
+      "batched_via_relayer": 14
+    },
+    "calldata_decode": [
+      {
+        "tx_hash": "0xe4ea1d5f36e89b176ddd98a661fd317eaa661b8c8e5399e1f13c23a25b193636",
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "method": "execute((address,uint256,bytes)[])",
+        "inner_bridge_selector": "0x6171d1c9",
+        "top3_in_batch": [
+          {
+            "contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "present_in_calldata": true
+          }
+        ],
+        "cast_stdout_lines": 1,
+        "has_rhino_transfer": true,
+        "has_usdt": true,
+        "signed_quote_present": true
+      },
+      {
+        "tx_hash": "0xa7279140ccaefb092ea63690a1db6a5354acf3ccaf6368b7e80beb1bb5a93667",
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "method": "execute((address,uint256,bytes)[])",
+        "inner_bridge_selector": "0x6171d1c9",
+        "top3_in_batch": [
+          {
+            "contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "present_in_calldata": true
+          }
+        ],
+        "cast_stdout_lines": 1,
+        "has_rhino_transfer": true,
+        "has_usdt": true,
+        "signed_quote_present": true
+      },
+      {
+        "tx_hash": "0x7f9cba2507bf7aea6b9ec1d7e9273a31120b384a8ea4c0caa4ee0f3bf597727c",
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "method": "execute((address,uint256,bytes)[])",
+        "inner_bridge_selector": "0x6171d1c9",
+        "top3_in_batch": [
+          {
+            "contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "present_in_calldata": true
+          }
+        ],
+        "cast_stdout_lines": 1,
+        "has_rhino_transfer": true,
+        "has_usdt": true,
+        "signed_quote_present": true
+      },
+      {
+        "tx_hash": "0x1441d8b9eddb5cda67a03b04b682e1a2645d2a868877a89da8cef168054c3598",
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "method": "execute((address,uint256,bytes)[])",
+        "inner_bridge_selector": "0x6171d1c9",
+        "top3_in_batch": [
+          {
+            "contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "present_in_calldata": true
+          }
+        ],
+        "cast_stdout_lines": 1,
+        "has_rhino_transfer": true,
+        "has_usdt": true,
+        "signed_quote_present": true
+      },
+      {
+        "tx_hash": "0xc4c5b18bf3bcab377ebdb7890569405672b06ffcd797131ae1387776f89a91a3",
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "method": "execute((address,uint256,bytes)[])",
+        "inner_bridge_selector": "0x6171d1c9",
+        "top3_in_batch": [
+          {
+            "contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "present_in_calldata": true
+          }
+        ],
+        "cast_stdout_lines": 1,
+        "has_rhino_transfer": true,
+        "has_usdt": true,
+        "signed_quote_present": true
+      },
+      {
+        "tx_hash": "0x2b9138d958bff384c3bb2ff337977d56cec32a97baf56e6dbf8b48740168e261",
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "method": "execute((address,uint256,bytes)[])",
+        "inner_bridge_selector": "0x6171d1c9",
+        "top3_in_batch": [
+          {
+            "contract": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "present_in_calldata": true
+          }
+        ],
+        "cast_stdout_lines": 1,
+        "has_rhino_transfer": true,
+        "has_usdt": true,
+        "signed_quote_present": true
+      },
+      {
+        "tx_hash": "0x1135f4aecddac2285b90fe0b07a5d823b0af3b79d9d00ac52c50f3429d645cfa",
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "method": "execute((address,uint256,bytes)[])",
+        "inner_bridge_selector": "0x6171d1c9",
+        "top3_in_batch": [
+          {
+            "contract": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "present_in_calldata": true
+          }
+        ],
+        "cast_stdout_lines": 1,
+        "has_rhino_transfer": true,
+        "has_usdt": true,
+        "signed_quote_present": true
+      },
+      {
+        "tx_hash": "0x56662176e260639ca038e8f8d0d59a7dba7a6a58374456a0ec895663a455ce6e",
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "method": "execute((address,uint256,bytes)[])",
+        "inner_bridge_selector": "0x6171d1c9",
+        "top3_in_batch": [
+          {
+            "contract": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "present_in_calldata": true
+          }
+        ],
+        "cast_stdout_lines": 1,
+        "has_rhino_transfer": true,
+        "has_usdt": true,
+        "signed_quote_present": true
+      },
+      {
+        "tx_hash": "0x9fdd3d50c6ddba83f906e523a6472b22904d80da1f291e554977253534f221f4",
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "method": "execute((address,uint256,bytes)[])",
+        "inner_bridge_selector": "0x6171d1c9",
+        "top3_in_batch": [
+          {
+            "contract": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "present_in_calldata": true
+          }
+        ],
+        "cast_stdout_lines": 1,
+        "has_rhino_transfer": true,
+        "has_usdt": true,
+        "signed_quote_present": true
+      },
+      {
+        "tx_hash": "0xa0e2407de31014d352d23708cfbe9d5436be18d0a9b972ca60cb5eca82e512de",
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "method": "execute((address,uint256,bytes)[])",
+        "inner_bridge_selector": "0x6171d1c9",
+        "top3_in_batch": [
+          {
+            "contract": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "present_in_calldata": true
+          }
+        ],
+        "cast_stdout_lines": 1,
+        "has_rhino_transfer": true,
+        "has_usdt": true,
+        "signed_quote_present": false
+      },
+      {
+        "tx_hash": "0xd3b1ce96fcab056abe5f408a38e4d5e17b3c7f45a9dfab9bd7808b9362e55596",
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "method": "execute((address,uint256,bytes)[])",
+        "inner_bridge_selector": "0x6171d1c9",
+        "top3_in_batch": [
+          {
+            "contract": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "present_in_calldata": true
+          }
+        ],
+        "cast_stdout_lines": 1,
+        "has_rhino_transfer": true,
+        "has_usdt": true,
+        "signed_quote_present": true
+      },
+      {
+        "tx_hash": "0x757167d6df209ff97cf8df20c2ad5ca2a95080f25e673cf7a05b7346ff66eb3e",
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "method": "execute((address,uint256,bytes)[])",
+        "inner_bridge_selector": "0x6171d1c9",
+        "top3_in_batch": [
+          {
+            "contract": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "present_in_calldata": true
+          }
+        ],
+        "cast_stdout_lines": 1,
+        "has_rhino_transfer": true,
+        "has_usdt": true,
+        "signed_quote_present": true
+      },
+      {
+        "tx_hash": "0x9992b2e3325bfb5911573986e66adfbd5bc0f91efccc81ff99173e5efa9dc072",
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "method": "execute((address,uint256,bytes)[])",
+        "inner_bridge_selector": "0x6171d1c9",
+        "top3_in_batch": [
+          {
+            "contract": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "present_in_calldata": true
+          }
+        ],
+        "cast_stdout_lines": 1,
+        "has_rhino_transfer": true,
+        "has_usdt": true,
+        "signed_quote_present": true
+      },
+      {
+        "tx_hash": "0x0f4f6b6cbc6090bebe0c12619f46ddeff71482b3cfe1419ea7fbc77c56fce6b7",
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "method": "execute((address,uint256,bytes)[])",
+        "inner_bridge_selector": "0x6171d1c9",
+        "top3_in_batch": [
+          {
+            "contract": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "present_in_calldata": true
+          }
+        ],
+        "cast_stdout_lines": 1,
+        "has_rhino_transfer": true,
+        "has_usdt": true,
+        "signed_quote_present": true
+      }
+    ],
+    "bridge_events": {
+      "BridgedWithdrawal": 379,
+      "BridgedDepositWithId": 60,
+      "SwapWithData": 10,
+      "withdrawal_destination_strings": {
+        "(empty)": 379
+      },
+      "top_withdrawal_recipients": [
+        {
+          "address": "0xa1808131e61e0321ef3da1fde2badc0467c0f388",
+          "count": 75
+        },
+        {
+          "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+          "count": 75
+        },
+        {
+          "address": "0xd68e895e6c3d337fc7481c171e44dcd7ac338803",
+          "count": 15
+        },
+        {
+          "address": "0x9d859b4178b40e93377213f529627b5a020e4657",
+          "count": 12
+        },
+        {
+          "address": "0x819fec2168eeed0be582621cc991aa38df6d296c",
+          "count": 7
+        },
+        {
+          "address": "0xf3165b0d2c6cdc72647e36862678ab7cc65dd5f8",
+          "count": 5
+        },
+        {
+          "address": "0xa3eef83f0617f15c5ac1d072a3862d6c80616cca",
+          "count": 5
+        },
+        {
+          "address": "0x8953d9fa29c0742b80ad69b51416d46198342f9a",
+          "count": 4
+        },
+        {
+          "address": "0x698f2a288cf1d2be3f531e5b07601e5edfd4eb16",
+          "count": 3
+        },
+        {
+          "address": "0xb0ff8929ffd74077186f1748f1ab32df4489d903",
+          "count": 3
+        }
+      ],
+      "exact_amount_matches_withdrawal": [],
+      "exact_amount_matches_deposit": [
+        {
+          "sender": "0x8e2631ce9a85d9cec6e6676d321f3e0a0a4c766c",
+          "origin": "0x8e2631ce9a85d9cec6e6676d321f3e0a0a4c766c",
+          "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+          "amount_usdt": 1000.0,
+          "commitment_id": "0x00000000000000000000000000000000000000006a4fc417d048d5a1b2c67734",
+          "commitment_low64": 15008480648677979956,
+          "block": 109007166,
+          "tx_hash": "0x474fa5f277114ee1d2805251d17d82a662b73ac7706ef78234f751d6f577f305",
+          "event": "BridgedDepositWithId"
+        },
+        {
+          "sender": "0x18fcf0fb0a2ff8a13f1cecd6ad1acd611c4a326e",
+          "origin": "0xf2e3dcb8aebf306bf68f5de3b42ca49def7d14f8",
+          "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+          "amount_usdt": 500.0,
+          "commitment_id": "0x00000000000000000000000000000000000000006a4ffba1d048d5a1b2c6b765",
+          "commitment_low64": 15008480648677996389,
+          "block": 109038731,
+          "tx_hash": "0xba785e5fb81dc8b5230a61f39f3e3b53d33c377c51ebb4e81c3fdddefbd69ab0",
+          "event": "BridgedDepositWithId"
+        }
+      ]
+    },
+    "block_correlation": {
+      "withdrawals_within_300_blocks": 0,
+      "deposits_within_300_blocks": 0,
+      "samples": [
+        {
+          "transfer": {
+            "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 3353.15,
+            "block": 108972005,
+            "tx_hash": "0xe4ea1d5f36e89b176ddd98a661fd317eaa661b8c8e5399e1f13c23a25b193636",
+            "log_index": 152,
+            "source_contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "source_label": "authority_eip7702"
+          },
+          "nearby_bridge_events": [],
+          "nearby_count": 0
+        },
+        {
+          "transfer": {
+            "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 4816.0,
+            "block": 109017305,
+            "tx_hash": "0xa7279140ccaefb092ea63690a1db6a5354acf3ccaf6368b7e80beb1bb5a93667",
+            "log_index": 140,
+            "source_contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "source_label": "authority_eip7702"
+          },
+          "nearby_bridge_events": [],
+          "nearby_count": 0
+        },
+        {
+          "transfer": {
+            "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 4797.0,
+            "block": 109018651,
+            "tx_hash": "0x7f9cba2507bf7aea6b9ec1d7e9273a31120b384a8ea4c0caa4ee0f3bf597727c",
+            "log_index": 278,
+            "source_contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "source_label": "authority_eip7702"
+          },
+          "nearby_bridge_events": [],
+          "nearby_count": 0
+        },
+        {
+          "transfer": {
+            "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 4797.0,
+            "block": 109019979,
+            "tx_hash": "0x1441d8b9eddb5cda67a03b04b682e1a2645d2a868877a89da8cef168054c3598",
+            "log_index": 240,
+            "source_contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "source_label": "authority_eip7702"
+          },
+          "nearby_bridge_events": [],
+          "nearby_count": 0
+        },
+        {
+          "transfer": {
+            "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 4723.83,
+            "block": 109021315,
+            "tx_hash": "0xc4c5b18bf3bcab377ebdb7890569405672b06ffcd797131ae1387776f89a91a3",
+            "log_index": 182,
+            "source_contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "source_label": "authority_eip7702"
+          },
+          "nearby_bridge_events": [],
+          "nearby_count": 0
+        }
+      ]
+    },
+    "likely_exit_rails": {
+      "BASE": {
+        "evidence": "hot wallet ~$635k USDC on Base (multichain-cluster.json)",
+        "confidence": "medium"
+      },
+      "ARBITRUM": {
+        "evidence": "Rhino.fi top destination chain (protocol docs)",
+        "confidence": "low"
+      },
+      "ETHEREUM": {
+        "evidence": "Rhino.fi supported; large bridge volume",
+        "confidence": "low"
+      }
+    },
+    "verdict": "Top-3 USDT exits BSC via Rhino.fi batched relayer with per-deposit signed quotes. On-chain BridgedWithdrawal events do not expose destination chain (empty string). Forensic conclusion: cross-chain exit confirmed; destination chain bound in off-chain/API layer. Prior multichain recon indicates BASE USDC rail as strongest hypothesis for operator treasury.",
+    "next_steps_readonly": [
+      "Rhino.fi bridge status API with operator JWT: GET /bridge/history/bridge/by-deposit-hash/{tx}",
+      "Decode EIP-712 quote domain from inner 0x6171d1c9 calldata (chainOut field)",
+      "Arkham/Blockscan label on withdrawal recipient 0xa1808131e61e0321ef3da1fde2badc0467c0f388",
+      "Base chain: scan Rhino bridge contract for USDC credits to hot wallet cluster"
+    ]
+  },
+  "explorer_probe": {
+    "bsc": {
+      "status": "skipped",
+      "reason": "no_key"
+    },
+    "base": {
+      "status": "skipped",
+      "reason": "no_key"
+    },
+    "ethereum": {
+      "status": "skipped",
+      "reason": "no_key"
+    }
+  },
+  "vps_multichain": {
+    "status": "ok",
+    "returncode": 0,
+    "stdout_tail": "{\n  \"success\": true,\n  \"output\": \"/opt/hexstrike-ai/artifacts/multichain-cluster.json\",\n  \"net_worth_usd\": 1122486.21\n}\n",
+    "stderr_tail": ""
+  },
+  "script": {
+    "path": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/scripts/bsc-bridge-exit-trace-p3.py",
+    "returncode": 0,
+    "stderr_tail": "[+] Written: /Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/2026-07-10/p3-bridge-exit-trace.json\n"
+  },
+  "artifact": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/2026-07-10/p3-bridge-exit-trace.json"
+}
