@@ -359,6 +359,69 @@ class HexStrikeOrchestrator:
         self.bus.publish("forensics.bridge_exit_trace", report, source="orchestrator")
         return report
 
+    def run_bridge_quote_decode(self) -> dict[str, Any]:
+        """P4: decode Rhino signed quotes — recover authorized signers + optional API chainOut."""
+        bridge = "0xb80a582fa430645a043bb4f6135321ee01005fef"
+        hot = "0x4943f5e7f4e450d48ae82026163ecde8a52c53da"
+        script = ROOT / "scripts" / "bsc-bridge-quote-decode-p4.py"
+        if not script.is_file():
+            return {"error": f"missing script: {script}"}
+
+        rag_hits = self.rag_mcp.search("rhino signed quote chainOut bridge deposit signature")
+        rpc_health = self.rpc_mcp.health()
+        primary_rpc = rpc_health.get("active_rpc", "http://51.222.42.220:8545")
+
+        env = {**os.environ, "HEXSTRIKE_RPC": primary_rpc}
+        proc = subprocess.run(
+            [sys.executable, str(script)],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+
+        p4_path = ROOT / "artifacts" / "2026-07-10" / "p4-bridge-quote-decode.json"
+        p4_payload: dict[str, Any] = {}
+        if p4_path.is_file():
+            p4_payload = json.loads(p4_path.read_text(encoding="utf-8"))
+
+        explorer: dict[str, Any] = {}
+        for chain in ("bsc", "base"):
+            summary = self.blockscout_mcp.address_summary(hot, chain=chain)
+            if summary.get("balance", {}).get("success") is not False:
+                explorer[chain] = summary
+            else:
+                explorer[chain] = {"status": "skipped", "reason": summary.get("error", "no_key")}
+
+        report = {
+            "operation": "bridge_quote_decode_p4",
+            "policy": "read_only",
+            "hexstrike": {
+                "orchestrator": "8.0.0",
+                "agent": "core.forensics",
+                "instruction": "forensics.md",
+                "mcps_used": ["mcp_rpc_gateway", "mcp_rag_memory", "mcp_blockscout_api"],
+                "rpc_health": rpc_health,
+            },
+            "entity_bridge": self.forensics.resolve_entity(bridge),
+            "entity_hot_wallet": self.forensics.resolve_entity(hot),
+            "rag_hits": rag_hits[:5],
+            "p4_decode": p4_payload,
+            "explorer_probe": explorer,
+            "script": {
+                "path": str(script),
+                "returncode": proc.returncode,
+                "stderr_tail": (proc.stderr or "")[-500:],
+            },
+            "artifact": str(p4_path),
+        }
+
+        out = ROOT / "artifacts" / "forensics" / "p4-bridge-quote-decode.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        self.bus.publish("forensics.bridge_quote_decode", report, source="orchestrator")
+        return report
+
     def run_monitor_loop(
         self,
         *,
@@ -528,6 +591,7 @@ def main() -> int:
 
     sub.add_parser("bridge-decode", help="P2 Rhino.fi cross-chain decode (forensics pipeline)")
     sub.add_parser("bridge-exit-trace", help="P3 cross-chain exit trace (calldata + VPS multichain)")
+    sub.add_parser("bridge-quote-decode", help="P4 Rhino signed quote decode (signer recovery + API)")
 
     recon_p = sub.add_parser("recon", help="Passive RPC recon scan")
     recon_p.add_argument("--limit", type=int, default=3)
@@ -588,6 +652,9 @@ def main() -> int:
         return 0
     if args.command == "bridge-exit-trace":
         print(json.dumps(orch.run_bridge_exit_trace(), indent=2))
+        return 0
+    if args.command == "bridge-quote-decode":
+        print(json.dumps(orch.run_bridge_quote_decode(), indent=2))
         return 0
     if args.command == "recon":
         print(json.dumps(orch.run_recon(limit=args.limit), indent=2))

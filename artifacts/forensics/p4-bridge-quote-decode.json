@@ -1,0 +1,2721 @@
+{
+  "operation": "bridge_quote_decode_p4",
+  "policy": "read_only",
+  "hexstrike": {
+    "orchestrator": "8.0.0",
+    "agent": "core.forensics",
+    "instruction": "forensics.md",
+    "mcps_used": [
+      "mcp_rpc_gateway",
+      "mcp_rag_memory",
+      "mcp_blockscout_api"
+    ],
+    "rpc_health": {
+      "status": "ok",
+      "active_rpc": "http://51.222.42.220:8545",
+      "chain_id": "0x38",
+      "stealth": {
+        "enabled": true,
+        "proxy": false,
+        "verify_tls": true,
+        "jitter_ms": [
+          50,
+          250
+        ]
+      }
+    }
+  },
+  "entity_bridge": {
+    "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+    "labels": [],
+    "sources": []
+  },
+  "entity_hot_wallet": {
+    "address": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+    "labels": [],
+    "sources": []
+  },
+  "rag_hits": [
+    {
+      "source_file": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/infra-targets.json",
+      "timestamp": "2026-07-10T19:24:26Z",
+      "chunk_index": 7,
+      "snippet": "ed)\",\n      \"link_to_hot_wallet\": \"user lab — not target infra\",\n      \"priority\": \"N/A\"\n    }\n  ],\n  \"domains_candidates\": [\n    {\n      \"domain\": \"rhino.fi\",\n      \"link\": \"on-chain hub 0xb80a582f... identified as Rhino.fi bridge\",\n      \"relation_to_hot_keys\": \"bridge protocol — NOT hot wallet key custody\",\n      \"passive_check\": \"https://rhino.fi/ reachable\"\n    },\n    {\n      \"domain\": \"48.club\",\n      \"link\": \"Puissant validator documentation only\",\n      \"relation_to_hot_keys\": \"none conf",
+      "score": 0.5967316627502441,
+      "label": ""
+    },
+    {
+      "source_file": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/infra-targets.json",
+      "timestamp": "2026-07-10T19:24:26Z",
+      "chunk_index": 1,
+      "snippet": "ffchain_links\": {\n    \"direct_domain_from_address\": null,\n    \"ens_reverse\": null,\n    \"bscscan_public_label_hot\": null,\n    \"bscscan_public_label_hub\": \"Rhino.fi: Bridge (per prior recon / BscScan tag)\",\n    \"puissant_entity\": {\n      \"identified\": true,\n      \"name\": \"48Club Puissant MEV Builder\",\n      \"docs\": \"https://docs.48.club/puissant-builder/send-bundle\",\n      \"relation_to_hot\": \"none confirmed — separate infrastructure\"\n    },\n    \"business_inference\": {\n      \"hot_wallet_role\": \"Hig",
+      "score": 0.6188710927963257,
+      "label": ""
+    },
+    {
+      "source_file": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/usdt-flash-verification.json",
+      "timestamp": "2026-07-10T19:24:26Z",
+      "chunk_index": 3,
+      "snippet": "\": false,\n      \"bridge_aave_pool_v3\": false\n    },\n    \"flash_loan_oracle_exposure\": {\n      \"authority_uses_dex_oracle\": false,\n      \"bridge_uses_dex_oracle\": false,\n      \"verdict\": \"Authority itself is signature-gated delegate account, not a lending/oracle consumer. Primary sink is Rhino.fi bridge (known protocol). Flash-loan price oracle attack on Authority is NOT applicable at this layer.\"\n    }\n  }\n}",
+      "score": 0.6210705041885376,
+      "label": ""
+    },
+    {
+      "source_file": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/recon-master-report.json",
+      "timestamp": "2026-07-10T19:24:26Z",
+      "chunk_index": 6,
+      "snippet": "gn_from_operator_now\": true,\n    \"can_sign_from_hot_or_puissant_without_key\": false,\n    \"best_remaining_vectors\": [\n      \"#9 — find and compromise infra of hot wallet controller\",\n      \"#6 — OSINT identify entity behind 0x4943F5...\",\n      \"#4 — Jenkins/RDP if in scope and reachable\",\n      \"#1 — 51.250.97.223:8545 from allowed IP\"\n    ],\n    \"not_worth_chasing\": [\n      \"RPC read-only on 51.222.42.220\",\n      \"Allowance from hot/puissant to operator\",\n      \"MCP signing without existing key\"",
+      "score": 0.6478309631347656,
+      "label": ""
+    },
+    {
+      "source_file": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/disclosure-pack/entity-id-next-steps.md",
+      "timestamp": "2026-07-10T19:24:26Z",
+      "chunk_index": 1,
+      "snippet": "labels & counterparty graph**  \n   https://bscscan.com/address/0x4943f5e7f4e450d48ae82026163ecde8a52c53da\n\n4. **Funding trace (done)**  \n   +1,100,000 USDT from Binance Hot Wallet 11 — identity requires **legal/exchange** channel, not OSINT alone.\n\n## Outflow tracing (not yet automated)\n\n- Rhino.fi bridge sink: `0xb80a582fa430645a043bb4f6135321ee01005fef`\n- Workflow `Graph-02` — planned; not in registry yet\n\n## Disclosure gate\n\nDo **not** send owner-directed email until entity is identified OR a",
+      "score": 0.6571050882339478,
+      "label": ""
+    }
+  ],
+  "p4_decode": {
+    "meta": {
+      "timestamp": "2026-07-10T21:48:36.496668+00:00",
+      "policy": "read_only_p4",
+      "rpc": "http://51.222.42.220:8545",
+      "block_range": [
+        108941522,
+        109041522
+      ],
+      "worker": "scripts/bsc-bridge-quote-decode-p4.py",
+      "invoked_by": "hexstrike_orchestrator bridge-quote-decode"
+    },
+    "signature_scheme": {
+      "outer_batch": "execute((address,uint256,bytes)[]) selector 0x3f707e6b",
+      "inner_bridge": "execute((address,uint256,bytes)[],bytes) selector 0x6171d1c9",
+      "signed_message": "personal_sign over keccak256(abi.encode(inner_call_array))",
+      "not_eip712": true,
+      "chain_out_on_chain": false,
+      "chain_out_source": "Rhino off-chain quote DB / API JWT"
+    },
+    "top3_summary": {
+      "transfer_count": 14,
+      "unique_batch_txs": 14,
+      "top3_quotes_decoded": 14,
+      "unique_authorized_signers": 14
+    },
+    "authorized_signers": [
+      {
+        "address": "0x5cd6570a872e92fa4310039d4df8e2173983efd0",
+        "quote_count": 1
+      },
+      {
+        "address": "0xcf70b222b51fbd071134f9d2ccf5aae2a8d52002",
+        "quote_count": 1
+      },
+      {
+        "address": "0x56563d8a429da7b631882ddc79f9e2748a368ec4",
+        "quote_count": 1
+      },
+      {
+        "address": "0x2660c7c912ea2b9d288acbebcc2759de3bea8643",
+        "quote_count": 1
+      },
+      {
+        "address": "0xae5997a4fc4e4d0b5d8fd6bf15378638801af3cc",
+        "quote_count": 1
+      },
+      {
+        "address": "0x557c635d00b867a3a47ca17c46d16f50c7bba120",
+        "quote_count": 1
+      },
+      {
+        "address": "0xd867a610455353fbd660f2081575207f881b2fee",
+        "quote_count": 1
+      },
+      {
+        "address": "0x6b0d81956295b539fa8a3bd4c25720c66a0dc684",
+        "quote_count": 1
+      },
+      {
+        "address": "0xb955d3cc523b9a2db8ab2cb007612d49f883d1d5",
+        "quote_count": 1
+      },
+      {
+        "address": "0xb97de9302f783e359158b36b82e2b6a749b67c38",
+        "quote_count": 1
+      },
+      {
+        "address": "0xb3e8c524689eb21b0cf1f753fc076d9abeaa8f53",
+        "quote_count": 1
+      },
+      {
+        "address": "0xcb50eaaa84f048e4ae1797d97ab1e453045b7995",
+        "quote_count": 1
+      },
+      {
+        "address": "0x08768aedcca870c4c96fc2d47023122b107b1228",
+        "quote_count": 1
+      },
+      {
+        "address": "0xd7abf75d8dff4d6dd2e9e4d1932276e133d9f5d5",
+        "quote_count": 1
+      }
+    ],
+    "top3_quotes": [
+      {
+        "tx_hash": "0x0f4f6b6cbc6090bebe0c12619f46ddeff71482b3cfe1419ea7fbc77c56fce6b7",
+        "block": 108985326,
+        "contract": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+        "label": "sweep_contract_3",
+        "amount_usdt": 500.0,
+        "signer": "0x5cd6570a872e92fa4310039d4df8e2173983efd0",
+        "amount_matches_p1": true
+      },
+      {
+        "tx_hash": "0x1135f4aecddac2285b90fe0b07a5d823b0af3b79d9d00ac52c50f3429d645cfa",
+        "block": 108957819,
+        "contract": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+        "label": "sweep_contract_2",
+        "amount_usdt": 1343.25,
+        "signer": "0xcf70b222b51fbd071134f9d2ccf5aae2a8d52002",
+        "amount_matches_p1": true
+      },
+      {
+        "tx_hash": "0x1441d8b9eddb5cda67a03b04b682e1a2645d2a868877a89da8cef168054c3598",
+        "block": 109019979,
+        "contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "label": "authority_eip7702",
+        "amount_usdt": 4797.0,
+        "signer": "0x56563d8a429da7b631882ddc79f9e2748a368ec4",
+        "amount_matches_p1": true
+      },
+      {
+        "tx_hash": "0x2b9138d958bff384c3bb2ff337977d56cec32a97baf56e6dbf8b48740168e261",
+        "block": 108946677,
+        "contract": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+        "label": "sweep_contract_2",
+        "amount_usdt": 1820.85,
+        "signer": "0x2660c7c912ea2b9d288acbebcc2759de3bea8643",
+        "amount_matches_p1": true
+      },
+      {
+        "tx_hash": "0x56662176e260639ca038e8f8d0d59a7dba7a6a58374456a0ec895663a455ce6e",
+        "block": 108982660,
+        "contract": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+        "label": "sweep_contract_2",
+        "amount_usdt": 4997.07,
+        "signer": "0xae5997a4fc4e4d0b5d8fd6bf15378638801af3cc",
+        "amount_matches_p1": true
+      },
+      {
+        "tx_hash": "0x757167d6df209ff97cf8df20c2ad5ca2a95080f25e673cf7a05b7346ff66eb3e",
+        "block": 108966652,
+        "contract": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+        "label": "sweep_contract_3",
+        "amount_usdt": 500.0,
+        "signer": "0x557c635d00b867a3a47ca17c46d16f50c7bba120",
+        "amount_matches_p1": true
+      },
+      {
+        "tx_hash": "0x7f9cba2507bf7aea6b9ec1d7e9273a31120b384a8ea4c0caa4ee0f3bf597727c",
+        "block": 109018651,
+        "contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "label": "authority_eip7702",
+        "amount_usdt": 4797.0,
+        "signer": "0xd867a610455353fbd660f2081575207f881b2fee",
+        "amount_matches_p1": true
+      },
+      {
+        "tx_hash": "0x9992b2e3325bfb5911573986e66adfbd5bc0f91efccc81ff99173e5efa9dc072",
+        "block": 108977329,
+        "contract": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+        "label": "sweep_contract_3",
+        "amount_usdt": 4804.0,
+        "signer": "0x6b0d81956295b539fa8a3bd4c25720c66a0dc684",
+        "amount_matches_p1": true
+      },
+      {
+        "tx_hash": "0x9fdd3d50c6ddba83f906e523a6472b22904d80da1f291e554977253534f221f4",
+        "block": 108988004,
+        "contract": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+        "label": "sweep_contract_2",
+        "amount_usdt": 4107.17,
+        "signer": "0xb955d3cc523b9a2db8ab2cb007612d49f883d1d5",
+        "amount_matches_p1": true
+      },
+      {
+        "tx_hash": "0xa0e2407de31014d352d23708cfbe9d5436be18d0a9b972ca60cb5eca82e512de",
+        "block": 108959729,
+        "contract": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+        "label": "sweep_contract_3",
+        "amount_usdt": 5000.0,
+        "signer": "0xb97de9302f783e359158b36b82e2b6a749b67c38",
+        "amount_matches_p1": true
+      },
+      {
+        "tx_hash": "0xa7279140ccaefb092ea63690a1db6a5354acf3ccaf6368b7e80beb1bb5a93667",
+        "block": 109017305,
+        "contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "label": "authority_eip7702",
+        "amount_usdt": 4816.0,
+        "signer": "0xb3e8c524689eb21b0cf1f753fc076d9abeaa8f53",
+        "amount_matches_p1": true
+      },
+      {
+        "tx_hash": "0xc4c5b18bf3bcab377ebdb7890569405672b06ffcd797131ae1387776f89a91a3",
+        "block": 109021315,
+        "contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "label": "authority_eip7702",
+        "amount_usdt": 4723.83,
+        "signer": "0xcb50eaaa84f048e4ae1797d97ab1e453045b7995",
+        "amount_matches_p1": true
+      },
+      {
+        "tx_hash": "0xd3b1ce96fcab056abe5f408a38e4d5e17b3c7f45a9dfab9bd7808b9362e55596",
+        "block": 108963175,
+        "contract": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+        "label": "sweep_contract_3",
+        "amount_usdt": 1000.0,
+        "signer": "0x08768aedcca870c4c96fc2d47023122b107b1228",
+        "amount_matches_p1": true
+      },
+      {
+        "tx_hash": "0xe4ea1d5f36e89b176ddd98a661fd317eaa661b8c8e5399e1f13c23a25b193636",
+        "block": 108972005,
+        "contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "label": "authority_eip7702",
+        "amount_usdt": 3353.15,
+        "signer": "0xd7abf75d8dff4d6dd2e9e4d1932276e133d9f5d5",
+        "amount_matches_p1": true
+      }
+    ],
+    "batch_decodes": [
+      {
+        "tx_hash": "0x0f4f6b6cbc6090bebe0c12619f46ddeff71482b3cfe1419ea7fbc77c56fce6b7",
+        "block": 108985326,
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "relayer": "0x90502666e33d71483302f81c8349a6185572db42",
+        "outer_method": "execute((address,uint256,bytes)[])",
+        "batch_size": 10,
+        "inner_execute_count": 10,
+        "top3_deposits_in_batch": [
+          {
+            "contract": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "label": "sweep_contract_3",
+            "amount_usdt": 500.0,
+            "signer": "0x5cd6570a872e92fa4310039d4df8e2173983efd0",
+            "amount_matches_p1": true
+          }
+        ],
+        "inner_rows": [
+          {
+            "batch_target": "0xc0038f29091dfaf3372dd980ac4816bd0c10cf5c",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 160990000000000000000,
+                  "amount_usdt": 160.99
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xdaf40db72a5c78811dcf3e9bbe340777421c4f9d",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x81ef057d52ff53b2dca95bc74a6d93c4b770c5ad",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 162980000000000000000,
+                  "amount_usdt": 162.98
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x8a6b51332c52529c4b6fb565276e7c031d34873c",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x513d3d1f642ffb3b180b3296f99f989f6b340f64",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 198990000000000000000,
+                  "amount_usdt": 198.99
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x9c1ffd75ef48eeba3e75a37d8eb23a02d9e8c34a",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xd5e1776342bb90e8cec0d361266243f0819152e0",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 199990000000000000000,
+                  "amount_usdt": 199.99
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x04be055502d2c350c3681b402ec7f5609fa0ca67",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x40e246d9b4b942a520f0601ca7fb564af4257319",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 214280000000000000000,
+                  "amount_usdt": 214.28
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x9861ca15c1ff0347bd1292f44794932721d1ada5",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x6dfb92860d74816a0b0b8506efc9407f76f40416",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 214990000000000000000,
+                  "amount_usdt": 214.99
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x91ee523e805c87f4c5a4494128843ca96da94c20",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x85e197ea5aaa30ca2c45f97229c50e5d6ed0b1fd",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 298000000000000000000,
+                  "amount_usdt": 298.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x4df2278ff010d71a9a3c52a0d06bd5ffe68b42a1",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x6a87e4691f391d950e35fa8a3ccc3b470b2b93d8",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 320000000000000000000,
+                  "amount_usdt": 320.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xad86e7ab9648623d0d529369d5ae268e97792f5c",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "batch_target_label": "sweep_contract_3",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 500000000000000000000,
+                  "amount_usdt": 500.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x5cd6570a872e92fa4310039d4df8e2173983efd0",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xeaa78445379a466cbfe6cde0fadac4d692da42a9",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 500000000000000000000,
+                  "amount_usdt": 500.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xe539f2288c55a5471a337aeaacc2a0de43afea31",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          }
+        ]
+      },
+      {
+        "tx_hash": "0x1135f4aecddac2285b90fe0b07a5d823b0af3b79d9d00ac52c50f3429d645cfa",
+        "block": 108957819,
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "relayer": "0x90502666e33d71483302f81c8349a6185572db42",
+        "outer_method": "execute((address,uint256,bytes)[])",
+        "batch_size": 8,
+        "inner_execute_count": 8,
+        "top3_deposits_in_batch": [
+          {
+            "contract": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "label": "sweep_contract_2",
+            "amount_usdt": 1343.25,
+            "signer": "0xcf70b222b51fbd071134f9d2ccf5aae2a8d52002",
+            "amount_matches_p1": true
+          }
+        ],
+        "inner_rows": [
+          {
+            "batch_target": "0x77fc07ec035782f2ca637a9b6a13eba6c8e09bad",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 500000000000000000000,
+                  "amount_usdt": 500.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x6b518753aad198590c8559dfa667dc82dfb10ae2",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xe7cd9514280090c1ee568db1c0ccfc49753300dd",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 995000000000000000000,
+                  "amount_usdt": 995.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xf74b3809bdddfce7d990459cb343c7e6268551c1",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x92b0efefff657399867afd65e8d2178a4646b82b",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 995000000000000000000,
+                  "amount_usdt": 995.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x996ed1773b59de541c500dcb71c2dab3856f21dd",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xa81e2deebf7b04a2800c076a225ed49dc67df4ed",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1000000000000000000000,
+                  "amount_usdt": 1000.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x931d24e34e9b86c75a24e07e1c841eff52085367",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "batch_target_label": "sweep_contract_2",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1343250000000000000000,
+                  "amount_usdt": 1343.25
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xcf70b222b51fbd071134f9d2ccf5aae2a8d52002",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xbbf9c0595534e0652067b40c4a6fad414ef2d8a7",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 2000000000000000000000,
+                  "amount_usdt": 2000.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xa63a9aff9e636262a6eefdbabe6c6ed03c7c7225",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xe069b23b5ffb27e877f7f794dacc8eaf6a4d5f51",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 2638000000000000000000,
+                  "amount_usdt": 2638.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x9bc96f0b0cabeb1144ec6dc92f89bb0ee494eb5b",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x9b627b220b3905799835deb80ecc86289faad2fa",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 3482500000000000000000,
+                  "amount_usdt": 3482.5
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xe46c92c10def7f4bb23b7b536d7dcc51ef8066cd",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          }
+        ]
+      },
+      {
+        "tx_hash": "0x1441d8b9eddb5cda67a03b04b682e1a2645d2a868877a89da8cef168054c3598",
+        "block": 109019979,
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "relayer": "0x90502666e33d71483302f81c8349a6185572db42",
+        "outer_method": "execute((address,uint256,bytes)[])",
+        "batch_size": 10,
+        "inner_execute_count": 10,
+        "top3_deposits_in_batch": [
+          {
+            "contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "label": "authority_eip7702",
+            "amount_usdt": 4797.0,
+            "signer": "0x56563d8a429da7b631882ddc79f9e2748a368ec4",
+            "amount_matches_p1": true
+          }
+        ],
+        "inner_rows": [
+          {
+            "batch_target": "0x4319e4748980aecfc5a55e27e8373e8d3be28b7c",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 500000000000000000000,
+                  "amount_usdt": 500.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xdc75b851be11a1c0e74e74ebc48177ca2cd1e4c3",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x7d9b1bc8fc154e3d43968d897a56109e2567e1f5",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 500000000000000000000,
+                  "amount_usdt": 500.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xc548be0052d94cb2bccc8b6ee5926d677c106c9b",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x6ca488b23f40e0fd6cd0690869b2004426c5a4ee",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 500000000000000000000,
+                  "amount_usdt": 500.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x28c4b81df8b216f79bcd04b80b68de0e06b8ee44",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xbfdd0571da669433f11f6da82ff2190fb796e442",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 646750000000000000000,
+                  "amount_usdt": 646.75
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x04f8ccd4743db6f414c7cfaac1f01c35beb7f0dc",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x991287cc6240f40775339998346ad504475547c4",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1000990000000000000000,
+                  "amount_usdt": 1000.99
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x1f29b2ce3cc1ba9668a6d13aca0856401e7020d2",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x78f1603e0940494355f2b2ebb7278bbc2915d7e9",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1333770000000000000000,
+                  "amount_usdt": 1333.77
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xb897b4a981fdca59aecafd1c77a6b254bde361c5",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xbd8e2a5c05f8372654e3f4a952d6709471330f81",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1546000000000000000000,
+                  "amount_usdt": 1546.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x202e647be5a042216dacbdd1f2c31c56589657a3",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xa26e2734a11423e25748a1919dd5d3032e3600c2",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1641750000000000000000,
+                  "amount_usdt": 1641.75
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xa49d094fc10e5ef96aac480331fcf3aed91a3017",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xed08d037c428143478b26a041b0f3fda00f4e6d6",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 2736250000000000000000,
+                  "amount_usdt": 2736.25
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xde35b9e9cc03ebe786cc303845135414c69b5f13",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "batch_target_label": "authority_eip7702",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 4797000000000000000000,
+                  "amount_usdt": 4797.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x56563d8a429da7b631882ddc79f9e2748a368ec4",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          }
+        ]
+      },
+      {
+        "tx_hash": "0x2b9138d958bff384c3bb2ff337977d56cec32a97baf56e6dbf8b48740168e261",
+        "block": 108946677,
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "relayer": "0x90502666e33d71483302f81c8349a6185572db42",
+        "outer_method": "execute((address,uint256,bytes)[])",
+        "batch_size": 5,
+        "inner_execute_count": 5,
+        "top3_deposits_in_batch": [
+          {
+            "contract": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "label": "sweep_contract_2",
+            "amount_usdt": 1820.85,
+            "signer": "0x2660c7c912ea2b9d288acbebcc2759de3bea8643",
+            "amount_matches_p1": true
+          }
+        ],
+        "inner_rows": [
+          {
+            "batch_target": "0x59846a1abdd699fc3bb34bd37bd5941be362375d",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 595500000000000000000,
+                  "amount_usdt": 595.5
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xde46e67a27a0d35b3d5bf0ee43eda16bb4f2fd34",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xc56f4d887ee663dc996b75a697c7805f5fd37420",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 887741189540000000000,
+                  "amount_usdt": 887.74119
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x92bc328f3c71b391f7603af8610c176b2eeaf066",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xe7b94dcc1600e8094197059ece403587d321505f",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1200000000000000000000,
+                  "amount_usdt": 1200.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xb34a1f1d2d2f16fef0fbbe2ab43f5fc3c4423832",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "batch_target_label": "sweep_contract_2",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1820850000000000000000,
+                  "amount_usdt": 1820.85
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x2660c7c912ea2b9d288acbebcc2759de3bea8643",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xa8c1a5e479c5c796e6e1a861c8b455521b3b5f89",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 50000000000000000000000,
+                  "amount_usdt": 50000.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x18587b16bd7429d3b99c4a837c6ea50dfc4fbfd8",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          }
+        ]
+      },
+      {
+        "tx_hash": "0x56662176e260639ca038e8f8d0d59a7dba7a6a58374456a0ec895663a455ce6e",
+        "block": 108982660,
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "relayer": "0x90502666e33d71483302f81c8349a6185572db42",
+        "outer_method": "execute((address,uint256,bytes)[])",
+        "batch_size": 10,
+        "inner_execute_count": 10,
+        "top3_deposits_in_batch": [
+          {
+            "contract": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "label": "sweep_contract_2",
+            "amount_usdt": 4997.07,
+            "signer": "0xae5997a4fc4e4d0b5d8fd6bf15378638801af3cc",
+            "amount_matches_p1": true
+          }
+        ],
+        "inner_rows": [
+          {
+            "batch_target": "0x7f7e3372469206703575b9fe8683a48f364b2575",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 200000000000000000000,
+                  "amount_usdt": 200.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xa38480f84ea7dd4837961c7fdbee8afb4b0f12d1",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xc3361c174acbcaac807df0184058a36a8be698a9",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 200000000000000000000,
+                  "amount_usdt": 200.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xa260be43bf56fd9dae095db07db0e0d4d95b1278",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x57c3f7e48eee067a4a6d3e65bcd4950f062719bf",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 313250000000000000000,
+                  "amount_usdt": 313.25
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x0f1add019433f8668619330ac25ad656a3145353",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x7e4ad06d7ac0863d42019d6ab6d4e7acbf722d7a",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 376000000000000000000,
+                  "amount_usdt": 376.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x8a302ac65bdd1e29e77c17fccd2524bde2c8e83d",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xdf9221dbd58c3b42a337a6e305cd47a25bd24e42",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 488000000000000000000,
+                  "amount_usdt": 488.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xa8f32cf46c46fa0b20f6ead8db424d6a742b7329",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xa7ba1df2e87c011e1f7940fa07a1cfaa77cf4ba3",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 606950000000000000000,
+                  "amount_usdt": 606.95
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x48c563ac302531f63746a874b60309483745844b",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x69d127ea063f04a22198f541071ab7166aa0c75b",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 796000000000000000000,
+                  "amount_usdt": 796.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xdde6cd5988d2da48c5dc5dfb57db07f808559e42",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x0119fcccac8d5094b762392c32c7eee56f300b92",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1000000000000000000000,
+                  "amount_usdt": 1000.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xa37bc7f1f7d8365d230e2cc4151c1191a116cb67",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x21749973ddd534155905966e233ad153b56449ba",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 2986620000000000000000,
+                  "amount_usdt": 2986.62
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xdb6639daab2d2b9fcbd0478b1ee68f1184fc36bb",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "batch_target_label": "sweep_contract_2",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 4997070000000000000000,
+                  "amount_usdt": 4997.07
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xae5997a4fc4e4d0b5d8fd6bf15378638801af3cc",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          }
+        ]
+      },
+      {
+        "tx_hash": "0x757167d6df209ff97cf8df20c2ad5ca2a95080f25e673cf7a05b7346ff66eb3e",
+        "block": 108966652,
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "relayer": "0x90502666e33d71483302f81c8349a6185572db42",
+        "outer_method": "execute((address,uint256,bytes)[])",
+        "batch_size": 10,
+        "inner_execute_count": 10,
+        "top3_deposits_in_batch": [
+          {
+            "contract": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "label": "sweep_contract_3",
+            "amount_usdt": 500.0,
+            "signer": "0x557c635d00b867a3a47ca17c46d16f50c7bba120",
+            "amount_matches_p1": true
+          }
+        ],
+        "inner_rows": [
+          {
+            "batch_target": "0xb59b51053cc1c8e2f358fe9c21d9c005b699ce6c",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 300000000000000000000,
+                  "amount_usdt": 300.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xcfe04caa526638fcc35120d6e66e12276adee59e",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xe45cf0b66f58b15ba9fc7f266d3012d0a41e44b0",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 300000000000000000000,
+                  "amount_usdt": 300.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xdbb1583fddf567342fac769e778ed173f2dfa74b",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xb686611579b3a4569faea1fab86f35289277850b",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 314920000000000000000,
+                  "amount_usdt": 314.92
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xf425545fe14d79f2f6e5b86251050d8fda7036c4",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xa71ad97c86ae2c12bbc96c965f7f1d91f94b5916",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 495000000000000000000,
+                  "amount_usdt": 495.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x1c35f36c580a59e5f67d0fe873344f39fd8a9968",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "batch_target_label": "sweep_contract_3",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 500000000000000000000,
+                  "amount_usdt": 500.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x557c635d00b867a3a47ca17c46d16f50c7bba120",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x7cb47505cb852cbe40f9407d58df42f6b02d4fd6",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 567150000000000000000,
+                  "amount_usdt": 567.15
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xa59e118b8dd4b28872921bcb4fce42bd52135659",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x971dd87a8156fed29bccfda1490fd46409b79772",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 597000000000000000000,
+                  "amount_usdt": 597.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x09cb1b14b650c54b9fdc31590cb838eea4548393",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xa1a4c407b6d47a2cb0fd938b739358a00695cc48",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 796130000000000000000,
+                  "amount_usdt": 796.13
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x03e5c8af9fd015d03cd0b523a06e2d336b78cc9b",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xdf472e2251238560bdcdd9f0a325837997aff83f",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 995000000000000000000,
+                  "amount_usdt": 995.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x2cd5b0010364691042a464de4f290c2b1bdd264b",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xc59ce92c5e9566638fcf2877f05461ae0ce5e33c",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1070000000000000000000,
+                  "amount_usdt": 1070.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xe721f737cff4fa7a2cfae43583679802e438497b",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          }
+        ]
+      },
+      {
+        "tx_hash": "0x7f9cba2507bf7aea6b9ec1d7e9273a31120b384a8ea4c0caa4ee0f3bf597727c",
+        "block": 109018651,
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "relayer": "0x90502666e33d71483302f81c8349a6185572db42",
+        "outer_method": "execute((address,uint256,bytes)[])",
+        "batch_size": 5,
+        "inner_execute_count": 5,
+        "top3_deposits_in_batch": [
+          {
+            "contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "label": "authority_eip7702",
+            "amount_usdt": 4797.0,
+            "signer": "0xd867a610455353fbd660f2081575207f881b2fee",
+            "amount_matches_p1": true
+          }
+        ],
+        "inner_rows": [
+          {
+            "batch_target": "0xfbd3d8386401fc5c5558393ad367aa4107c142e7",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1121360000000000000000,
+                  "amount_usdt": 1121.36
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x92e636147857e55ccb2d0d89075079b6790b8bd0",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x6678e6ca4f1298bf37de1fc1a5f35c0885903fb5",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1699000000000000000000,
+                  "amount_usdt": 1699.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x81602263cfd39111111aa4bd0e5c68a163fb8f2f",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x6edc0f3aa56e4dc8754a5c6874512c5e01150440",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 2499390000000000000000,
+                  "amount_usdt": 2499.39
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x155f0bfcb3dc93c65f76e623fce0ccffeefe459c",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "batch_target_label": "authority_eip7702",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 4797000000000000000000,
+                  "amount_usdt": 4797.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xd867a610455353fbd660f2081575207f881b2fee",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xeba9529d056527398eebd4a82c684bfd55745029",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 5117231661140000000000,
+                  "amount_usdt": 5117.231661
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x9cfb43705a4ac4b582815645913dd77bedb17be5",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          }
+        ]
+      },
+      {
+        "tx_hash": "0x9992b2e3325bfb5911573986e66adfbd5bc0f91efccc81ff99173e5efa9dc072",
+        "block": 108977329,
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "relayer": "0x90502666e33d71483302f81c8349a6185572db42",
+        "outer_method": "execute((address,uint256,bytes)[])",
+        "batch_size": 8,
+        "inner_execute_count": 8,
+        "top3_deposits_in_batch": [
+          {
+            "contract": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "label": "sweep_contract_3",
+            "amount_usdt": 4804.0,
+            "signer": "0x6b0d81956295b539fa8a3bd4c25720c66a0dc684",
+            "amount_matches_p1": true
+          }
+        ],
+        "inner_rows": [
+          {
+            "batch_target": "0x69e7d0a463642b39d9f758f660a009e46e4e19a2",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 497490000000000000000,
+                  "amount_usdt": 497.49
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x1750167f92acfbdc970d5c4d8fa143724905dae0",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x653927851acd06c6d89179a7e2fb22374f06bd34",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 497500000000000000000,
+                  "amount_usdt": 497.5
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x20b1e33ec7a918ab3e34c6812d3f18422fb94a58",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xbc3b4d7fe8bbdd3437233a1de116022145f5f5a5",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 500000000000000000000,
+                  "amount_usdt": 500.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x63028035d44a292f3e03f51660f53e421e1e4cfe",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xd8d8eb501870af74d13ef091e0c14ace711a0342",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 550850000000000000000,
+                  "amount_usdt": 550.85
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x58e2eb1e0f44b34c9f8f31927934cbbeb0eaa2a9",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x6ac54981100acbc1b1596c8d78c26f8019aff147",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 995000000000000000000,
+                  "amount_usdt": 995.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xab7080dda7e283df686fe50cc63022fb14de2aea",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xab64386246775737f6499618e1749c9c9beaf26f",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1492500000000000000000,
+                  "amount_usdt": 1492.5
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x4fe550945344a56e3f44043015b147ea7b7e86bb",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xda8ee9a041b347ce920f00513f148dc37de79187",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1989010000000000000000,
+                  "amount_usdt": 1989.01
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xdefa8f2316901106022a696c62e75580b31a7196",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "batch_target_label": "sweep_contract_3",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 4804000000000000000000,
+                  "amount_usdt": 4804.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x6b0d81956295b539fa8a3bd4c25720c66a0dc684",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          }
+        ]
+      },
+      {
+        "tx_hash": "0x9fdd3d50c6ddba83f906e523a6472b22904d80da1f291e554977253534f221f4",
+        "block": 108988004,
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "relayer": "0x90502666e33d71483302f81c8349a6185572db42",
+        "outer_method": "execute((address,uint256,bytes)[])",
+        "batch_size": 3,
+        "inner_execute_count": 3,
+        "top3_deposits_in_batch": [
+          {
+            "contract": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "label": "sweep_contract_2",
+            "amount_usdt": 4107.17,
+            "signer": "0xb955d3cc523b9a2db8ab2cb007612d49f883d1d5",
+            "amount_matches_p1": true
+          }
+        ],
+        "inner_rows": [
+          {
+            "batch_target": "0x7d1e99e36bafe8f97e2924ff7a8ea6f1be20cf23",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 500000000000000000000,
+                  "amount_usdt": 500.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x6bfa7f5f5314b105f6eb4d82acb68b7e5c619086",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xf62767a013cb9b9183c64696ceb3f6bbb1fec105",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 976000000000000000000,
+                  "amount_usdt": 976.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x789cd34b81683b8d4b13ceedb79e8e53ec544439",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "batch_target_label": "sweep_contract_2",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 4107170000000000000000,
+                  "amount_usdt": 4107.17
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xb955d3cc523b9a2db8ab2cb007612d49f883d1d5",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          }
+        ]
+      },
+      {
+        "tx_hash": "0xa0e2407de31014d352d23708cfbe9d5436be18d0a9b972ca60cb5eca82e512de",
+        "block": 108959729,
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "relayer": "0x90502666e33d71483302f81c8349a6185572db42",
+        "outer_method": "execute((address,uint256,bytes)[])",
+        "batch_size": 1,
+        "inner_execute_count": 1,
+        "top3_deposits_in_batch": [
+          {
+            "contract": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "label": "sweep_contract_3",
+            "amount_usdt": 5000.0,
+            "signer": "0xb97de9302f783e359158b36b82e2b6a749b67c38",
+            "amount_matches_p1": true
+          }
+        ],
+        "inner_rows": [
+          {
+            "batch_target": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "batch_target_label": "sweep_contract_3",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 5000000000000000000000,
+                  "amount_usdt": 5000.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xb97de9302f783e359158b36b82e2b6a749b67c38",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          }
+        ]
+      },
+      {
+        "tx_hash": "0xa7279140ccaefb092ea63690a1db6a5354acf3ccaf6368b7e80beb1bb5a93667",
+        "block": 109017305,
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "relayer": "0x90502666e33d71483302f81c8349a6185572db42",
+        "outer_method": "execute((address,uint256,bytes)[])",
+        "batch_size": 8,
+        "inner_execute_count": 8,
+        "top3_deposits_in_batch": [
+          {
+            "contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "label": "authority_eip7702",
+            "amount_usdt": 4816.0,
+            "signer": "0xb3e8c524689eb21b0cf1f753fc076d9abeaa8f53",
+            "amount_matches_p1": true
+          }
+        ],
+        "inner_rows": [
+          {
+            "batch_target": "0x991287cc6240f40775339998346ad504475547c4",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 490000000000000000000,
+                  "amount_usdt": 490.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xa5ac91c034b81736047889e071bb8f9c05eafc6a",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x170d603b9991e50cce3eb5e669d62149322ce23d",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 696500000000000000000,
+                  "amount_usdt": 696.5
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x35a4779f9257b57c579423e2131ccaf3f7b020be",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x49dcd9ee52cd6977c84f95d7dab3602fa2af6791",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 845750000000000000000,
+                  "amount_usdt": 845.75
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x3f12c7ff4f7dc9b3ed89724b5d8e6741c4193673",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xeca05e35714707615908d87abfe8b89e0235ce0a",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 995000000000000000000,
+                  "amount_usdt": 995.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x4ad2f7012480c97408202f24b009cbbbe5526ce8",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x23461896903338908822d6c8f4d46baf538566eb",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1350000000000000000000,
+                  "amount_usdt": 1350.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x0ef4be1b6d431ff9b8874130628434badfd7a38c",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xa0a12e1115c49e9df5825fcd1d0eca97ce9336a6",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1900000000000000000000,
+                  "amount_usdt": 1900.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xdd6e728fa70cb9321fc20f6f80e813d15806728e",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "batch_target_label": "authority_eip7702",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 4816000000000000000000,
+                  "amount_usdt": 4816.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xb3e8c524689eb21b0cf1f753fc076d9abeaa8f53",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x122a642d8aadf3e7e61879ec465e51b2a327b644",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 5114220096680000000000,
+                  "amount_usdt": 5114.220097
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xdc99b4c729db937d947a0b19a8e9d4f704f4d0ec",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          }
+        ]
+      },
+      {
+        "tx_hash": "0xc4c5b18bf3bcab377ebdb7890569405672b06ffcd797131ae1387776f89a91a3",
+        "block": 109021315,
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "relayer": "0x90502666e33d71483302f81c8349a6185572db42",
+        "outer_method": "execute((address,uint256,bytes)[])",
+        "batch_size": 6,
+        "inner_execute_count": 6,
+        "top3_deposits_in_batch": [
+          {
+            "contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "label": "authority_eip7702",
+            "amount_usdt": 4723.83,
+            "signer": "0xcb50eaaa84f048e4ae1797d97ab1e453045b7995",
+            "amount_matches_p1": true
+          }
+        ],
+        "inner_rows": [
+          {
+            "batch_target": "0x74f62121a4927a844f50a2168e3a8d387a2d43b6",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1700000000000000000000,
+                  "amount_usdt": 1700.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x47580d3f8ab6ce1056633ad573c24899cdee30b6",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x245f954d2c92cc90fc422255c510b327a25aac9e",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1900000000000000000000,
+                  "amount_usdt": 1900.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xfe5f92430d200a4c35d6170a8e8bc7814e931cc1",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xb974a85550aed45631003d409a93de1897aaaf1f",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 4000000000000000000000,
+                  "amount_usdt": 4000.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x84150bac0a253970dc06e8afd3936f53193434d5",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "batch_target_label": "authority_eip7702",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 4723830000000000000000,
+                  "amount_usdt": 4723.83
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xcb50eaaa84f048e4ae1797d97ab1e453045b7995",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x93ad6f737538cfc034c3cc845679306239cecc80",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 4999990000000000000000,
+                  "amount_usdt": 4999.99
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x5b087cf3d51e7f11fc7d3415a3ae56266064d4f0",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xfb78a2350f10d76a65606d2887276ff1d12a0913",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 5123446621930000000000,
+                  "amount_usdt": 5123.446622
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x62e5015d996d07db79ccb7f2f51fb2a20eaf25c6",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          }
+        ]
+      },
+      {
+        "tx_hash": "0xd3b1ce96fcab056abe5f408a38e4d5e17b3c7f45a9dfab9bd7808b9362e55596",
+        "block": 108963175,
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "relayer": "0x90502666e33d71483302f81c8349a6185572db42",
+        "outer_method": "execute((address,uint256,bytes)[])",
+        "batch_size": 8,
+        "inner_execute_count": 8,
+        "top3_deposits_in_batch": [
+          {
+            "contract": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "label": "sweep_contract_3",
+            "amount_usdt": 1000.0,
+            "signer": "0x08768aedcca870c4c96fc2d47023122b107b1228",
+            "amount_matches_p1": true
+          }
+        ],
+        "inner_rows": [
+          {
+            "batch_target": "0xc1fca9ab908fd2366e47e825411d4e6a9d98d7b5",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 300000000000000000000,
+                  "amount_usdt": 300.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x6f2ed4118190ae48efadc8325dec7fa2cd458372",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x06dfba3b9772e041ec3efdfb405111913bfde667",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 347000000000000000000,
+                  "amount_usdt": 347.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xa2c8ac9754c981efadd5efd9ee46a74450f59d4b",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xe0d5f3d58cb317ef32f28cf0bbced0407cfc73d1",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 597000000000000000000,
+                  "amount_usdt": 597.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xc79a326dd016bd615a02b41780d094717abb3137",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x3f67e073f67499beaf7016f55ddfd743688858f5",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 639180000000000000000,
+                  "amount_usdt": 639.18
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x4c634ef1a741f881e081647a95532eda5945bfb5",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xf8fb6978e713e683322224ff866ad773df0d169e",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 650000000000000000000,
+                  "amount_usdt": 650.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x6b8cd52c0bb43307bc4da2c29e1ed9653919662e",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "batch_target_label": "sweep_contract_3",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1000000000000000000000,
+                  "amount_usdt": 1000.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x08768aedcca870c4c96fc2d47023122b107b1228",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x3d443bb93538536fbd18d14d484dbf7ddd02871e",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1000000000000000000000,
+                  "amount_usdt": 1000.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0x0e4d63c2995099c382aa7d28c0ca7a73c3a03061",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0xaaa40ce8da6e52a4a86966eba33875e62b7a0a35",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 2810000000000000000000,
+                  "amount_usdt": 2810.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xf9498b711bfcb74dc3ef43ec3d879e72a6f59d7f",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          }
+        ]
+      },
+      {
+        "tx_hash": "0xe4ea1d5f36e89b176ddd98a661fd317eaa661b8c8e5399e1f13c23a25b193636",
+        "block": 108972005,
+        "tx_from": "0x90502666e33d71483302f81c8349a6185572db42",
+        "relayer": "0x90502666e33d71483302f81c8349a6185572db42",
+        "outer_method": "execute((address,uint256,bytes)[])",
+        "batch_size": 5,
+        "inner_execute_count": 5,
+        "top3_deposits_in_batch": [
+          {
+            "contract": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "label": "authority_eip7702",
+            "amount_usdt": 3353.15,
+            "signer": "0xd7abf75d8dff4d6dd2e9e4d1932276e133d9f5d5",
+            "amount_matches_p1": true
+          }
+        ],
+        "inner_rows": [
+          {
+            "batch_target": "0xe015bb445ddb3a4e2b1a0bb81a8ebf1adf9f7074",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1000000000000000000000,
+                  "amount_usdt": 1000.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xba046b940c8d1df83f7ef413d65e982c40125401",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x58bc8ea93c8eb2d257a5e2f11f7477c62789661d",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 1691500000000000000000,
+                  "amount_usdt": 1691.5
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xcc882dcfbc9f0ae12000793d9f3a509db14d5ce5",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x913302ddfc8ca6a9241710c5e23d138076ea55b7",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 2000000000000000000000,
+                  "amount_usdt": 2000.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xe1ce626cac80890662389cce1d8305edd7b95d81",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x831c7f9ea511a161c037b6b682ade7d46695a08f",
+            "batch_target_label": "other_depositor",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 3000000000000000000000,
+                  "amount_usdt": 3000.0
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xbe9baae18a899e360598b67139213d7b9f837a16",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          },
+          {
+            "batch_target": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "batch_target_label": "authority_eip7702",
+            "value_wei": 0,
+            "inner_calls": [
+              {
+                "token": "0x55d398326f99059fF775485246999027B3197955",
+                "value_wei": 0,
+                "transfer": {
+                  "valid": true,
+                  "recipient": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+                  "amount_raw": 3353150000000000000000,
+                  "amount_usdt": 3353.15
+                }
+              }
+            ],
+            "signature_bytes": 65,
+            "signer": "0xd7abf75d8dff4d6dd2e9e4d1932276e133d9f5d5",
+            "signed_payload": "personal_sign(keccak256(abi.encode((address,uint256,bytes)[])))",
+            "chain_out_in_payload": false
+          }
+        ]
+      }
+    ],
+    "rhino_public_configs": {
+      "status": "ok",
+      "chain_count": 0,
+      "chains": []
+    },
+    "rhino_api_by_deposit": [
+      {
+        "tx_hash": "0x0f4f6b6cbc6090bebe0c12619f46ddeff71482b3cfe1419ea7fbc77c56fce6b7",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x1135f4aecddac2285b90fe0b07a5d823b0af3b79d9d00ac52c50f3429d645cfa",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x1441d8b9eddb5cda67a03b04b682e1a2645d2a868877a89da8cef168054c3598",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x2b9138d958bff384c3bb2ff337977d56cec32a97baf56e6dbf8b48740168e261",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x56662176e260639ca038e8f8d0d59a7dba7a6a58374456a0ec895663a455ce6e",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x757167d6df209ff97cf8df20c2ad5ca2a95080f25e673cf7a05b7346ff66eb3e",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x7f9cba2507bf7aea6b9ec1d7e9273a31120b384a8ea4c0caa4ee0f3bf597727c",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x9992b2e3325bfb5911573986e66adfbd5bc0f91efccc81ff99173e5efa9dc072",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x9fdd3d50c6ddba83f906e523a6472b22904d80da1f291e554977253534f221f4",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0xa0e2407de31014d352d23708cfbe9d5436be18d0a9b972ca60cb5eca82e512de",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0xa7279140ccaefb092ea63690a1db6a5354acf3ccaf6368b7e80beb1bb5a93667",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0xc4c5b18bf3bcab377ebdb7890569405672b06ffcd797131ae1387776f89a91a3",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0xd3b1ce96fcab056abe5f408a38e4d5e17b3c7f45a9dfab9bd7808b9362e55596",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0xe4ea1d5f36e89b176ddd98a661fd317eaa661b8c8e5399e1f13c23a25b193636",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      }
+    ],
+    "likely_exit_rails": {
+      "BASE": {
+        "confidence": "medium",
+        "evidence": "hot wallet ~$635k USDC on Base (P3 multichain recon); Rhino supports BASE"
+      },
+      "ARBITRUM": {
+        "confidence": "low",
+        "evidence": "Rhino high-volume L2 rail"
+      }
+    },
+    "verdict": "P4 confirms Rhino batched relayer flow: each top-3 USDT deposit carries a unique ECDSA signature from an authorized Rhino backend signer over the VM call array (USDT.transfer to bridge). chainOut is NOT encoded in the signed payload — cross-chain destination is bound off-chain. On-chain forensics exhausted; exact chainOut requires Rhino API JWT or Base-chain deposit correlation.",
+    "next_steps_readonly": [
+      "Provide RHINO_API_KEY to resolve chainOut via /bridge/history/bridge/by-deposit-hash/{tx}",
+      "Base: correlate Rhino bridge USDC credits to hot wallet 0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "Label recovered signers on BscScan / Arkham as Rhino authorized relayers"
+    ]
+  },
+  "explorer_probe": {
+    "bsc": {
+      "status": "skipped",
+      "reason": "no_key"
+    },
+    "base": {
+      "status": "skipped",
+      "reason": "no_key"
+    }
+  },
+  "script": {
+    "path": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/scripts/bsc-bridge-quote-decode-p4.py",
+    "returncode": 0,
+    "stderr_tail": "[+] Written: /Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/2026-07-10/p4-bridge-quote-decode.json\n"
+  },
+  "artifact": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/2026-07-10/p4-bridge-quote-decode.json"
+}
