@@ -6,4 +6,6 @@ hexstrike.log
 artifacts/master_context.json
 artifacts/exchange-forensics/
 artifacts/crypto-rpc/
+artifacts/monitor/
+artifacts/alerts.log
 rag-storage/
