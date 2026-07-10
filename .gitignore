@@ -1,0 +1,8 @@
+hexstrike-env/
+__pycache__/
+scripts/__pycache__/
+*.pyc
+hexstrike.log
+artifacts/master_context.json
+artifacts/exchange-forensics/
+artifacts/crypto-rpc/

@@ -9018,7 +9018,35 @@ class FileOperationsManager:
 # Global file operations manager
 file_manager = FileOperationsManager()
 
+# Unified artifact context
+ARTIFACTS_DIR = Path(__file__).resolve().parent / "artifacts"
+MASTER_CONTEXT_PATH = ARTIFACTS_DIR / "master_context.json"
+
 # API Routes
+
+@app.route("/api/context/latest", methods=["GET"])
+def context_latest():
+    """Return unified artifact index (artifacts/master_context.json)."""
+    if not MASTER_CONTEXT_PATH.is_file():
+        return jsonify({
+            "success": False,
+            "error": "master_context.json not found",
+            "hint": "Run: python3 scripts/unified_indexer.py",
+            "path": str(MASTER_CONTEXT_PATH),
+        }), 404
+    try:
+        with open(MASTER_CONTEXT_PATH, encoding="utf-8") as fh:
+            context = json.load(fh)
+        return jsonify({
+            "success": True,
+            "path": str(MASTER_CONTEXT_PATH),
+            "entry_count": context.get("entry_count", len(context.get("entries", []))),
+            "generated_at": context.get("generated_at"),
+            "context": context,
+        })
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.error(f"Error reading master context: {exc}")
+        return jsonify({"success": False, "error": str(exc)}), 500
 
 @app.route("/health", methods=["GET"])
 def health_check():
