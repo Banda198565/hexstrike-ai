@@ -34,6 +34,7 @@ ALERTS_LOG = ROOT / "artifacts" / "alerts.log"
 DESKTOP_ALERT = Path.home() / "Desktop" / "on-chain-forensics" / "latest-alert.json"
 EVA_ALERT = Path("/Volumes/Eva/alerts/latest-alert.json")
 STATE_FILE = ROOT / "artifacts" / "monitor" / "autonomous_state.json"
+PENDING_ACTION = ROOT / "artifacts" / "pending_action.json"
 
 # Known bridge/sink addresses from prior investigations
 SINK_KEYWORDS = ("bridge", "rhino", "sink", "offramp", "swap")
@@ -202,6 +203,27 @@ def write_alert(alert: dict[str, Any]) -> None:
     if EVA_ALERT.parent.parent.exists():
         EVA_ALERT.parent.mkdir(parents=True, exist_ok=True)
         EVA_ALERT.write_text(payload, encoding="utf-8")
+
+    pending = {
+        "status": "awaiting_operator_review",
+        "created_at": alert.get("timestamp"),
+        "alert_type": alert.get("alert_type"),
+        "message": alert.get("message"),
+        "transaction": {
+            "hash": alert.get("hash"),
+            "from": alert.get("from"),
+            "to": alert.get("to"),
+            "value": alert.get("value"),
+            "pool": alert.get("pool"),
+        },
+        "rag_context": alert.get("rag_hits", [])[:2],
+        "recommended_actions": [
+            "Review alert in artifacts/alerts.log",
+            "Cross-check RAG snippets against master_context.json",
+            "Manual decision required — no auto-broadcast",
+        ],
+    }
+    PENDING_ACTION.write_text(json.dumps(pending, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def trigger_indexer() -> dict[str, Any]:

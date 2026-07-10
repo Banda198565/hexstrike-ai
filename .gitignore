@@ -9,4 +9,6 @@ artifacts/exchange-forensics/
 artifacts/crypto-rpc/
 artifacts/monitor/
 artifacts/alerts.log
+artifacts/duty.log
+artifacts/pending_action.json
 rag-storage/
