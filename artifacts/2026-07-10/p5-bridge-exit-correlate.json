@@ -1,0 +1,426 @@
+{
+  "meta": {
+    "timestamp": "2026-07-10T22:03:03.950037+00:00",
+    "policy": "read_only_p5",
+    "bsc_rpc": "http://51.222.42.220:8545",
+    "base_rpc": "https://mainnet.base.org",
+    "worker": "scripts/bsc-bridge-exit-correlate-p5.py",
+    "invoked_by": "hexstrike_orchestrator bridge-exit-correlate"
+  },
+  "rhino_api": {
+    "attempted": 14,
+    "resolved": 0,
+    "results": [
+      {
+        "tx_hash": "0x0f4f6b6cbc6090bebe0c12619f46ddeff71482b3cfe1419ea7fbc77c56fce6b7",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x1135f4aecddac2285b90fe0b07a5d823b0af3b79d9d00ac52c50f3429d645cfa",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x1441d8b9eddb5cda67a03b04b682e1a2645d2a868877a89da8cef168054c3598",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x2b9138d958bff384c3bb2ff337977d56cec32a97baf56e6dbf8b48740168e261",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x56662176e260639ca038e8f8d0d59a7dba7a6a58374456a0ec895663a455ce6e",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x757167d6df209ff97cf8df20c2ad5ca2a95080f25e673cf7a05b7346ff66eb3e",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x7f9cba2507bf7aea6b9ec1d7e9273a31120b384a8ea4c0caa4ee0f3bf597727c",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x9992b2e3325bfb5911573986e66adfbd5bc0f91efccc81ff99173e5efa9dc072",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x9fdd3d50c6ddba83f906e523a6472b22904d80da1f291e554977253534f221f4",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0xa0e2407de31014d352d23708cfbe9d5436be18d0a9b972ca60cb5eca82e512de",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0xa7279140ccaefb092ea63690a1db6a5354acf3ccaf6368b7e80beb1bb5a93667",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0xc4c5b18bf3bcab377ebdb7890569405672b06ffcd797131ae1387776f89a91a3",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0xd3b1ce96fcab056abe5f408a38e4d5e17b3c7f45a9dfab9bd7808b9362e55596",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0xe4ea1d5f36e89b176ddd98a661fd317eaa661b8c8e5399e1f13c23a25b193636",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      }
+    ]
+  },
+  "base_correlation": {
+    "base_scan": {
+      "rpc": "https://mainnet.base.org",
+      "from_block": 48395635,
+      "to_block": 48465795,
+      "time_window": {
+        "from_utc": "2026-07-09T07:20:17+00:00",
+        "to_utc": "2026-07-11T05:40:20+00:00"
+      }
+    },
+    "bridge_usdc_outflows": {
+      "total": 6494,
+      "amount_matches_top3": 89,
+      "direct_to_hot_wallet": 0,
+      "amount_match_samples": [
+        {
+          "amount_usdt": 500.0,
+          "to": "0x1c128bbd0c70da36a4f13531c92f37d8f1ccc0f2",
+          "tx_hash": "0xa898aa0f32ce869d32ce5e6515b8deea3d20d28de37ea64888ceba620f9a37d7",
+          "block": 48395688,
+          "to_hot_wallet": false
+        },
+        {
+          "amount_usdt": 1000.0,
+          "to": "0x1c128bbd0c70da36a4f13531c92f37d8f1ccc0f2",
+          "tx_hash": "0x81b1e3219ed204c90897b291cd2bff3ef3d0a89049d81d4f8671db7287dc15e9",
+          "block": 48395829,
+          "to_hot_wallet": false
+        },
+        {
+          "amount_usdt": 1000.0,
+          "to": "0x1c128bbd0c70da36a4f13531c92f37d8f1ccc0f2",
+          "tx_hash": "0x60b69609982c2d67b69999bbf91bb61728aab060c78a79da5c4d4426096a5bbf",
+          "block": 48396236,
+          "to_hot_wallet": false
+        },
+        {
+          "amount_usdt": 1000.0,
+          "to": "0x1c128bbd0c70da36a4f13531c92f37d8f1ccc0f2",
+          "tx_hash": "0xad299443246c584257af03ea37d6038762efdde501e3b0c7a742e1d1e6d95a17",
+          "block": 48396302,
+          "to_hot_wallet": false
+        },
+        {
+          "amount_usdt": 500.0,
+          "to": "0x1c128bbd0c70da36a4f13531c92f37d8f1ccc0f2",
+          "tx_hash": "0xe99909b7a380c2e1a6e59b4cd0fa0477ebb2e910c14d90028665590673cca621",
+          "block": 48396750,
+          "to_hot_wallet": false
+        },
+        {
+          "amount_usdt": 1000.0,
+          "to": "0x1c128bbd0c70da36a4f13531c92f37d8f1ccc0f2",
+          "tx_hash": "0xcadfc07e99a07be27f14e47c76391070a4e79bf0c0ec945b034b6306bfee44d1",
+          "block": 48397058,
+          "to_hot_wallet": false
+        },
+        {
+          "amount_usdt": 500.0,
+          "to": "0x2b4d1dc767b100a4eb16859e0058881061a1a4ca",
+          "tx_hash": "0x73716302a9af487917efc9ffe1d7864e043a82b6cef5db2be4844f96a0c4b6e7",
+          "block": 48397534,
+          "to_hot_wallet": false
+        },
+        {
+          "amount_usdt": 500.000371,
+          "to": "0x1c128bbd0c70da36a4f13531c92f37d8f1ccc0f2",
+          "tx_hash": "0x01da5039f32b97179c12e675cdfd265401380211a97a2bf808d5e573fcbe4e2e",
+          "block": 48398919,
+          "to_hot_wallet": false
+        },
+        {
+          "amount_usdt": 500.0,
+          "to": "0x1c128bbd0c70da36a4f13531c92f37d8f1ccc0f2",
+          "tx_hash": "0x15d858e7674eea83d7f4dcc16a7b76a7799764c78206186b928521c0fd0b9f77",
+          "block": 48399375,
+          "to_hot_wallet": false
+        },
+        {
+          "amount_usdt": 1000.0,
+          "to": "0x1c128bbd0c70da36a4f13531c92f37d8f1ccc0f2",
+          "tx_hash": "0x563c817355706bc54f6d9e5ff3b2e35881b4c1b21e1d045f95a7a97cf24c58cc",
+          "block": 48400127,
+          "to_hot_wallet": false
+        }
+      ]
+    },
+    "bridged_withdrawal_events": {
+      "total": 2129,
+      "amount_matches_top3": 43,
+      "direct_to_hot_wallet": 0,
+      "top_recipients_for_matched_amounts": [
+        {
+          "address": "0x4671a2da800cc52dbfd96dc6a4566fc8a1d860c4",
+          "count": 2
+        },
+        {
+          "address": "0x5920bbe807a75c0c379e2d7fc1162c566eccfd16",
+          "count": 2
+        },
+        {
+          "address": "0x499dd1d3af921eb71ee2128450bd507b931c2c38",
+          "count": 2
+        },
+        {
+          "address": "0xd8fbf6586cac61a8c13cb2a07e217a919f992898",
+          "count": 2
+        },
+        {
+          "address": "0x735e926c2e73219a7a3190536815957d5d66acc3",
+          "count": 2
+        },
+        {
+          "address": "0x7211a02454ef61505dcef9be3d7854a7678716f2",
+          "count": 1
+        },
+        {
+          "address": "0x2b4d1dc767b100a4eb16859e0058881061a1a4ca",
+          "count": 1
+        },
+        {
+          "address": "0x7759f957d5b729e311b5818f867e96e25506d9db",
+          "count": 1
+        },
+        {
+          "address": "0x9ad8dc9cca81f49c1932718f358beabd5c1836e4",
+          "count": 1
+        },
+        {
+          "address": "0xff77fd6225c65298583dbe9b8f2017ae9718a742",
+          "count": 1
+        }
+      ]
+    },
+    "per_deposit_correlation": [
+      {
+        "bsc_deposit_tx": "0x0f4f6b6cbc6090bebe0c12619f46ddeff71482b3cfe1419ea7fbc77c56fce6b7",
+        "amount_usdt": 500.0,
+        "bsc_time_utc": "2026-07-09T13:10:16+00:00",
+        "candidates": [
+          {
+            "base_tx": "0x1990a70b0aa9bbceb8b53548b803263ef67109061f6f9c4de2f09c212faf46ad",
+            "base_block": 48409948,
+            "recipient": "0x973004f95245c13d84e731c7f17aac8f71f54565",
+            "delta_sec_est": 6627,
+            "to_hot_wallet": false
+          },
+          {
+            "base_tx": "0x33c1d1b39ab5cae9d4196c77313415fefe0b14e9de417f0ede128da3470e84c7",
+            "base_block": 48413358,
+            "recipient": "0x4fdb51fa5e68fac14149acf10af5f3bce2df6c93",
+            "delta_sec_est": 13447,
+            "to_hot_wallet": false
+          },
+          {
+            "base_tx": "0x564e2ac097160c38de75668b0b12ed1ce122622f1b03bfc194f864b150ed63f6",
+            "base_block": 48416223,
+            "recipient": "0xa656afb5373385a61d7eb7f713f3dafd432d7549",
+            "delta_sec_est": 19177,
+            "to_hot_wallet": false
+          },
+          {
+            "base_tx": "0x154592c8f2e843b855786e5fc8828f7ce40323cfbb0f0981b7b3db5a031ce40f",
+            "base_block": 48416296,
+            "recipient": "0xddca0cf2cebabe1e0816e06360988caf20949ac5",
+            "delta_sec_est": 19323,
+            "to_hot_wallet": false
+          }
+        ],
+        "best_match": {
+          "base_tx": "0x1990a70b0aa9bbceb8b53548b803263ef67109061f6f9c4de2f09c212faf46ad",
+          "base_block": 48409948,
+          "recipient": "0x973004f95245c13d84e731c7f17aac8f71f54565",
+          "delta_sec_est": 6627,
+          "to_hot_wallet": false
+        }
+      },
+      {
+        "bsc_deposit_tx": "0x1135f4aecddac2285b90fe0b07a5d823b0af3b79d9d00ac52c50f3429d645cfa",
+        "amount_usdt": 1343.25,
+        "bsc_time_utc": "2026-07-09T09:43:53+00:00",
+        "candidates": [],
+        "best_match": null
+      },
+      {
+        "bsc_deposit_tx": "0x1441d8b9eddb5cda67a03b04b682e1a2645d2a868877a89da8cef168054c3598",
+        "amount_usdt": 4797.0,
+        "bsc_time_utc": "2026-07-09T17:30:19+00:00",
+        "candidates": [],
+        "best_match": null
+      },
+      {
+        "bsc_deposit_tx": "0x2b9138d958bff384c3bb2ff337977d56cec32a97baf56e6dbf8b48740168e261",
+        "amount_usdt": 1820.85,
+        "bsc_time_utc": "2026-07-09T08:20:17+00:00",
+        "candidates": [],
+        "best_match": null
+      },
+      {
+        "bsc_deposit_tx": "0x56662176e260639ca038e8f8d0d59a7dba7a6a58374456a0ec895663a455ce6e",
+        "amount_usdt": 4997.07,
+        "bsc_time_utc": "2026-07-09T12:50:15+00:00",
+        "candidates": [],
+        "best_match": null
+      },
+      {
+        "bsc_deposit_tx": "0x757167d6df209ff97cf8df20c2ad5ca2a95080f25e673cf7a05b7346ff66eb3e",
+        "amount_usdt": 500.0,
+        "bsc_time_utc": "2026-07-09T10:50:09+00:00",
+        "candidates": [
+          {
+            "base_tx": "0x1990a70b0aa9bbceb8b53548b803263ef67109061f6f9c4de2f09c212faf46ad",
+            "base_block": 48409948,
+            "recipient": "0x973004f95245c13d84e731c7f17aac8f71f54565",
+            "delta_sec_est": 15034,
+            "to_hot_wallet": false
+          }
+        ],
+        "best_match": {
+          "base_tx": "0x1990a70b0aa9bbceb8b53548b803263ef67109061f6f9c4de2f09c212faf46ad",
+          "base_block": 48409948,
+          "recipient": "0x973004f95245c13d84e731c7f17aac8f71f54565",
+          "delta_sec_est": 15034,
+          "to_hot_wallet": false
+        }
+      },
+      {
+        "bsc_deposit_tx": "0x7f9cba2507bf7aea6b9ec1d7e9273a31120b384a8ea4c0caa4ee0f3bf597727c",
+        "amount_usdt": 4797.0,
+        "bsc_time_utc": "2026-07-09T17:20:19+00:00",
+        "candidates": [],
+        "best_match": null
+      },
+      {
+        "bsc_deposit_tx": "0x9992b2e3325bfb5911573986e66adfbd5bc0f91efccc81ff99173e5efa9dc072",
+        "amount_usdt": 4804.0,
+        "bsc_time_utc": "2026-07-09T12:10:16+00:00",
+        "candidates": [],
+        "best_match": null
+      },
+      {
+        "bsc_deposit_tx": "0x9fdd3d50c6ddba83f906e523a6472b22904d80da1f291e554977253534f221f4",
+        "amount_usdt": 4107.17,
+        "bsc_time_utc": "2026-07-09T13:30:21+00:00",
+        "candidates": [],
+        "best_match": null
+      },
+      {
+        "bsc_deposit_tx": "0xa0e2407de31014d352d23708cfbe9d5436be18d0a9b972ca60cb5eca82e512de",
+        "amount_usdt": 5000.0,
+        "bsc_time_utc": "2026-07-09T09:58:12+00:00",
+        "candidates": [
+          {
+            "base_tx": "0x8cc3aaa279f49fef88784a9c12a1c9d01d820c0f8d795fc0a2580102d966232c",
+            "base_block": 48410265,
+            "recipient": "0x5920bbe807a75c0c379e2d7fc1162c566eccfd16",
+            "delta_sec_est": 18785,
+            "to_hot_wallet": false
+          }
+        ],
+        "best_match": {
+          "base_tx": "0x8cc3aaa279f49fef88784a9c12a1c9d01d820c0f8d795fc0a2580102d966232c",
+          "base_block": 48410265,
+          "recipient": "0x5920bbe807a75c0c379e2d7fc1162c566eccfd16",
+          "delta_sec_est": 18785,
+          "to_hot_wallet": false
+        }
+      },
+      {
+        "bsc_deposit_tx": "0xa7279140ccaefb092ea63690a1db6a5354acf3ccaf6368b7e80beb1bb5a93667",
+        "amount_usdt": 4816.0,
+        "bsc_time_utc": "2026-07-09T17:10:14+00:00",
+        "candidates": [],
+        "best_match": null
+      },
+      {
+        "bsc_deposit_tx": "0xc4c5b18bf3bcab377ebdb7890569405672b06ffcd797131ae1387776f89a91a3",
+        "amount_usdt": 4723.83,
+        "bsc_time_utc": "2026-07-09T17:40:20+00:00",
+        "candidates": [],
+        "best_match": null
+      },
+      {
+        "bsc_deposit_tx": "0xd3b1ce96fcab056abe5f408a38e4d5e17b3c7f45a9dfab9bd7808b9362e55596",
+        "amount_usdt": 1000.0,
+        "bsc_time_utc": "2026-07-09T10:24:03+00:00",
+        "candidates": [
+          {
+            "base_tx": "0x0791ed79b123a065d8fa7b0114e515f932dc1ce09056475dfafbb34d11e842f6",
+            "base_block": 48404898,
+            "recipient": "0xfe6740422691ed94afdbb0505ed76588b6f303a3",
+            "delta_sec_est": 6500,
+            "to_hot_wallet": false
+          },
+          {
+            "base_tx": "0x01d3efb94c5f2784c7ab34cb3a0e6ba94f8d0d9f09a12ccfe5ba941ff47b006f",
+            "base_block": 48405593,
+            "recipient": "0xe26c253171db4b589dbae9133f5bc57c9c64acef",
+            "delta_sec_est": 7890,
+            "to_hot_wallet": false
+          }
+        ],
+        "best_match": {
+          "base_tx": "0x0791ed79b123a065d8fa7b0114e515f932dc1ce09056475dfafbb34d11e842f6",
+          "base_block": 48404898,
+          "recipient": "0xfe6740422691ed94afdbb0505ed76588b6f303a3",
+          "delta_sec_est": 6500,
+          "to_hot_wallet": false
+        }
+      },
+      {
+        "bsc_deposit_tx": "0xe4ea1d5f36e89b176ddd98a661fd317eaa661b8c8e5399e1f13c23a25b193636",
+        "amount_usdt": 3353.15,
+        "bsc_time_utc": "2026-07-09T11:30:19+00:00",
+        "candidates": [],
+        "best_match": null
+      }
+    ],
+    "summary": {
+      "deposits_with_time_amount_match": 4,
+      "deposits_total": 14,
+      "hot_wallet_direct_on_base": false
+    }
+  },
+  "exit_rail_conclusion": {
+    "likely_chainOut": "BASE",
+    "confidence": "medium",
+    "evidence": [
+      "Rhino API JWT unavailable — 0/14 API resolves",
+      "Base BridgedWithdrawal amount+time matches: 4/14",
+      "Hot wallet direct Base credits from Rhino bridge: False",
+      "Hot wallet holds ~635k USDC on Base (multichain-cluster.json)"
+    ]
+  },
+  "verdict": "P5 cross-chain correlation: BSC Rhino deposits for top-3 cluster show matching withdrawal amounts on Base Rhino bridge within hours of deposit timestamps. Recipients are NOT the hot wallet directly (quote-bound destination addresses). Likely chainOut=BASE (medium confidence). Exact per-deposit chainOut/recipient requires Rhino API JWT.",
+  "next_steps_readonly": [
+    "Set RHINO_API_KEY in .env and re-run bridge-exit-correlate for definitive chainOut",
+    "Trace Base withdrawal recipients from per_deposit_correlation to hot wallet (hop analysis)",
+    "Label Base recipients 0x1c128bbd... (frequent Rhino outflow router) on Arkham"
+  ]
+}
