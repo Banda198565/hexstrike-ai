@@ -2,7 +2,16 @@
 # fresh-start-mac.sh — ONE clean setup: Ollama + tunnel + Cursor (run on iMac)
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Works when piped (curl | bash) or executed from repo
+if [[ -n "${HEXSTRIKE_ROOT:-}" ]]; then
+  ROOT="$(cd "$HEXSTRIKE_ROOT" && pwd)"
+elif [[ -n "${BASH_SOURCE[0]:-}" && -f "${BASH_SOURCE[0]}" ]]; then
+  ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+elif [[ -d "${HOME}/hexstrike-ai" ]]; then
+  ROOT="${HOME}/hexstrike-ai"
+else
+  ROOT="$(pwd)"
+fi
 cd "$ROOT"
 
 MODEL="${HEXSTRIKE_MODEL:-deepseek-r1:1.5b}"
