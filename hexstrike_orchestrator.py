@@ -280,6 +280,11 @@ def main() -> int:
     mon_p.add_argument("--duration", type=int, default=None)
     mon_p.add_argument("--native", action="store_true", help="Use orchestrator native loop")
 
+    stress_p = sub.add_parser("stress-test", help="Run HexStrike Stress Test (KPI evaluation)")
+    stress_p.add_argument("--target", default="0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a")
+    stress_p.add_argument("--ip", default="51.250.97.223")
+    stress_p.add_argument("--monitor-duration", type=int, default=45)
+
     args = parser.parse_args()
     orch = HexStrikeOrchestrator(config_path=Path(args.config))
 
@@ -323,6 +328,15 @@ def main() -> int:
         orch.update_manifest()
         print(json.dumps(result, indent=2))
         return 0
+    if args.command == "stress-test":
+        cmd = [
+            sys.executable,
+            str(ROOT / "scripts" / "stress_test.py"),
+            "--target", args.target,
+            "--ip", args.ip,
+            "--monitor-duration", str(args.monitor_duration),
+        ]
+        return subprocess.call(cmd, cwd=str(ROOT))
 
     return 1
 
