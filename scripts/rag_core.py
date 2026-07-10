@@ -19,6 +19,7 @@ DEFAULT_RAG_ROOT = Path("/Volumes/Eva/rag-storage")
 RAG_ROOT = Path(os.environ.get("RAG_STORAGE_ROOT", str(DEFAULT_RAG_ROOT)))
 VECTOR_DIR = RAG_ROOT / "vectors"
 TABLE_NAME = "forensics_history"
+FEEDBACK_TABLE = "forensics_feedback"
 EMBEDDING_MODEL = os.environ.get("RAG_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 CHUNK_SIZE = int(os.environ.get("RAG_CHUNK_SIZE", "800"))
 CHUNK_OVERLAP = int(os.environ.get("RAG_CHUNK_OVERLAP", "120"))
@@ -127,7 +128,13 @@ def ensure_table(db, bootstrap_rows: list[dict[str, Any]] | None = None):
     return db.create_table(TABLE_NAME, data=bootstrap_rows)
 
 
-def index_document(file_path: str | Path, content: str | None = None) -> dict[str, Any]:
+def index_document(
+    file_path: str | Path,
+    content: str | None = None,
+    *,
+    label: str = "",
+    table_name: str = TABLE_NAME,
+) -> dict[str, Any]:
     """Chunk content, embed, and store in LanceDB with metadata."""
     path = Path(file_path)
     if content is None:
@@ -146,53 +153,113 @@ def index_document(file_path: str | Path, content: str | None = None) -> dict[st
 
     rows = []
     for idx, (chunk, vector) in enumerate(zip(chunks, vectors)):
-        rows.append({
+        row = {
             "id": str(uuid.uuid4()),
             "vector": vector,
             "text": chunk,
             "source_file": source,
             "timestamp": ts,
             "chunk_index": idx,
-        })
+        }
+        if table_name == FEEDBACK_TABLE:
+            row["label"] = label or "false_positive"
+        rows.append(row)
 
-    if TABLE_NAME in _table_names(db):
-        table = db.open_table(TABLE_NAME)
+    if table_name in _table_names(db):
+        table = db.open_table(table_name)
         table.add(rows)
     else:
-        ensure_table(db, bootstrap_rows=rows)
-        table = db.open_table(TABLE_NAME)
+        db.create_table(table_name, data=rows)
+        table = db.open_table(table_name)
 
     return {"indexed": len(rows), "source_file": source, "timestamp": ts}
 
 
-def search_history(query_text: str, top_k: int = 3) -> list[dict[str, Any]]:
+def search_history(
+    query_text: str,
+    top_k: int = 3,
+    *,
+    label: str | None = None,
+    table_name: str = TABLE_NAME,
+) -> list[dict[str, Any]]:
     """Vector similarity search over forensic history."""
     db = connect_db()
-    if TABLE_NAME not in _table_names(db):
+    if table_name not in _table_names(db):
         return []
 
-    table = db.open_table(TABLE_NAME)
+    table = db.open_table(table_name)
     if table.count_rows() == 0:
         return []
 
     query_vector = embed_texts([query_text])[0]
+    fetch_k = top_k * 4 if label else top_k
     results = (
         table.search(query_vector)
         .metric("cosine")
-        .limit(top_k)
+        .limit(fetch_k)
         .to_list()
     )
 
     hits: list[dict[str, Any]] = []
     for row in results:
+        row_label = row.get("label") or ""
+        if label and row_label != label:
+            continue
         hits.append({
             "source_file": row.get("source_file", ""),
             "timestamp": row.get("timestamp", ""),
             "chunk_index": row.get("chunk_index", 0),
             "snippet": row.get("text", "")[:500],
             "score": row.get("_distance"),
+            "label": row_label,
         })
+        if len(hits) >= top_k:
+            break
     return hits
+
+
+def index_false_positive(
+    tx_hash: str,
+    from_addr: str,
+    to_addr: str,
+    note: str = "",
+) -> dict[str, Any]:
+    """Store operator feedback as a labeled false-positive pattern in RAG."""
+    payload = {
+        "label": "false_positive",
+        "tx_hash": tx_hash.lower(),
+        "from": from_addr.lower(),
+        "to": to_addr.lower(),
+        "note": note,
+        "indexed_at": datetime.now(tz=timezone.utc).isoformat(),
+    }
+    text = json.dumps(payload, ensure_ascii=False)
+    virtual_path = f"feedback/false_positive/{tx_hash.lower()}.json"
+    return index_document(virtual_path, text, label="false_positive", table_name=FEEDBACK_TABLE)
+
+
+def is_false_positive_pattern(tx_hash: str, from_addr: str, to_addr: str) -> tuple[bool, list[dict[str, Any]]]:
+    """Check RAG for similar false-positive patterns before alerting."""
+    frm = from_addr.lower()
+    to = to_addr.lower()
+    tx_hash_l = tx_hash.lower()
+    query = (
+        f"false_positive label transaction pattern "
+        f"from {frm} to {to} hash {tx_hash_l}"
+    )
+    try:
+        hits = search_history(query, top_k=3, label="false_positive", table_name=FEEDBACK_TABLE)
+    except (RagStorageError, OSError, ImportError):
+        return False, []
+
+    for hit in hits:
+        snippet = hit.get("snippet", "").lower()
+        score = hit.get("score") or 1.0
+        if tx_hash_l in snippet:
+            return True, hits
+        if frm in snippet and to in snippet and score < 0.75:
+            return True, hits
+    return False, hits
 
 
 def index_path(target: Path) -> dict[str, Any]:

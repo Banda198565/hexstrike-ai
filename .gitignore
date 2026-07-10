@@ -11,4 +11,5 @@ artifacts/monitor/
 artifacts/alerts.log
 artifacts/duty.log
 artifacts/pending_action.json
+artifacts/alerts_feedback.txt
 rag-storage/

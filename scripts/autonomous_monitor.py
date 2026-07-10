@@ -27,10 +27,16 @@ from crypto_rpc_orchestrator import (
     normalize_addr,
     rpc_with_fallback,
 )
-from rag_core import RagStorageError, search_history
+from rag_core import (
+    RagStorageError,
+    index_false_positive,
+    is_false_positive_pattern,
+    search_history,
+)
 
 DEFAULT_CONFIG = ROOT / "config" / "rpc_config.json"
 ALERTS_LOG = ROOT / "artifacts" / "alerts.log"
+FEEDBACK_FILE = ROOT / "artifacts" / "alerts_feedback.txt"
 DESKTOP_ALERT = Path.home() / "Desktop" / "on-chain-forensics" / "latest-alert.json"
 EVA_ALERT = Path("/Volumes/Eva/alerts/latest-alert.json")
 STATE_FILE = ROOT / "artifacts" / "monitor" / "autonomous_state.json"
@@ -43,6 +49,77 @@ ADDR_RE = re.compile(r"0x[a-fA-F0-9]{40}")
 
 RECONNECT_DELAY = 5.0
 INDEXER_COOLDOWN_SEC = 60
+IGNORE_RE = re.compile(r"^IGNORE:\s*(0x[a-fA-F0-9]{64})", re.IGNORECASE)
+
+
+def load_feedback_ignored(state: dict[str, Any]) -> set[str]:
+    """Parse alerts_feedback.txt for IGNORE tx hashes."""
+    ignored = {h.lower() for h in state.get("feedback_ignored", [])}
+    if not FEEDBACK_FILE.is_file():
+        return ignored
+    for line in FEEDBACK_FILE.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        match = IGNORE_RE.match(line)
+        if match:
+            ignored.add(match.group(1).lower())
+    return ignored
+
+
+def lookup_tx_in_alerts(tx_hash: str) -> dict[str, Any] | None:
+    if not ALERTS_LOG.is_file():
+        return None
+    target = tx_hash.lower()
+    for line in ALERTS_LOG.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if (record.get("hash") or "").lower() == target:
+            return record
+    return None
+
+
+def process_feedback_file(state: dict[str, Any]) -> dict[str, Any]:
+    """Index new IGNORE entries into RAG as false_positive."""
+    if not FEEDBACK_FILE.is_file():
+        return state
+
+    processed = set(state.get("feedback_processed", []))
+    newly_indexed = 0
+
+    for line in FEEDBACK_FILE.read_text(encoding="utf-8").splitlines():
+        raw = line.strip()
+        if not raw or raw.startswith("#"):
+            continue
+        if raw in processed:
+            continue
+        match = IGNORE_RE.match(raw)
+        if not match:
+            continue
+
+        tx_hash = match.group(1).lower()
+        note = raw.split("#", 1)[1].strip() if "#" in raw else ""
+        alert = lookup_tx_in_alerts(tx_hash)
+        frm = alert.get("from", "") if alert else ""
+        to = alert.get("to", "") if alert else ""
+
+        try:
+            index_false_positive(tx_hash, frm, to, note or "operator ignore feedback")
+            newly_indexed += 1
+            processed.add(raw)
+            print(f"[feedback] Indexed false_positive: {tx_hash}")
+        except (RagStorageError, OSError, ImportError) as exc:
+            print(f"[feedback] WARN — could not index {tx_hash}: {exc}")
+
+    state["feedback_processed"] = list(processed)[-5000:]
+    state["feedback_ignored"] = list(load_feedback_ignored(state))
+    if newly_indexed:
+        state["feedback_last_indexed"] = datetime.now(tz=timezone.utc).isoformat()
+    return state
 
 
 def resolve_hexstrike_api(cfg: dict[str, Any]) -> tuple[str, str]:
@@ -260,9 +337,21 @@ def process_transaction(
     watched: set[str],
     sinks: set[str],
     rpc_url: str,
+    ignored_hashes: set[str] | None = None,
 ) -> dict[str, Any] | None:
+    tx_hash = (tx.get("hash") or "").lower()
+    if ignored_hashes and tx_hash in ignored_hashes:
+        return None
+
     hits = tx_context_hits(tx, watched)
     if not hits:
+        return None
+
+    fp_match, fp_hits = is_false_positive_pattern(
+        tx_hash, tx.get("from", ""), tx.get("to", "")
+    )
+    if fp_match:
+        print(f"[feedback] Suppressed alert (false_positive RAG): {tx_hash}")
         return None
 
     high_risk, risk_reason = is_high_risk(tx, sinks)
@@ -321,12 +410,15 @@ def run_monitor(
     sinks = watch["sinks"]
 
     state = load_state()
+    state = process_feedback_file(state)
+    ignored_hashes = load_feedback_ignored(state)
     seen_hashes: set[str] = set(state.get("seen_hashes", []))
     last_indexer_run = float(state.get("last_indexer_run", 0))
 
     print(f"[monitor] RPC primary: {cfg['primary']}")
     print(f"[monitor] Watching {len(watched)} addresses | sinks={len(sinks)}")
     print(f"[monitor] Context sources: {', '.join(watch['sources']) or 'rpc_config only'}")
+    print(f"[monitor] Feedback ignores: {len(ignored_hashes)} tx hashes")
     print(f"[monitor] Alerts log: {ALERTS_LOG}")
     print(f"[monitor] Desktop alert: {DESKTOP_ALERT}")
 
@@ -338,6 +430,9 @@ def run_monitor(
 
     while True:
         polls += 1
+        state = process_feedback_file(state)
+        ignored_hashes = load_feedback_ignored(state)
+
         try:
             active_rpc, resp = rpc_with_fallback(endpoints, "txpool_content", [], timeout=timeout)
             content = resp.get("result") or {}
@@ -355,7 +450,7 @@ def run_monitor(
             seen_hashes.add(tx_hash)
             txs_seen += 1
 
-            alert = process_transaction(tx, watched, sinks, active_rpc)
+            alert = process_transaction(tx, watched, sinks, active_rpc, ignored_hashes)
             if not alert:
                 continue
 
@@ -379,6 +474,8 @@ def run_monitor(
                 "last_indexer_run": last_indexer_run,
                 "last_poll": polls,
                 "rpc": active_rpc,
+                "feedback_processed": state.get("feedback_processed", []),
+                "feedback_ignored": list(ignored_hashes),
             })
 
         if duration_seconds and time.time() - start >= duration_seconds:
@@ -390,6 +487,8 @@ def run_monitor(
         "last_indexer_run": last_indexer_run,
         "last_poll": polls,
         "rpc": active_rpc,
+        "feedback_processed": state.get("feedback_processed", []),
+        "feedback_ignored": list(ignored_hashes),
     })
 
     return {
