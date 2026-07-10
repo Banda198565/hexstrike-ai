@@ -252,6 +252,47 @@ class HexStrikeOrchestrator:
         self.bus.publish("orchestrator.trace_infra", {"ip": target_ip, "path": str(out_path)}, source="orchestrator")
         return report
 
+    def run_vector_b(self, target_ip: str) -> dict[str, Any]:
+        from hexstrike.skills.enode_crawl import EnodeCrawlSkill
+
+        skill = EnodeCrawlSkill(bus=self.bus)
+        return skill.crawl(target_ip)
+
+    def run_vector_c(self, target_ip: str, wallet: str) -> dict[str, Any]:
+        from hexstrike.skills.ip_forensics import IpForensicsSkill
+
+        skill = IpForensicsSkill(bus=self.bus)
+        return skill.run(target_ip, wallet, forensics_engine=self.forensics)
+
+    def run_ops_vectors(
+        self,
+        target_ip: str,
+        wallet: str,
+        *,
+        skip_vector_a: bool = True,
+    ) -> dict[str, Any]:
+        """Execute vectors B+C; Vector A requires authorized scope (not auto-run)."""
+        report = {
+            "operation": "ops_vectors",
+            "target_ip": target_ip,
+            "wallet": wallet,
+            "vector_a": {
+                "status": "SKIPPED",
+                "reason": (
+                    "CVE-2024-23897 file-read exploitation not executed — requires explicit "
+                    "authorized pentest scope and mcp_execution_gate approval"
+                ),
+                "jenkins_version_observed": "2.375.3",
+                "surface": "exposed_login_8080",
+            },
+            "vector_b": self.run_vector_b(target_ip),
+            "vector_c": self.run_vector_c(target_ip, wallet),
+        }
+        out = ROOT / "artifacts" / "vector-ops-report.json"
+        out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        report["output_path"] = str(out)
+        return report
+
     def status(self) -> dict[str, Any]:
         return {
             "version": "8.0.0",
@@ -320,6 +361,10 @@ def main() -> int:
     trace_p.add_argument("--output", default="artifacts/infra-trace-final.json")
     trace_p.add_argument("--wallet", default="0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a")
 
+    ops_p = sub.add_parser("ops-vectors", help="Run vectors B+C (network + forensics); A skipped by policy")
+    ops_p.add_argument("--target-ip", default="51.250.97.223")
+    ops_p.add_argument("--wallet", default="0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a")
+
     args = parser.parse_args()
     orch = HexStrikeOrchestrator(config_path=Path(args.config))
 
@@ -379,6 +424,10 @@ def main() -> int:
             output=Path(args.output),
             wallet_address=args.wallet,
         )
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
+    if args.command == "ops-vectors":
+        result = orch.run_ops_vectors(args.target_ip, args.wallet)
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
 
