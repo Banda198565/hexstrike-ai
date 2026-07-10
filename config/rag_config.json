@@ -1,0 +1,36 @@
+{
+  "storage": {
+    "hdd_mount": "/Volumes/Eva",
+    "root": "/Volumes/Eva/hexstrike-rag-data",
+    "symlink": "artifacts/rag-storage",
+    "filesystem": "APFS",
+    "env_var": "RAG_STORAGE_ROOT"
+  },
+  "directories": {
+    "vector_store": "vector-store",
+    "embeddings_cache": "embeddings-cache",
+    "raw_docs": "raw-docs"
+  },
+  "database": {
+    "type": "lancedb",
+    "note": "LanceDB backend; vector-store/lancedb/ holds indexes. Set DB_TYPE=faiss for future FAISS adapter.",
+    "vector_subdir": "lancedb",
+    "tables": {
+      "forensics_history": "forensics_history",
+      "forensics_feedback": "forensics_feedback"
+    }
+  },
+  "embeddings": {
+    "model": "all-MiniLM-L6-v2",
+    "env_model": "RAG_EMBEDDING_MODEL",
+    "batch_size": 16,
+    "num_workers": 4,
+    "chunk_size": 800,
+    "chunk_overlap": 120
+  },
+  "ollama": {
+    "host_env": "OLLAMA_HOST",
+    "default_host": "http://127.0.0.1:11434",
+    "note": "Embeddings use sentence-transformers locally; Ollama optional for LLM summarization"
+  }
+}

@@ -14,15 +14,29 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Primary storage: secondary disk on Mac operator workstation.
-DEFAULT_RAG_ROOT = Path("/Volumes/Eva/rag-storage")
-RAG_ROOT = Path(os.environ.get("RAG_STORAGE_ROOT", str(DEFAULT_RAG_ROOT)))
-VECTOR_DIR = RAG_ROOT / "vectors"
+# Dedicated RAG venv path (Python 3.12 + torch + lancedb)
+RAG_PYTHON = Path(os.environ.get("RAG_PYTHON", str(ROOT / "rag-env" / "bin" / "python")))
+
+# Primary storage: external HDD on Mac operator workstation.
+DEFAULT_HDD_MOUNT = Path("/Volumes/Eva")
+DEFAULT_RAG_ROOT = DEFAULT_HDD_MOUNT / "hexstrike-rag-data"
+RAG_ROOT = Path(
+    os.environ.get(
+        "RAG_STORAGE_ROOT",
+        os.environ.get("RAG_STORAGE_PATH", str(DEFAULT_RAG_ROOT)),
+    )
+)
+VECTOR_DIR = RAG_ROOT / "vector-store" / "lancedb"
+EMBEDDINGS_CACHE_DIR = RAG_ROOT / "embeddings-cache"
+RAW_DOCS_DIR = RAG_ROOT / "raw-docs"
 TABLE_NAME = "forensics_history"
 FEEDBACK_TABLE = "forensics_feedback"
 EMBEDDING_MODEL = os.environ.get("RAG_EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+DB_TYPE = os.environ.get("DB_TYPE", "lancedb")
 CHUNK_SIZE = int(os.environ.get("RAG_CHUNK_SIZE", "800"))
 CHUNK_OVERLAP = int(os.environ.get("RAG_CHUNK_OVERLAP", "120"))
+BATCH_SIZE = int(os.environ.get("RAG_BATCH_SIZE", "16"))
+NUM_WORKERS = int(os.environ.get("RAG_NUM_WORKERS", "4"))
 
 _model = None
 
@@ -32,25 +46,27 @@ class RagStorageError(RuntimeError):
 
 
 def check_storage_mount() -> Path:
-    """Verify Eva disk is mounted and storage path is usable."""
-    if not DEFAULT_RAG_ROOT.parent.exists():
+    """Verify external HDD is mounted and storage path is usable."""
+    mount = DEFAULT_HDD_MOUNT
+    if not mount.exists():
         raise RagStorageError(
-            f"Disk not mounted: {DEFAULT_RAG_ROOT.parent} does not exist. "
-            "Mount /Volumes/Eva/ or set RAG_STORAGE_ROOT to a writable path."
+            f"Disk not mounted: {mount} does not exist. "
+            f"Mount /Volumes/Eva/ or set RAG_STORAGE_ROOT to a writable path."
         )
-    if not os.access(DEFAULT_RAG_ROOT.parent, os.W_OK):
+    if not os.access(mount, os.W_OK):
         raise RagStorageError(
-            f"Disk not writable: {DEFAULT_RAG_ROOT.parent}. "
+            f"Disk not writable: {mount}. "
             "Check mount permissions or set RAG_STORAGE_ROOT."
         )
-    VECTOR_DIR.mkdir(parents=True, exist_ok=True)
+    for path in (RAG_ROOT, VECTOR_DIR, EMBEDDINGS_CACHE_DIR, RAW_DOCS_DIR):
+        path.mkdir(parents=True, exist_ok=True)
     return VECTOR_DIR
 
 
 def resolve_vector_dir() -> Path:
     """Resolve vector DB directory, with optional cloud/lab override."""
-    if os.environ.get("RAG_STORAGE_ROOT"):
-        path = Path(os.environ["RAG_STORAGE_ROOT"]) / "vectors"
+    if os.environ.get("RAG_STORAGE_ROOT") or os.environ.get("RAG_STORAGE_PATH"):
+        path = VECTOR_DIR
         path.mkdir(parents=True, exist_ok=True)
         return path
 
@@ -58,9 +74,9 @@ def resolve_vector_dir() -> Path:
         return check_storage_mount()
 
     # Non-macOS lab fallback for CI/cloud testing
-    fallback = ROOT / "rag-storage" / "vectors"
+    fallback = ROOT / "rag-storage" / "vector-store" / "lancedb"
     fallback.mkdir(parents=True, exist_ok=True)
-    print(f"[!] /Volumes/Eva not available on {sys.platform}; using fallback: {fallback}")
+    print(f"[!] {DEFAULT_HDD_MOUNT} not available on {sys.platform}; using fallback: {fallback}")
     return fallback
 
 
@@ -75,7 +91,12 @@ def get_model():
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
     model = get_model()
-    vectors = model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
+    vectors = model.encode(
+        texts,
+        normalize_embeddings=True,
+        show_progress_bar=False,
+        batch_size=BATCH_SIZE,
+    )
     return [vec.tolist() for vec in vectors]
 
 
@@ -299,8 +320,12 @@ def cmd_status() -> int:
 
     print(f"RAG root:      {RAG_ROOT}")
     print(f"Vector dir:    {vector_dir}")
-    print(f"Eva mounted:   {DEFAULT_RAG_ROOT.parent.exists()}")
+    print(f"Embeddings:    {EMBEDDINGS_CACHE_DIR}")
+    print(f"Raw docs:      {RAW_DOCS_DIR}")
+    print(f"HDD mounted:   {DEFAULT_HDD_MOUNT.exists()}")
+    print(f"DB type:       {DB_TYPE}")
     print(f"Model:         {EMBEDDING_MODEL}")
+    print(f"Batch/workers: {BATCH_SIZE}/{NUM_WORKERS}")
 
     if TABLE_NAME in _table_names(connect_db(vector_dir)):
         table = connect_db(vector_dir).open_table(TABLE_NAME)
@@ -317,7 +342,26 @@ def main() -> int:
     parser.add_argument("--search", metavar="QUERY", help="Semantic search query")
     parser.add_argument("--top-k", type=int, default=3, help="Search result count")
     parser.add_argument("--status", action="store_true", help="Show storage status")
+    parser.add_argument("--rpc", metavar="JSON", help="Internal JSON-RPC for subprocess bridge")
     args = parser.parse_args()
+
+    if args.rpc:
+        req = json.loads(args.rpc)
+        action = req.get("action")
+        if action == "search":
+            hits = search_history(req["query"], top_k=req.get("top_k", 3))
+            print(json.dumps({"success": True, "results": hits}))
+            return 0
+        if action == "is_false_positive":
+            match, hits = is_false_positive_pattern(req["tx_hash"], req["frm"], req["to"])
+            print(json.dumps({"success": True, "match": match, "hits": hits}))
+            return 0
+        if action == "index_feedback":
+            result = index_false_positive(req["tx_hash"], req["frm"], req["to"], req.get("note", ""))
+            print(json.dumps({"success": True, **result}))
+            return 0
+        print(json.dumps({"success": False, "error": f"unknown action: {action}"}))
+        return 1
 
     if args.status:
         return cmd_status()

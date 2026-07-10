@@ -7,7 +7,7 @@ and contract bytecode assessment.
 ## Context Sources
 1. `artifacts/master_context.json` (unified indexer output)
 2. `artifacts/cex-cluster-map.json` (legacy fallback)
-3. RAG table `forensics_history` on Eva HDD (`/Volumes/Eva/rag-storage/vectors`)
+3. RAG table `forensics_history` on Eva HDD (`/Volumes/Eva/hexstrike-rag-data/vector-store/lancedb`)
 
 ## Priority Investigation
 **Hot wallet cluster — $2.11M USDT (Binance HW11 → hot wallet)**

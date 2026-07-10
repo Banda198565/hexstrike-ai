@@ -20,4 +20,12 @@ PENDING_ACTION = ARTIFACTS_DIR / "pending_action.json"
 MANIFEST_PATH = ROOT / "project_manifest.json"
 INSTRUCTIONS_DIR = ROOT / "src" / "hexstrike" / "instructions"
 EVA_MOUNT = Path(os.environ.get("HEXSTRIKE_EVA_MOUNT", "/Volumes/Eva"))
-RAG_ROOT = Path(os.environ.get("RAG_STORAGE_ROOT", str(EVA_MOUNT / "rag-storage")))
+RAG_ROOT = Path(
+    os.environ.get(
+        "RAG_STORAGE_ROOT",
+        os.environ.get("RAG_STORAGE_PATH", str(EVA_MOUNT / "hexstrike-rag-data")),
+    )
+)
+RAG_VECTOR_DIR = RAG_ROOT / "vector-store" / "lancedb"
+RAG_EMBEDDINGS_CACHE = RAG_ROOT / "embeddings-cache"
+RAG_RAW_DOCS = RAG_ROOT / "raw-docs"
