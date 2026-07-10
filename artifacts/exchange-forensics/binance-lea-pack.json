@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-07-10T08:56:51Z",
+  "type": "law_enforcement_request_pack",
+  "exchange": "Binance",
+  "submission_url": "https://www.binance.com/en/support/law-enforcement",
+  "case_summary": {
+    "subject": "KYC identity request — Binance withdraw to unlabeled ops wallet",
+    "chain": "BSC (BNB Smart Chain, chainId 56)",
+    "token": "BSC-USD / Binance-Peg USDT",
+    "token_contract": "0x55d398326f99059fF775485246099027B3197955",
+    "request_type": "Withdrawal origin identification (KYC/account linkage)"
+  },
+  "primary_evidence": {
+    "withdraw_tx": "0x8f56f5e9c9a194202ff21f1002774eb0a8fb746c45cf519321cf0ceb1083e407",
+    "bscscan_tx": "https://bscscan.com/tx/0x8f56f5e9c9a194202ff21f1002774eb0a8fb746c45cf519321cf0ceb1083e407",
+    "block": 108946611,
+    "timestamp_utc": "2026-07-09T08:19:48Z",
+    "from_address": "0x161ba15a5f335c9f06bb5bbb0a9ce14076fbb645",
+    "from_label": "Binance Hot Wallet 11",
+    "to_address": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+    "to_label": "Unlabeled multichain ops wallet (~$1.12M net worth at recon time)",
+    "amount_usdt": 1100000.0,
+    "bscscan_from": "https://bscscan.com/address/0x161ba15a5f335c9f06bb5bbb0a9ce14076fbb645",
+    "bscscan_to": "https://bscscan.com/address/0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA"
+  },
+  "related_addresses": {
+    "hot_wallet": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+    "operator_lab_wallet": "0x85dB346BE1d9d5D8ec4F57acf0067FbE53a6E846",
+    "authority_eip7702": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+    "rhino_fi_bridge_sink": "0xb80a582fa430645a043bb4f6135321ee01005fef"
+  },
+  "timeline": [
+    {
+      "step": 1,
+      "event": "Binance withdraw to hot wallet",
+      "tx": "0x8f56f5e9c9a194202ff21f1002774eb0a8fb746c45cf519321cf0ceb1083e407",
+      "from": "0x161ba15a5f335c9f06bb5bbb0a9ce14076fbb645",
+      "to": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+      "amount_usdt": 1100000.0,
+      "timestamp_utc": "2026-07-09T08:19:48Z",
+      "block": 108946611
+    },
+    {
+      "step": 2,
+      "event": "Hot wallet mass USDT disbursement",
+      "note": "~796k USDT to 977 recipients in blocks 108943025-109043025",
+      "pattern": "200-5000 USDT chunks"
+    },
+    {
+      "step": 3,
+      "event": "Bridge off-ramp via Rhino.fi",
+      "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+      "note": "Hop wallets forward USDT to Rhino.fi bridge hub"
+    }
+  ],
+  "requested_information": [
+    "KYC identity and account ID for the Binance user whose withdrawal funded 0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+    "Withdrawal request metadata (IP, device, 2FA method, withdrawal address whitelist history)",
+    "Any subsequent deposits back to Binance from related addresses",
+    "Account status and transaction history for period 2026-06-15 to present"
+  ],
+  "supporting_artifacts": [
+    "binance-lea-pack.json",
+    "rhino-bridge-trace.json",
+    "cex-depth2-scan.json",
+    "cex-cluster-map.json",
+    "entity-id.json",
+    "hot-wallet-onchain-graph.json"
+  ],
+  "legal_notes": [
+    "Read-only on-chain forensics; no unauthorized access attempted",
+    "Submit via official Binance Law Enforcement portal only",
+    "Include valid law enforcement / legal process documentation per exchange policy"
+  ]
+}

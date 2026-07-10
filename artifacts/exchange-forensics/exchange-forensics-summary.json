@@ -1,0 +1,16 @@
+{
+  "generated_at": "2026-07-10T08:56:51Z",
+  "steps_completed": [
+    "binance_lea_pack",
+    "rhino_bridge_trace",
+    "cex_depth2_scan"
+  ],
+  "key_findings": {
+    "binance_funding_confirmed": true,
+    "funding_amount_usdt": 1100000.0,
+    "funding_timestamp_utc": "2026-07-09T08:19:48Z",
+    "direct_cex_outflows_from_hot": false,
+    "rhino_bridge_primary_sink": true,
+    "okx_bybit_hits": false
+  }
+}

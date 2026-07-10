@@ -1,0 +1,165 @@
+{
+  "generated_at": "2026-07-10T08:56:51Z",
+  "task": "rhino-fi-bridge-trace",
+  "mode": "read-only",
+  "chain": "BSC",
+  "bridge_address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+  "block_range": [
+    108943025,
+    109043025
+  ],
+  "source": "merged_from_cex-cluster-map.json",
+  "prior_recon": {
+    "depth1_nodes": {
+      "0x730ea0231808f42a20f8921ba7fbc788226768f5": {
+        "total_out_usdt": 19133.83,
+        "top_out": [
+          [
+            "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            19133.83,
+            null
+          ]
+        ]
+      },
+      "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08": {
+        "total_out_usdt": 0,
+        "top_out": []
+      },
+      "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a": {
+        "total_out_usdt": 0,
+        "top_out": []
+      },
+      "0x3e0b65c9c31e9593e2b357be6eecd28bef6da03e": {
+        "total_out_usdt": 0,
+        "top_out": []
+      },
+      "0x3a8b628934f9db7999499905bbf767331266b5b5": {
+        "total_out_usdt": 0,
+        "top_out": []
+      },
+      "0xd0b5b1fa9122696bcab0cc5d5f4421e6d94a9e52": {
+        "total_out_usdt": 4000.0,
+        "top_out": [
+          [
+            "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            4000.0,
+            null
+          ]
+        ]
+      },
+      "0x2a3cba35c2b427850c2047b2d79164a6227ebe7b": {
+        "total_out_usdt": 5972.97,
+        "top_out": [
+          [
+            "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            5972.97,
+            null
+          ]
+        ]
+      },
+      "0x831c7f9ea511a161c037b6b682ade7d46695a08f": {
+        "total_out_usdt": 2450.0,
+        "top_out": [
+          [
+            "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            2450.0,
+            null
+          ]
+        ]
+      }
+    },
+    "depth1_cex_hits": {},
+    "sample_edges_to_rhino": [
+      {
+        "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 4816.0,
+        "tx": "0xa7279140ccaefb092ea63690a1db6a5354acf3ccaf6368b7e80beb1bb5a93667",
+        "cex": null
+      },
+      {
+        "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 4797.0,
+        "tx": "0x7f9cba2507bf7aea6b9ec1d7e9273a31120b384a8ea4c0caa4ee0f3bf597727c",
+        "cex": null
+      },
+      {
+        "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 4797.0,
+        "tx": "0x1441d8b9eddb5cda67a03b04b682e1a2645d2a868877a89da8cef168054c3598",
+        "cex": null
+      },
+      {
+        "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 4723.83,
+        "tx": "0xc4c5b18bf3bcab377ebdb7890569405672b06ffcd797131ae1387776f89a91a3",
+        "cex": null
+      },
+      {
+        "from": "0xd0b5b1fa9122696bcab0cc5d5f4421e6d94a9e52",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 2000.0,
+        "tx": "0xf215d4771d053765a8a413e50341effb19ae27956cc3562453c5d5eee647e07b",
+        "cex": null
+      },
+      {
+        "from": "0xd0b5b1fa9122696bcab0cc5d5f4421e6d94a9e52",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 2000.0,
+        "tx": "0xefd16b27e453d15768b7fdb7c48692ffe6ef6fda2b8167cf02ecb650198f75e4",
+        "cex": null
+      },
+      {
+        "from": "0x2a3cba35c2b427850c2047b2d79164a6227ebe7b",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 4000.0,
+        "tx": "0x2e6db31b95595434661d9d148a2b9803fa5c85f03aa07286afd67a8e456276be",
+        "cex": null
+      },
+      {
+        "from": "0x2a3cba35c2b427850c2047b2d79164a6227ebe7b",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 1972.97,
+        "tx": "0xb48c6ed3090ea93fc46e132c5cfc259f1edacb1a3115a2081b936caf9e145763",
+        "cex": null
+      },
+      {
+        "from": "0x831c7f9ea511a161c037b6b682ade7d46695a08f",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 2450.0,
+        "tx": "0x15bd7480cb0504ce97992f6351eee5a136da569bcb86057935943e66f21b25a9",
+        "cex": null
+      }
+    ],
+    "authority_730ea023": {
+      "address": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+      "out_usdt_total": 22486.98,
+      "cex_direct": {},
+      "top_out": [
+        [
+          "0xb80a582fa430645a043bb4f6135321ee01005fef",
+          22486.98,
+          null
+        ]
+      ]
+    }
+  },
+  "flow_summary": {
+    "pattern": "hot -> hop EOAs/authorities -> Rhino.fi bridge",
+    "authority_to_rhino_usdt": 22486.98,
+    "known_rhino_senders": [
+      "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+      "0xd0b5b1fa9122696bcab0cc5d5f4421e6d94a9e52",
+      "0x2a3cba35c2b427850c2047b2d79164a6227ebe7b",
+      "0x831c7f9ea511a161c037b6b682ade7d46695a08f"
+    ]
+  },
+  "verdict": {
+    "rhino_is_primary_offramp": true,
+    "direct_cex_from_rhino_in_prior_window": false,
+    "note": "Funds exit BSC via bridge; CEX may appear on destination chain after bridge"
+  }
+}

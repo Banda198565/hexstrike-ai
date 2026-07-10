@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-07-10T08:50:00Z",
+  "type": "law_enforcement_reference_packs",
+  "note": "OKX/Bybit had zero direct on-chain hits at depth 0-1 in prior recon. Packs prepared for proactive submission if depth-2+ traces find deposits.",
+  "exchanges": {
+    "OKX": {
+      "submission_url": "https://www.okx.com/help/okx-law-enforcement-request-guide",
+      "reference_addresses_bsc": {
+        "deposit": "0x503828976d325b136db6cd94adc1a2676700a664",
+        "hot_wallet": "0x5041ed759dd4fda3b0dabfc5e47263d48302102"
+      },
+      "onchain_status": {
+        "depth0_hits_from_hot_wallet": 0,
+        "depth1_hits_from_hops": 0,
+        "confidence": "LOW — no direct link found"
+      },
+      "suggested_request": "Monitor deposits from hop wallets listed in cex-depth2-scan.json if depth-2+ trace finds OKX deposit hits"
+    },
+    "Bybit": {
+      "submission_url": "https://www.bybit.com/en/help-center/article/Bybit-Law-Enforcement-Request-Guide",
+      "reference_addresses_bsc": {
+        "hot_wallet": "0xf89d7b9c864fbb9a8758c8c1748e7e08d8c088a",
+        "deposit": "0x1db92d7411958a4910e5559c5aff8ff196965388"
+      },
+      "onchain_status": {
+        "depth0_hits_from_hot_wallet": 0,
+        "depth1_hits_from_hops": 0,
+        "confidence": "LOW — no direct link found"
+      },
+      "suggested_request": "Monitor deposits from hop wallets listed in cex-depth2-scan.json if depth-2+ trace finds Bybit deposit hits"
+    }
+  },
+  "related_hot_wallet": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+  "priority_exchange": "Binance (confirmed +1.1M USDT funding link)"
+}

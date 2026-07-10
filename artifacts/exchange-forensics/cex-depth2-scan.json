@@ -1,0 +1,189 @@
+{
+  "generated_at": "2026-07-10T08:56:51Z",
+  "task": "cex-depth2-scan",
+  "mode": "read-only",
+  "chain": "BSC",
+  "hot_wallet": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+  "block_range": [
+    108943025,
+    109043025
+  ],
+  "cex_reference_addresses": {
+    "Binance Hot Wallet 11": "0x161ba15a5f335c9f06bb5bbb0a9ce14076fbb645",
+    "Binance Hot Wallet 6": "0x8894e0a0c962cb723c1976a4421c95949be2d4e3",
+    "Binance Hot Wallet 14": "0x28c6c06298d81db4d864dfa4d9be2409a7ea8e5",
+    "Binance Hot Wallet 15": "0x21a31ee1afc51d94c2e590aa8462985235223dd",
+    "Binance Hot Wallet 8": "0xf977814e90da44bfa03b6295a0616a897441acec",
+    "Binance Deposit A": "0x98ad7fbf89edf0400cf2438c275ea4c97d08076",
+    "Binance Deposit B": "0x2b5634c4bacb1ba2926305a8126473f2c1339fb",
+    "OKX Deposit": "0x503828976d325b136db6cd94adc1a2676700a664",
+    "OKX Hot Wallet": "0x5041ed759dd4fda3b0dabfc5e47263d48302102",
+    "Bybit Hot Wallet": "0xf89d7b9c864fbb9a8758c8c1748e7e08d8c088a",
+    "Bybit Deposit": "0x1db92d7411958a4910e5559c5aff8ff196965388",
+    "Rhino.fi Bridge": "0xb80a582fa430645a043bb4f6135321ee01005fef"
+  },
+  "depth0_hot_to_cex": {},
+  "depth1_hop_scans": {
+    "scanned": [
+      "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+      "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+      "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+      "0x3e0b65c9c31e9593e2b357be6eecd28bef6da03e",
+      "0x3a8b628934f9db7999499905bbf767331266b5b5",
+      "0xd0b5b1fa9122696bcab0cc5d5f4421e6d94a9e52",
+      "0x2a3cba35c2b427850c2047b2d79164a6227ebe7b",
+      "0x831c7f9ea511a161c037b6b682ade7d46695a08f"
+    ],
+    "nodes": {
+      "0x730ea0231808f42a20f8921ba7fbc788226768f5": {
+        "total_out_usdt": 19133.83,
+        "top_out": [
+          [
+            "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            19133.83,
+            null
+          ]
+        ]
+      },
+      "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08": {
+        "total_out_usdt": 0,
+        "top_out": []
+      },
+      "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a": {
+        "total_out_usdt": 0,
+        "top_out": []
+      },
+      "0x3e0b65c9c31e9593e2b357be6eecd28bef6da03e": {
+        "total_out_usdt": 0,
+        "top_out": []
+      },
+      "0x3a8b628934f9db7999499905bbf767331266b5b5": {
+        "total_out_usdt": 0,
+        "top_out": []
+      },
+      "0xd0b5b1fa9122696bcab0cc5d5f4421e6d94a9e52": {
+        "total_out_usdt": 4000.0,
+        "top_out": [
+          [
+            "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            4000.0,
+            null
+          ]
+        ]
+      },
+      "0x2a3cba35c2b427850c2047b2d79164a6227ebe7b": {
+        "total_out_usdt": 5972.97,
+        "top_out": [
+          [
+            "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            5972.97,
+            null
+          ]
+        ]
+      },
+      "0x831c7f9ea511a161c037b6b682ade7d46695a08f": {
+        "total_out_usdt": 2450.0,
+        "top_out": [
+          [
+            "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            2450.0,
+            null
+          ]
+        ]
+      }
+    },
+    "cex_hits_depth1": {},
+    "sample_edges": [
+      {
+        "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 4816.0,
+        "tx": "0xa7279140ccaefb092ea63690a1db6a5354acf3ccaf6368b7e80beb1bb5a93667",
+        "cex": null
+      },
+      {
+        "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 4797.0,
+        "tx": "0x7f9cba2507bf7aea6b9ec1d7e9273a31120b384a8ea4c0caa4ee0f3bf597727c",
+        "cex": null
+      },
+      {
+        "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 4797.0,
+        "tx": "0x1441d8b9eddb5cda67a03b04b682e1a2645d2a868877a89da8cef168054c3598",
+        "cex": null
+      },
+      {
+        "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 4723.83,
+        "tx": "0xc4c5b18bf3bcab377ebdb7890569405672b06ffcd797131ae1387776f89a91a3",
+        "cex": null
+      },
+      {
+        "from": "0xd0b5b1fa9122696bcab0cc5d5f4421e6d94a9e52",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 2000.0,
+        "tx": "0xf215d4771d053765a8a413e50341effb19ae27956cc3562453c5d5eee647e07b",
+        "cex": null
+      },
+      {
+        "from": "0xd0b5b1fa9122696bcab0cc5d5f4421e6d94a9e52",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 2000.0,
+        "tx": "0xefd16b27e453d15768b7fdb7c48692ffe6ef6fda2b8167cf02ecb650198f75e4",
+        "cex": null
+      },
+      {
+        "from": "0x2a3cba35c2b427850c2047b2d79164a6227ebe7b",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 4000.0,
+        "tx": "0x2e6db31b95595434661d9d148a2b9803fa5c85f03aa07286afd67a8e456276be",
+        "cex": null
+      },
+      {
+        "from": "0x2a3cba35c2b427850c2047b2d79164a6227ebe7b",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 1972.97,
+        "tx": "0xb48c6ed3090ea93fc46e132c5cfc259f1edacb1a3115a2081b936caf9e145763",
+        "cex": null
+      },
+      {
+        "from": "0x831c7f9ea511a161c037b6b682ade7d46695a08f",
+        "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "amount_usdt": 2450.0,
+        "tx": "0x15bd7480cb0504ce97992f6351eee5a136da569bcb86057935943e66f21b25a9",
+        "cex": null
+      }
+    ]
+  },
+  "depth2_note": "Prior recon scanned top 8 hops at depth1; all cex_hits_depth1 empty. OKX/Bybit deposit addresses in reference list had zero hits at depth0-1.",
+  "exchanges_scanned": {
+    "Binance": {
+      "confidence": "HIGH (funding only)",
+      "depth0_hits": 0,
+      "depth1_hits": 0,
+      "funding_link": true
+    },
+    "OKX": {
+      "confidence": "LOW",
+      "depth0_hits": 0,
+      "depth1_hits": 0,
+      "funding_link": false
+    },
+    "Bybit": {
+      "confidence": "LOW",
+      "depth0_hits": 0,
+      "depth1_hits": 0,
+      "funding_link": false
+    }
+  },
+  "verdict": {
+    "direct_hot_to_cex": false,
+    "cex_found_at_depth1": false,
+    "primary_offramp": "Rhino.fi bridge",
+    "next_step": "Trace Rhino.fi destination chain (Ethereum/Arbitrum/etc.) for CEX deposit patterns"
+  }
+}
