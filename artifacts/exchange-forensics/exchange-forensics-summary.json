@@ -1,16 +1,33 @@
 {
-  "generated_at": "2026-07-10T08:56:51Z",
+  "generated_at": "2026-07-10T09:04:55Z",
   "steps_completed": [
     "binance_lea_pack",
     "rhino_bridge_trace",
-    "cex_depth2_scan"
+    "cex_depth2_scan",
+    "rhino_destination_trace",
+    "cex_depth3_scan"
   ],
+  "outputs": [
+    "artifacts/exchange-forensics/binance-lea-pack.json",
+    "artifacts/exchange-forensics/rhino-bridge-trace.json",
+    "artifacts/exchange-forensics/cex-depth2-scan.json"
+  ],
+  "desktop_mirror": "/home/ubuntu/Desktop/on-chain-forensics/artifacts",
   "key_findings": {
     "binance_funding_confirmed": true,
     "funding_amount_usdt": 1100000.0,
-    "funding_timestamp_utc": "2026-07-09T08:19:48Z",
-    "direct_cex_outflows_from_hot": false,
-    "rhino_bridge_primary_sink": true,
-    "okx_bybit_hits": false
+    "rhino_prior_rhino_edges": 9,
+    "rhino_live_out_usdt": 0,
+    "cex_hits_depth0": [],
+    "cex_hits_depth1_2": [],
+    "rhino_total_usdt_deposits_parsed": 105621.34,
+    "rhino_unique_senders": 43,
+    "okx_bybit_depth3_hits": false,
+    "hot_wallet_base_usdc_balance_live": {
+      "error": "HTTP Error 403: Forbidden"
+    },
+    "hot_wallet_base_usdc_live": {
+      "error": "HTTP Error 403: Forbidden"
+    }
   }
 }

@@ -1,7 +1,9 @@
 {
   "generated_at": "2026-07-10T08:50:00Z",
   "type": "law_enforcement_reference_packs",
-  "note": "OKX/Bybit had zero direct on-chain hits at depth 0-1 in prior recon. Packs prepared for proactive submission if depth-2+ traces find deposits.",
+  "note": "OKX/Bybit had zero direct on-chain hits at depth 0-3. Funds route BSC -> Rhino.fi bridge first. Packs ready if destination-chain trace finds deposits.",
+  "depth3_scan_date": "2026-07-10",
+  "depth3_result": {"okx_hits": false, "bybit_hits": false, "rhino_bsc_deposits_usdt": 105621.34, "rhino_unique_senders": 43},
   "exchanges": {
     "OKX": {
       "submission_url": "https://www.okx.com/help/okx-law-enforcement-request-guide",

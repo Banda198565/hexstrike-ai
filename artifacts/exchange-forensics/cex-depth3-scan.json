@@ -1,0 +1,116 @@
+{
+  "generated_at": "2026-07-10T09:04:55Z",
+  "task": "cex-depth3-scan",
+  "mode": "read-only",
+  "prior_depth0_1": {
+    "okx_hits": 0,
+    "bybit_hits": 0,
+    "binance_outflow_hits": 0
+  },
+  "depth3": {
+    "rhino_deposit_senders": [
+      "0x122a642d8aadf3e7e61879ec465e51b2a327b644",
+      "0x170d603b9991e50cce3eb5e669d62149322ce23d",
+      "0x23461896903338908822d6c8f4d46baf538566eb",
+      "0x245f954d2c92cc90fc422255c510b327a25aac9e",
+      "0x2a3cba35c2b427850c2047b2d79164a6227ebe7b",
+      "0x32050abb9f17f9736d2c9f4801758966df6c0d94",
+      "0x4319e4748980aecfc5a55e27e8373e8d3be28b7c",
+      "0x49dcd9ee52cd6977c84f95d7dab3602fa2af6791",
+      "0x64187fc84a8623eb1a89f70a8dd8bd627bd29faf",
+      "0x65f6710b0ded2149b174dd27483f40c5cedc5ac0",
+      "0x6678e6ca4f1298bf37de1fc1a5f35c0885903fb5",
+      "0x6977262a9a9b2eaaf7c20903b45798b1676ea7fd",
+      "0x6ca488b23f40e0fd6cd0690869b2004426c5a4ee",
+      "0x6edc0f3aa56e4dc8754a5c6874512c5e01150440",
+      "0x70fc792a97cafe2a663d114d69cd1326d85b37e3",
+      "0x71e317c6b2d17149032bdada0159919a0413be66",
+      "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+      "0x74f62121a4927a844f50a2168e3a8d387a2d43b6",
+      "0x78f1603e0940494355f2b2ebb7278bbc2915d7e9",
+      "0x7d9b1bc8fc154e3d43968d897a56109e2567e1f5",
+      "0x831c7f9ea511a161c037b6b682ade7d46695a08f",
+      "0x90beea7d3a8b0928658dd60f019a279792decac5",
+      "0x93ad6f737538cfc034c3cc845679306239cecc80",
+      "0x991287cc6240f40775339998346ad504475547c4",
+      "0xa0a12e1115c49e9df5825fcd1d0eca97ce9336a6",
+      "0xa26e2734a11423e25748a1919dd5d3032e3600c2",
+      "0xab97c79db7a772c7deba481c7cc7a4e4aa63a242",
+      "0xb2f75f400ded320a2158a483c3e4014cab1400bb",
+      "0xb974a85550aed45631003d409a93de1897aaaf1f",
+      "0xbd8e2a5c05f8372654e3f4a952d6709471330f81",
+      "0xbfdd0571da669433f11f6da82ff2190fb796e442",
+      "0xc02157ea68ef5c0a939b3d7fbc0061bd8a63d747",
+      "0xce13fd5b8d8e0720c392e9496b8f3faf2a36a1ce",
+      "0xd0b5b1fa9122696bcab0cc5d5f4421e6d94a9e52",
+      "0xeba9529d056527398eebd4a82c684bfd55745029",
+      "0xeca05e35714707615908d87abfe8b89e0235ce0a",
+      "0xed08d037c428143478b26a041b0f3fda00f4e6d6",
+      "0xeddb2f797722253c41764bc98e9a9df663423777",
+      "0xee92f37e2fd0e7fe29e6b345cf136f86dba585bb",
+      "0xf6229355268c65b879e6b8bd8ed7e61e078f3b28",
+      "0xf856298c4bab75bbb62c57f66b317d10165e6967",
+      "0xfb78a2350f10d76a65606d2887276ff1d12a0913",
+      "0xfbd3d8386401fc5c5558393ad367aa4107c142e7"
+    ],
+    "hops_without_rhino_deposit": [
+      "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+      "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+      "0x3e0b65c9c31e9593e2b357be6eecd28bef6da03e"
+    ],
+    "details": [
+      {
+        "address": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "received_usdt": 22486.98,
+        "sent_to_rhino": true
+      },
+      {
+        "address": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+        "received_usdt": 12268.34,
+        "sent_to_rhino": false
+      },
+      {
+        "address": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+        "received_usdt": 11804.0,
+        "sent_to_rhino": false
+      },
+      {
+        "address": "0x3e0b65c9c31e9593e2b357be6eecd28bef6da03e",
+        "received_usdt": 9758.49,
+        "sent_to_rhino": false
+      },
+      {
+        "address": "0xd0b5b1fa9122696bcab0cc5d5f4421e6d94a9e52",
+        "received_usdt": 6000.0,
+        "sent_to_rhino": true
+      },
+      {
+        "address": "0x2a3cba35c2b427850c2047b2d79164a6227ebe7b",
+        "received_usdt": 5972.97,
+        "sent_to_rhino": true
+      },
+      {
+        "address": "0x831c7f9ea511a161c037b6b682ade7d46695a08f",
+        "received_usdt": 5450.0,
+        "sent_to_rhino": true
+      },
+      {
+        "address": "0x6977262a9a9b2eaaf7c20903b45798b1676ea7fd",
+        "received_usdt": 4998.67,
+        "sent_to_rhino": true
+      }
+    ]
+  },
+  "cex_reference_okx_bybit": {
+    "OKX_BSC": "0x503828976d325b136db6cd94adc1a2676700a664",
+    "OKX_ARB": "0x88a6693783035c1d130f2e4c1e8fce6ffedbcf81",
+    "OKX_BASE": "0x3304e22d7222793999f1c52ea872670d4c376105",
+    "Bybit_BSC": "0x1db92d7411958a4910e5559c5aff8ff196965388",
+    "Bybit_ARB": "0x489ee0779945678d1e711e0881f0e7a0d4936bf4"
+  },
+  "verdict": {
+    "okx_depth3_hits": false,
+    "bybit_depth3_hits": false,
+    "note": "No OKX/Bybit deposit at depth0-3 in sampled window; funds bridge off BSC first"
+  }
+}
