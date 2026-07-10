@@ -1,4 +1,4 @@
-"""Safe transaction broadcaster: gas estimation, slippage guard, human approval gate."""
+"""Safe transaction broadcaster: gas estimation, slippage guard, sniping profiles."""
 
 from __future__ import annotations
 
@@ -8,10 +8,21 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from hexstrike.bus.context_bus import ContextBus
+from hexstrike.integrations.rpc_client import StealthRpcClient
 from hexstrike.paths import PENDING_ACTION, RPC_CONFIG, ROOT
 
 sys.path.insert(0, str(ROOT / "scripts"))
-from crypto_rpc_orchestrator import load_config, rpc_with_fallback  # noqa: E402
+from crypto_rpc_orchestrator import load_config  # noqa: E402
+
+
+@dataclass
+class SnipingProfile:
+    """Competitive tx parameters for time-sensitive execution."""
+
+    priority_fee_gwei: float = 3.0
+    max_fee_multiplier: float = 1.25
+    gas_limit_buffer_pct: float = 15.0
+    use_fastest_rpc: bool = True
 
 
 @dataclass
@@ -19,19 +30,28 @@ class PreflightResult:
     ok: bool
     gas_estimate: int | None = None
     gas_price_wei: int | None = None
+    max_fee_per_gas: int | None = None
+    max_priority_fee_per_gas: int | None = None
+    recommended_rpc: str | None = None
     max_slippage_bps: int = 50
+    sniping_ready: bool = False
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
 
 @dataclass
 class ExecutionBroadcaster:
-    """Controlled execution layer — never broadcasts without operator approval."""
+    """Controlled execution layer — sniping-ready but never auto-broadcasts without approval."""
 
     bus: ContextBus
     config_path: Any = RPC_CONFIG
     default_slippage_bps: int = 50
     require_approval: bool = True
+    sniping: SnipingProfile = field(default_factory=SnipingProfile)
+    _rpc: StealthRpcClient | None = None
+
+    def __post_init__(self) -> None:
+        self._rpc = StealthRpcClient(self.config_path)
 
     def _rpc_endpoints(self) -> list[str]:
         cfg = load_config(self.config_path)
@@ -42,27 +62,36 @@ class ExecutionBroadcaster:
         tx: dict[str, Any],
         *,
         max_slippage_bps: int | None = None,
+        sniping: bool = False,
     ) -> PreflightResult:
-        """Estimate gas and validate slippage bounds before any broadcast."""
+        """Estimate gas and build EIP-1559 fee envelope for sniping when requested."""
         slippage = max_slippage_bps if max_slippage_bps is not None else self.default_slippage_bps
         result = PreflightResult(ok=False, max_slippage_bps=slippage)
-        endpoints = self._rpc_endpoints()
 
         try:
-            _, gas_resp = rpc_with_fallback(endpoints, "eth_estimateGas", [tx], timeout=12.0)
+            url, gas_resp = self._rpc.call("eth_estimateGas", [tx], timeout=12.0)  # type: ignore[union-attr]
+            result.recommended_rpc = url
             if gas_resp.get("error"):
                 result.errors.append(str(gas_resp["error"]))
             else:
-                result.gas_estimate = int(gas_resp.get("result", "0x0"), 16)
+                base_gas = int(gas_resp.get("result", "0x0"), 16)
+                buffer = 1.0 + (self.sniping.gas_limit_buffer_pct / 100.0 if sniping else 0.05)
+                result.gas_estimate = int(base_gas * buffer)
         except Exception as exc:  # noqa: BLE001
             result.errors.append(f"gas_estimate failed: {exc}")
 
         try:
-            _, price_resp = rpc_with_fallback(endpoints, "eth_gasPrice", [], timeout=8.0)
+            _, price_resp = self._rpc.call("eth_gasPrice", [], timeout=8.0)  # type: ignore[union-attr]
             if price_resp.get("result"):
                 result.gas_price_wei = int(price_resp["result"], 16)
         except Exception as exc:  # noqa: BLE001
             result.warnings.append(f"gas_price unavailable: {exc}")
+
+        if sniping and result.gas_price_wei:
+            priority = int(self.sniping.priority_fee_gwei * 1e9)
+            result.max_priority_fee_per_gas = priority
+            result.max_fee_per_gas = int(result.gas_price_wei * self.sniping.max_fee_multiplier) + priority
+            result.sniping_ready = result.ok or not result.errors
 
         if slippage > 500:
             result.warnings.append(f"slippage {slippage}bps exceeds recommended 500bps cap")
@@ -74,6 +103,8 @@ class ExecutionBroadcaster:
                 "ok": result.ok,
                 "gas_estimate": result.gas_estimate,
                 "gas_price_wei": result.gas_price_wei,
+                "max_fee_per_gas": result.max_fee_per_gas,
+                "sniping_ready": result.sniping_ready,
                 "slippage_bps": slippage,
                 "errors": result.errors,
             },
@@ -95,6 +126,8 @@ class ExecutionBroadcaster:
             "ok": pre.ok,
             "gas_estimate": pre.gas_estimate,
             "gas_price_wei": pre.gas_price_wei,
+            "max_fee_per_gas": pre.max_fee_per_gas,
+            "sniping_ready": pre.sniping_ready,
             "errors": pre.errors,
         }
 
@@ -118,9 +151,7 @@ class ExecutionBroadcaster:
 
         endpoints = self._rpc_endpoints()
         try:
-            url, resp = rpc_with_fallback(
-                endpoints, "eth_sendRawTransaction", [signed_tx_hex], timeout=15.0
-            )
+            url, resp = self._rpc.call("eth_sendRawTransaction", [signed_tx_hex], timeout=15.0)  # type: ignore[union-attr]
             if resp.get("error"):
                 self.bus.publish("execution.failed", resp, source="core.execution")
                 return {"success": False, "error": resp["error"], "rpc": url}

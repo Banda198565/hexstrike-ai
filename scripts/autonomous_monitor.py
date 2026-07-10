@@ -14,10 +14,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import requests
-
+# Bootstrap src/ package (production architecture)
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
+
+from hexstrike.compat.bootstrap import bootstrap_paths
+
+bootstrap_paths()
+
+import requests
 
 from context_utils import load_master_context
 from api_auth import api_headers, get_api_key, hexstrike_handshake, load_dotenv
@@ -27,6 +33,7 @@ from crypto_rpc_orchestrator import (
     normalize_addr,
     rpc_with_fallback,
 )
+from hexstrike.integrations.rpc_client import StealthRpcClient
 from rag_core import (
     RagStorageError,
     index_false_positive,
@@ -439,6 +446,14 @@ def process_transaction(
     }
 
 
+def _fetch_txpool(config_path: Path, endpoints: list[str], timeout: float) -> tuple[str, dict[str, Any]]:
+    """Fetch txpool via stealth RPC (default) or legacy fallback."""
+    if os.environ.get("HEXSTRIKE_STEALTH", "1") != "0":
+        client = StealthRpcClient(config_path)
+        return client.call("txpool_content", [], timeout=timeout)
+    return rpc_with_fallback(endpoints, "txpool_content", [], timeout=timeout)
+
+
 def run_monitor(
     config_path: Path,
     poll_interval: float = 1.0,
@@ -472,6 +487,8 @@ def run_monitor(
     print(f"[monitor] Feedback ignores: {len(ignored_hashes)} tx hashes")
     print(f"[monitor] Alerts log: {ALERTS_LOG}")
     print(f"[monitor] Desktop alert: {DESKTOP_ALERT}")
+    stealth_on = os.environ.get("HEXSTRIKE_STEALTH", "1") != "0"
+    print(f"[monitor] Stealth transport: {'on' if stealth_on else 'off'}")
 
     start = time.time()
     polls = 0
@@ -486,7 +503,7 @@ def run_monitor(
         ignored_hashes = load_feedback_ignored(state)
 
         try:
-            active_rpc, resp = rpc_with_fallback(endpoints, "txpool_content", [], timeout=timeout)
+            active_rpc, resp = _fetch_txpool(config_path, endpoints, timeout)
             content = resp.get("result") or {}
         except Exception as exc:
             print(f"[warn] RPC error (poll {polls}): {exc} — reconnect in {RECONNECT_DELAY}s")

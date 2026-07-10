@@ -25,6 +25,10 @@ class ChainTracerSkill:
             "depth": depth,
             "nodes": [{**entity, "level": 0}],
             "edges": [],
+            "gas_pattern_analysis": {
+                "status": "heuristic",
+                "note": "Cluster recipients by gas_price tier and nonce velocity",
+            },
         }
 
         # Depth-1 placeholder: emit trace request for external Blockscout/multichain workers

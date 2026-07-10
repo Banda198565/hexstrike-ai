@@ -1,4 +1,4 @@
-"""Mempool monitor wrapping Geth txpool with failover and ContextBus integration."""
+"""Mempool monitor wrapping Geth txpool with failover, stealth transport, and ContextBus."""
 
 from __future__ import annotations
 
@@ -9,15 +9,12 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from hexstrike.bus.context_bus import ContextBus
+from hexstrike.core.stealth.transport import StealthConfig, StealthTransport
+from hexstrike.integrations.rpc_client import StealthRpcClient
 from hexstrike.paths import RPC_CONFIG, ROOT
 
-# Legacy script imports (backward compatible)
 sys.path.insert(0, str(ROOT / "scripts"))
-from crypto_rpc_orchestrator import (  # noqa: E402
-    iter_txpool_txs,
-    load_config,
-    rpc_with_fallback,
-)
+from crypto_rpc_orchestrator import iter_txpool_txs, load_config  # noqa: E402
 
 
 @dataclass
@@ -26,43 +23,48 @@ class MonitorConfig:
     poll_interval: float = 1.0
     rpc_timeout: float = 8.0
     reconnect_delay: float = 5.0
+    stealth_enabled: bool = True
 
 
 @dataclass
 class MempoolMonitor:
-    """Stream mempool transactions via Geth JSON-RPC with automatic endpoint failover."""
+    """Stream mempool transactions via Geth JSON-RPC with stealth + auto-failover."""
 
     bus: ContextBus
     config: MonitorConfig = field(default_factory=MonitorConfig)
     _active_rpc: str = ""
     _running: bool = False
+    _rpc: StealthRpcClient | None = None
+
+    def __post_init__(self) -> None:
+        stealth_cfg = StealthConfig(enabled=self.config.stealth_enabled)
+        self._rpc = StealthRpcClient(self.config.config_path, stealth=stealth_cfg)
 
     def _endpoints(self) -> list[str]:
         cfg = load_config(self.config.config_path)
         return [cfg["primary"], *cfg.get("fallbacks", [])]
 
     def health(self) -> dict[str, Any]:
-        endpoints = self._endpoints()
         try:
-            url, resp = rpc_with_fallback(endpoints, "eth_chainId", [], timeout=self.config.rpc_timeout)
+            url, resp = self._rpc.call("eth_chainId", [], timeout=self.config.rpc_timeout)  # type: ignore[union-attr]
             return {
                 "status": "ok",
                 "active_rpc": url,
                 "chain_id": resp.get("result"),
+                "stealth": self._rpc.transport.status() if self._rpc else {},  # type: ignore[union-attr]
             }
         except Exception as exc:  # noqa: BLE001
-            return {"status": "error", "error": str(exc), "endpoints": endpoints}
+            return {"status": "error", "error": str(exc), "endpoints": self._endpoints()}
 
     def poll_once(self) -> list[dict[str, Any]]:
-        endpoints = self._endpoints()
         try:
-            self._active_rpc, resp = rpc_with_fallback(
-                endpoints, "txpool_content", [], timeout=self.config.rpc_timeout
+            self._active_rpc, resp = self._rpc.call(  # type: ignore[union-attr]
+                "txpool_content", [], timeout=self.config.rpc_timeout
             )
         except Exception as exc:
             self.bus.publish(
                 "monitor.rpc_error",
-                {"error": str(exc), "endpoints": endpoints},
+                {"error": str(exc), "endpoints": self._endpoints()},
                 source="core.monitor",
             )
             raise
@@ -71,7 +73,7 @@ class MempoolMonitor:
         txs = list(iter_txpool_txs(content))
         self.bus.publish(
             "monitor.poll",
-            {"rpc": self._active_rpc, "tx_count": len(txs)},
+            {"rpc": self._active_rpc, "tx_count": len(txs), "stealth": True},
             source="core.monitor",
         )
         return txs

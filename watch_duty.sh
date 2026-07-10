@@ -85,7 +85,7 @@ trap cleanup SIGINT SIGTERM
 log "Боевое дежурство HexStrike-AI начато."
 log "Python: $PYTHON"
 log "Orchestrator: $ORCHESTRATOR"
-log "Health interval: ${HEALTH_INTERVAL}s"
+log "Stealth: ${HEXSTRIKE_STEALTH:-1} | Health interval: ${HEALTH_INTERVAL}s"
 
 run_health
 start_server

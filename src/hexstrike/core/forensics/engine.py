@@ -1,4 +1,4 @@
-"""Chain analysis engine: Blockscout/multichain traces + cex-cluster-map."""
+"""Chain analysis engine: Blockscout/multichain traces + cex-cluster-map + bytecode."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from typing import Any
 
 from hexstrike.bus.context_bus import ContextBus
 from hexstrike.paths import ARTIFACTS_DIR, MASTER_CONTEXT, ROOT
+from hexstrike.skills.bytecode_deobfuscator import BytecodeDeobfuscatorSkill
 
 sys.path.insert(0, str(ROOT / "scripts"))
 from context_utils import get_cex_cluster_payload, load_master_context  # noqa: E402
@@ -17,11 +18,23 @@ from context_utils import get_cex_cluster_payload, load_master_context  # noqa: 
 
 @dataclass
 class ForensicsEngine:
-    """Unified forensics context loader and on-chain entity resolver."""
+    """Unified forensics context loader, entity resolver, and bytecode analyst."""
 
     bus: ContextBus
     context_path: Path = MASTER_CONTEXT
     out_dir: Path = field(default_factory=lambda: ARTIFACTS_DIR / "forensics")
+    _bytecode: BytecodeDeobfuscatorSkill | None = None
+
+    def __post_init__(self) -> None:
+        self._bytecode = BytecodeDeobfuscatorSkill(bus=self.bus)
+
+    def analyze_contract(self, address: str) -> dict[str, Any]:
+        """Bytecode deobfuscation + entity labels."""
+        entity = self.resolve_entity(address)
+        bytecode = self._bytecode.deobfuscate_proxy(address) if self._bytecode else {}
+        merged = {**entity, "bytecode": bytecode}
+        self.bus.publish("forensics.contract_analyzed", merged, source="core.forensics")
+        return merged
 
     def load_context(self) -> dict[str, Any] | None:
         ctx = load_master_context(self.context_path)

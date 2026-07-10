@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""HexStrike-AI orchestrator — wires core modules, skills, and MCPs via ContextBus."""
+"""HexStrike-AI orchestrator — central dispatcher for modules, skills, and MCPs."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -17,35 +18,39 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from hexstrike.bus.context_bus import ContextBus
-from hexstrike.core.execution.broadcaster import ExecutionBroadcaster
+from hexstrike.core.execution.broadcaster import ExecutionBroadcaster, SnipingProfile
 from hexstrike.core.forensics.engine import ForensicsEngine
 from hexstrike.core.monitor.mempool import MempoolMonitor, MonitorConfig
+from hexstrike.core.stealth.transport import StealthConfig, StealthTransport
 from hexstrike.core.vault.keystore import KeyVault
 from hexstrike.mcp.execution_gate import ExecutionGateMcp
 from hexstrike.mcp.github_bridge import GithubBridgeMcp
 from hexstrike.mcp.rag_memory import RagMemoryMcp
 from hexstrike.mcp.rpc_gateway import RpcGatewayMcp
 from hexstrike.paths import MANIFEST_PATH, PENDING_ACTION, RPC_CONFIG
+from hexstrike.skills.bytecode_deobfuscator import BytecodeDeobfuscatorSkill
 from hexstrike.skills.chain_tracer import ChainTracerSkill
 from hexstrike.skills.dedup_engine import DedupEngine
 from hexstrike.skills.recon_osint import ReconOsintSkill
+from hexstrike.skills.timing_analysis import TimingAnalysisSkill
 from hexstrike.skills.vulnerability_scanner import VulnerabilityScanner
 
 
 class HexStrikeOrchestrator:
-    """Central brain connecting recon → forensics → execution with shared ContextBus."""
+    """Central dispatcher: recon → forensics → execution with ContextBus."""
 
     def __init__(self, config_path: Path = RPC_CONFIG) -> None:
         self.bus = ContextBus()
         self.config_path = config_path
 
+        self.stealth = StealthTransport(StealthConfig())
         self.monitor = MempoolMonitor(
             bus=self.bus,
-            config=MonitorConfig(config_path=config_path),
+            config=MonitorConfig(config_path=config_path, stealth_enabled=True),
         )
         self.forensics = ForensicsEngine(bus=self.bus)
-        self.broadcaster = ExecutionBroadcaster(bus=self.bus, config_path=config_path)
-        self.vault = KeyVault(bus=self.bus)
+        self.broadcaster = ExecutionBroadcaster(bus=self.bus, config_path=config_path, sniping=SnipingProfile())
+        self.vault = KeyVault(bus=self.bus, prefer_ramdisk=True)
 
         self.rpc_mcp = RpcGatewayMcp(bus=self.bus, monitor=self.monitor)
         self.rag_mcp = RagMemoryMcp(bus=self.bus)
@@ -55,24 +60,29 @@ class HexStrikeOrchestrator:
         self.recon = ReconOsintSkill(bus=self.bus)
         self.chain_tracer = ChainTracerSkill(bus=self.bus, forensics=self.forensics)
         self.dedup = DedupEngine(bus=self.bus)
+        self.timing = TimingAnalysisSkill(bus=self.bus, config_path=config_path)
+        self.bytecode = BytecodeDeobfuscatorSkill(bus=self.bus, config_path=config_path)
         self.vuln_scanner = VulnerabilityScanner(bus=self.bus)
 
         self._wire_bus_logging()
 
     def _wire_bus_logging(self) -> None:
         def _log(event) -> None:
-            if event.topic.startswith(("monitor.", "execution.", "mcp.execution.")):
+            if event.topic.startswith(("monitor.", "execution.", "mcp.execution.", "skill.")):
                 print(f"[bus] {event.topic} ← {event.source}")
 
         self.bus.subscribe("*", _log)
 
     def health(self) -> dict[str, Any]:
+        timing_best = self.timing.recommend_endpoint()
         return {
             "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             "rpc": self.rpc_mcp.health(),
+            "stealth": self.stealth.status(),
             "vault": self.vault.status(),
             "execution_gate": self.execution_mcp.status(),
             "dedup": self.dedup.snapshot(),
+            "timing_best_rpc": timing_best.get("endpoint") if isinstance(timing_best, dict) else None,
             "forensics_entries": len((self.forensics.load_context() or {}).get("entries", [])),
         }
 
@@ -85,8 +95,11 @@ class HexStrikeOrchestrator:
             "last_health_check": health["timestamp"],
             "rpc_status": health["rpc"].get("status"),
             "active_rpc": health["rpc"].get("active_rpc"),
+            "stealth_enabled": health["stealth"].get("enabled"),
+            "vault_backend": health["vault"].get("storage_backend"),
             "pending_action": health["execution_gate"].get("has_pending"),
             "dedup_pairs": health["dedup"].get("active_pairs"),
+            "timing_best_rpc": health.get("timing_best_rpc"),
         }
         manifest["updated_at"] = health["timestamp"]
         manifest["runtime"] = runtime
@@ -111,6 +124,12 @@ class HexStrikeOrchestrator:
     def run_recon(self, limit: int = 3) -> list[dict[str, Any]]:
         return self.recon.scan_rpc_nodes(limit=limit)
 
+    def run_timing(self) -> dict[str, Any]:
+        return self.timing.recommend_endpoint()
+
+    def run_bytecode(self, address: str) -> dict[str, Any]:
+        return self.forensics.analyze_contract(address)
+
     def run_vuln_scan(self) -> dict[str, Any]:
         return self.vuln_scanner.run_full_scan()
 
@@ -120,7 +139,6 @@ class HexStrikeOrchestrator:
         duration_seconds: int | None = None,
         delegate_legacy: bool = True,
     ) -> dict[str, Any]:
-        """Run mempool monitoring — delegates to legacy autonomous_monitor when available."""
         if delegate_legacy:
             legacy = ROOT / "scripts" / "autonomous_monitor.py"
             if legacy.is_file():
@@ -133,7 +151,6 @@ class HexStrikeOrchestrator:
         alerts = 0
         dedup_skipped = 0
         txs = 0
-        deadline = time.time() + duration_seconds if duration_seconds else None
 
         for tx in self.monitor.stream(duration_seconds=duration_seconds):
             txs += 1
@@ -157,21 +174,33 @@ class HexStrikeOrchestrator:
                 severity=alert["severity"],
             )
             alerts += 1
-            if deadline and time.time() >= deadline:
-                break
 
         return {"mode": "orchestrator", "txs": txs, "alerts": alerts, "dedup_skipped": dedup_skipped}
 
     def status(self) -> dict[str, Any]:
         return {
+            "version": "8.0.0",
             "components": {
-                "monitor": "active",
-                "forensics": "active",
-                "execution": "active",
-                "vault": self.vault.status(),
-                "skills": ["recon_osint", "chain_tracer", "dedup_engine", "vulnerability_scanner"],
-                "mcps": ["rpc_gateway", "rag_memory", "execution_gate", "github_bridge"],
+                "core.monitor": "active",
+                "core.stealth": self.stealth.status(),
+                "core.forensics": "active",
+                "core.execution": "active",
+                "core.vault": self.vault.status(),
             },
+            "skills": [
+                "skill.recon_osint",
+                "skill.chain_tracer",
+                "skill.timing_analysis",
+                "skill.vulnerability_scanner",
+                "skill.dedup_engine",
+                "skill.bytecode_deobfuscator",
+            ],
+            "mcps": [
+                "mcp_rpc_gateway",
+                "mcp_rag_memory",
+                "mcp_execution_gate",
+                "mcp_github_bridge",
+            ],
             "pending_action": str(PENDING_ACTION),
             "manifest": str(MANIFEST_PATH),
         }
@@ -189,11 +218,15 @@ def main() -> int:
     recon_p = sub.add_parser("recon", help="Passive RPC recon scan")
     recon_p.add_argument("--limit", type=int, default=3)
 
+    sub.add_parser("timing", help="RPC latency profile for gas-war positioning")
     sub.add_parser("vuln-scan", help="Run vulnerability scanner")
+
+    bc_p = sub.add_parser("bytecode", help="Analyze contract bytecode")
+    bc_p.add_argument("address", help="Contract address (0x...)")
 
     mon_p = sub.add_parser("monitor", help="Run mempool monitor loop")
     mon_p.add_argument("--duration", type=int, default=None)
-    mon_p.add_argument("--native", action="store_true", help="Use orchestrator native loop (not legacy script)")
+    mon_p.add_argument("--native", action="store_true", help="Use orchestrator native loop")
 
     args = parser.parse_args()
     orch = HexStrikeOrchestrator(config_path=Path(args.config))
@@ -204,13 +237,22 @@ def main() -> int:
     if args.command == "health":
         result = orch.run_health_suite()
         orch.update_manifest()
-        print(json.dumps(result, indent=2) if isinstance(result, dict) else result.get("stdout", ""))
-        return 0 if (isinstance(result, dict) and result.get("returncode", 0) == 0) else 0
+        if isinstance(result, dict) and "stdout" in result:
+            print(result.get("stdout", ""))
+        else:
+            print(json.dumps(result, indent=2))
+        return 0
     if args.command == "manifest":
         print(json.dumps(orch.update_manifest(), indent=2))
         return 0
     if args.command == "recon":
         print(json.dumps(orch.run_recon(limit=args.limit), indent=2))
+        return 0
+    if args.command == "timing":
+        print(json.dumps(orch.run_timing(), indent=2))
+        return 0
+    if args.command == "bytecode":
+        print(json.dumps(orch.run_bytecode(args.address), indent=2))
         return 0
     if args.command == "vuln-scan":
         print(json.dumps(orch.run_vuln_scan(), indent=2))

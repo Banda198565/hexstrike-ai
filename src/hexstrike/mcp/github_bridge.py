@@ -32,6 +32,33 @@ class GithubBridgeMcp:
         expected = hmac.new(secret, payload, hashlib.sha256).hexdigest()
         return hmac.compare_digest(f"sha256={expected}", signature_header)
 
+    def ingest_pull_request(self, payload: dict[str, Any], *, verified: bool = False) -> dict[str, Any]:
+        pr = payload.get("pull_request") or {}
+        record = self.ingest("pull_request", payload, verified=verified)
+        record["pr_number"] = pr.get("number")
+        record["pr_title"] = pr.get("title")
+        record["pr_state"] = pr.get("state")
+        self.bus.publish(
+            "mcp.github.pull_request",
+            {"number": record.get("pr_number"), "action": payload.get("action")},
+            source="mcp_github_bridge",
+        )
+        return record
+
+    def ingest_push(self, payload: dict[str, Any], *, verified: bool = False) -> dict[str, Any]:
+        record = self.ingest("push", payload, verified=verified)
+        record["ref"] = payload.get("ref")
+        record["commits"] = len(payload.get("commits") or [])
+        head = payload.get("head_commit") or {}
+        record["head_sha"] = head.get("id")
+        record["head_message"] = head.get("message")
+        self.bus.publish(
+            "mcp.github.push",
+            {"ref": record.get("ref"), "commits": record.get("commits"), "sha": record.get("head_sha")},
+            source="mcp_github_bridge",
+        )
+        return record
+
     def ingest(self, event_type: str, payload: dict[str, Any], *, verified: bool = False) -> dict[str, Any]:
         record = {
             "event_type": event_type,

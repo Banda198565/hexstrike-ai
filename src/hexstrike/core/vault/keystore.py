@@ -13,10 +13,27 @@ from typing import Any
 
 from hexstrike.bus.context_bus import ContextBus
 from hexstrike.paths import ARTIFACTS_DIR
+import os
+import platform
 
 
 class VaultError(RuntimeError):
     pass
+
+
+def resolve_vault_storage(prefer_ramdisk: bool = True) -> Path:
+    """Prefer RAM-backed storage for high-value vault material when available."""
+    if prefer_ramdisk:
+        if platform.system() == "Linux" and Path("/dev/shm").is_dir():
+            path = Path("/dev/shm/hexstrike-vault")
+            path.mkdir(parents=True, exist_ok=True)
+            return path
+        if platform.system() == "Darwin":
+            ram = Path("/Volumes/RAMDisk/hexstrike-vault")
+            if ram.parent.exists():
+                ram.mkdir(parents=True, exist_ok=True)
+                return ram
+    return ARTIFACTS_DIR / "vault"
 
 
 def _derive_key(passphrase: str, salt: bytes) -> bytes:
@@ -48,12 +65,21 @@ def _aes_decrypt(blob: bytes, key: bytes) -> bytes:
 
 @dataclass
 class KeyVault:
-    """Local encrypted key storage. Private material never published on ContextBus."""
+    """Local encrypted key storage with optional RAM-disk backing."""
 
     bus: ContextBus
-    vault_path: Path = field(default_factory=lambda: ARTIFACTS_DIR / "vault" / "keystore.enc")
+    vault_dir: Path | None = None
+    vault_path: Path | None = None
+    prefer_ramdisk: bool = True
     _unlocked: bool = False
     _keys: dict[str, str] = field(default_factory=dict, repr=False)
+    _artifacts: dict[str, bytes] = field(default_factory=dict, repr=False)
+
+    def __post_init__(self) -> None:
+        base = self.vault_dir or resolve_vault_storage(self.prefer_ramdisk)
+        if self.vault_path is None:
+            self.vault_path = base / "keystore.enc"
+        self._artifact_dir = base / "artifacts"
 
     def _require_passphrase(self, passphrase: str) -> None:
         if not passphrase:
@@ -75,12 +101,18 @@ class KeyVault:
         except Exception as exc:
             raise VaultError("Invalid passphrase or corrupted vault") from exc
 
-        self._keys = {k: v for k, v in data.items() if isinstance(v, str)}
+        if "keys" in data:
+            self._keys = {k: v for k, v in data.get("keys", {}).items() if isinstance(v, str)}
+            self._artifacts = {k: base64.b64decode(v) for k, v in data.get("artifacts", {}).items()}
+        else:
+            self._keys = {k: v for k, v in data.items() if isinstance(v, str)}
+            self._artifacts = {}
         self._unlocked = True
         self.bus.publish("vault.unlocked", {"keys": len(self._keys)}, source="core.vault")
 
     def lock(self) -> None:
         self._keys.clear()
+        self._artifacts.clear()
         self._unlocked = False
         self.bus.publish("vault.locked", {}, source="core.vault")
 
@@ -103,18 +135,38 @@ class KeyVault:
     def list_key_names(self) -> list[str]:
         return list(self._keys.keys()) if self._unlocked else []
 
+    def store_artifact(self, name: str, data: bytes, passphrase: str) -> None:
+        """Store high-value binary artifact encrypted alongside keys."""
+        if not self._unlocked:
+            self.unlock(passphrase)
+        self._artifacts[name] = data
+        self._save(passphrase)
+        self.bus.publish("vault.artifact_stored", {"name": name, "bytes": len(data)}, source="core.vault")
+
+    def get_artifact(self, name: str) -> bytes:
+        if not self._unlocked:
+            raise VaultError("Vault is locked")
+        if name not in self._artifacts:
+            raise VaultError(f"Artifact not found: {name}")
+        return self._artifacts[name]
+
     def _save(self, passphrase: str) -> None:
         salt = secrets.token_bytes(16)
         key = _derive_key(passphrase, salt)
-        payload = json.dumps(self._keys).encode("utf-8")
+        payload = json.dumps({"keys": self._keys, "artifacts": {k: base64.b64encode(v).decode() for k, v in self._artifacts.items()}}).encode("utf-8")
         encrypted = _aes_encrypt(payload, key)
+        assert self.vault_path is not None
         self.vault_path.parent.mkdir(parents=True, exist_ok=True)
         self.vault_path.write_bytes(salt + encrypted)
 
     def status(self) -> dict[str, Any]:
+        storage = str(self.vault_path.parent) if self.vault_path else None
+        ramdisk = storage.startswith("/dev/shm") if storage else False
         return {
             "unlocked": self._unlocked,
             "key_count": len(self._keys) if self._unlocked else None,
+            "artifact_count": len(self._artifacts) if self._unlocked else None,
             "path": str(self.vault_path),
-            "exists": self.vault_path.is_file(),
+            "storage_backend": "ramdisk" if ramdisk else "disk",
+            "exists": self.vault_path.is_file() if self.vault_path else False,
         }

@@ -1,101 +1,96 @@
 {
   "name": "HexStrike-AI",
-  "version": "7.0.0",
-  "architecture": "layered_recon_forensics_execution",
-  "updated_at": "2026-07-10T10:47:52.881238+00:00",
+  "version": "8.0.0",
+  "architecture": "production_autonomous_agent",
+  "updated_at": null,
   "layers": {
     "modules": {
       "core.monitor": {
-        "description": "Optimized mempool stream listener (Geth RPC) with auto-failover",
+        "description": "Geth RPC mempool listener with failover and stealth transport",
         "path": "src/hexstrike/core/monitor/mempool.py",
         "status": "active",
-        "dependencies": [
-          "mcp_rpc_gateway",
-          "config/rpc_config.json"
-        ],
-        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+        "dependencies": ["core.stealth", "mcp_rpc_gateway", "config/rpc_config.json"]
+      },
+      "core.stealth": {
+        "description": "Outbound traffic masking — UA rotation, jitter, optional proxy/TLS",
+        "path": "src/hexstrike/core/stealth/transport.py",
+        "status": "active",
+        "env": ["HEXSTRIKE_PROXY", "HEXSTRIKE_STEALTH"]
       },
       "core.forensics": {
-        "description": "Chain analysis engine with cex-cluster-map support",
+        "description": "Chain analysis with CEX-mapping and bytecode deobfuscation",
         "path": "src/hexstrike/core/forensics/engine.py",
         "status": "active",
-        "dependencies": [
-          "artifacts/master_context.json",
-          "mcp_rag_memory"
-        ],
-        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+        "dependencies": ["skill.bytecode_deobfuscator", "mcp_rag_memory", "artifacts/master_context.json"]
       },
       "core.execution": {
-        "description": "Safe transaction broadcaster with pre-flight gas estimation and slippage protection",
+        "description": "Safe broadcaster with pre-flight gas estimation and sniping profiles",
         "path": "src/hexstrike/core/execution/broadcaster.py",
         "status": "active",
-        "dependencies": [
-          "mcp_execution_gate",
-          "core.vault"
-        ],
-        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+        "dependencies": ["mcp_execution_gate", "core.vault", "skill.timing_analysis"]
       },
       "core.vault": {
-        "description": "AES-256 encrypted local key management (never exposed)",
+        "description": "AES-256 encrypted storage with RAM-disk backing for high-value artifacts",
         "path": "src/hexstrike/core/vault/keystore.py",
-        "status": "ready",
-        "dependencies": [
-          "cryptography"
-        ],
-        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+        "status": "active",
+        "dependencies": ["cryptography"],
+        "storage": ["/dev/shm/hexstrike-vault", "artifacts/vault"]
       }
     },
     "skills": {
-      "recon_osint": {
-        "description": "Passive infra mapping (Jenkins/IP/CVE scanning)",
+      "skill.recon_osint": {
+        "description": "Passive infra mapping (Jenkins/CVE/RPC scanning)",
         "path": "src/hexstrike/skills/recon_osint.py",
-        "status": "active",
-        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+        "status": "active"
       },
-      "chain_tracer": {
-        "description": "Recipient depth analysis and entity resolution",
+      "skill.chain_tracer": {
+        "description": "Recipient depth analysis and entity clustering via gas-pattern heuristics",
         "path": "src/hexstrike/skills/chain_tracer.py",
-        "status": "active",
-        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+        "status": "active"
       },
-      "dedup_engine": {
+      "skill.timing_analysis": {
+        "description": "RPC latency profiling for optimal gas-war positioning",
+        "path": "src/hexstrike/skills/timing_analysis.py",
+        "status": "active"
+      },
+      "skill.vulnerability_scanner": {
+        "description": "Sweep-sniping windows and EIP-7702/delegation risk checks",
+        "path": "src/hexstrike/skills/vulnerability_scanner.py",
+        "status": "active"
+      },
+      "skill.dedup_engine": {
         "description": "Pattern-based alert filtering (15-min window)",
         "path": "src/hexstrike/skills/dedup_engine.py",
         "status": "active",
-        "window_seconds": 900,
-        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+        "window_seconds": 900
       },
-      "vulnerability_scanner": {
-        "description": "Sweep-sniping windows and EIP-7702/delegation risks",
-        "path": "src/hexstrike/skills/vulnerability_scanner.py",
-        "status": "active",
-        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+      "skill.bytecode_deobfuscator": {
+        "description": "Contract bytecode analysis — proxies, delegatecall, implementation resolution",
+        "path": "src/hexstrike/skills/bytecode_deobfuscator.py",
+        "status": "active"
       }
     },
     "mcps": {
       "mcp_rpc_gateway": {
-        "description": "Unified interface for node management",
+        "description": "Unified node manager with stealth RPC client",
         "path": "src/hexstrike/mcp/rpc_gateway.py",
-        "status": "active",
-        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+        "status": "active"
       },
       "mcp_rag_memory": {
         "description": "LanceDB interface for historical pattern retrieval",
         "path": "src/hexstrike/mcp/rag_memory.py",
-        "status": "active",
-        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+        "status": "active"
       },
       "mcp_execution_gate": {
         "description": "Human-in-the-loop approval bridge (PendingAction queue)",
         "path": "src/hexstrike/mcp/execution_gate.py",
-        "status": "active",
-        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+        "status": "active"
       },
       "mcp_github_bridge": {
-        "description": "Real-time event ingestion from GitHub webhooks",
+        "description": "Real-time PR/Commit/Push event ingestion from GitHub webhooks",
         "path": "src/hexstrike/mcp/github_bridge.py",
-        "status": "ready",
-        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+        "status": "active",
+        "events": ["pull_request", "push", "ping"]
       }
     }
   },
@@ -107,8 +102,8 @@
     },
     "autonomous_monitor": {
       "script": "scripts/autonomous_monitor.py",
-      "status": "legacy_compat",
-      "note": "Wrapped by orchestrator monitor mode"
+      "status": "active",
+      "note": "Refactored — uses src/ stealth RPC + bootstrap"
     },
     "orchestrator": {
       "script": "hexstrike_orchestrator.py",
@@ -123,11 +118,5 @@
       "status": "active"
     }
   },
-  "runtime": {
-    "last_health_check": "2026-07-10T10:47:52.881238+00:00",
-    "rpc_status": "ok",
-    "active_rpc": "http://51.222.42.220:8545",
-    "pending_action": false,
-    "dedup_pairs": 0
-  }
+  "runtime": {}
 }
