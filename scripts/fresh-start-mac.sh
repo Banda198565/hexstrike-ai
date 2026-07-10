@@ -29,15 +29,17 @@ pkill -f "cloudflared tunnel" 2>/dev/null || true
 sleep 1
 
 # --- Ollama ---
-launchctl setenv OLLAMA_ORIGINS "*"
 export OLLAMA_ORIGINS="*"
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  launchctl setenv OLLAMA_ORIGINS "*" 2>/dev/null || true
+fi
 
 if ! command -v ollama &>/dev/null; then
   echo "[FAIL] Install: brew install ollama"
   exit 1
 fi
 
-open -a Ollama 2>/dev/null || true
+open -a Ollama 2>/dev/null || ollama serve >/dev/null 2>&1 &
 echo "[wait] Ollama starting (15s)..."
 sleep 15
 
