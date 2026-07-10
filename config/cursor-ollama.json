@@ -6,20 +6,20 @@
   "ollama": {
     "host_env": "OLLAMA_HOST",
     "default_host": "http://127.0.0.1:11434",
-    "model": "deepseek-r1",
-    "pull_command": "ollama pull deepseek-r1",
+    "model": "deepseek-r1:1.5b",
+    "pull_command": "ollama pull deepseek-r1:1.5b",
     "options": {
       "num_thread": 16,
-      "num_predict": 16
+      "num_predict": 256
     }
   },
   "cursor": {
     "settings_file": ".cursor/settings.json",
     "enable_script": "scripts/enable-system-integration-mode.sh",
     "default_models": {
-      "chat": "deepseek-r1",
-      "composer": "deepseek-r1",
-      "maxMode": "deepseek-r1"
+      "chat": "deepseek-r1:1.5b",
+      "composer": "deepseek-r1:1.5b",
+      "maxMode": "deepseek-r1:1.5b"
     },
     "model_type": "openai_compatible",
     "routing": {

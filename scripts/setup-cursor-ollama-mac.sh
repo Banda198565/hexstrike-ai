@@ -23,9 +23,9 @@ if ! command -v ollama &>/dev/null; then
   exit 1
 fi
 
-echo "[3/5] Pull deepseek-r1 if missing"
-if ! ollama list 2>/dev/null | grep -q 'deepseek-r1'; then
-  ollama pull deepseek-r1
+echo "[3/5] Pull deepseek-r1:1.5b if missing"
+if ! ollama list 2>/dev/null | grep -q 'deepseek-r1:1.5b'; then
+  ollama pull deepseek-r1:1.5b
 fi
 
 echo "[4/5] Ensure ollama serve is running"

@@ -99,7 +99,7 @@ else
 fi
 
 # 4. Minimal chat completion (chain-of-thought probe)
-CHAT_MODEL="${OLLAMA_MODEL:-${LLM_MODEL:-deepseek-r1}}"
+CHAT_MODEL="${OLLAMA_MODEL:-${LLM_MODEL:-deepseek-r1:1.5b}}"
 # Prefer installed tag when full model name absent
 if [[ "$TAGS_OK" == "1" ]] && ! echo "$TAGS_RESP" | grep -q "\"name\":\"${CHAT_MODEL}\""; then
   CHAT_MODEL="$(echo "$TAGS_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); names=[m.get('name','') for m in d.get('models',[])]; print(next((n for n in names if 'deepseek-r1' in n), names[0] if names else 'deepseek-r1'))" 2>/dev/null || echo "deepseek-r1:1.5b")"

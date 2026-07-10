@@ -29,14 +29,17 @@ echo "=== Step 2: ollama list (exact model NAME) ==="
 ollama list
 echo ""
 
-MODEL="$(ollama list 2>/dev/null | awk 'NR>1 && /deepseek-r1/ {print $1; exit}')"
+MODEL="${OLLAMA_MODEL:-deepseek-r1:1.5b}"
+if ! ollama list 2>/dev/null | grep -q 'deepseek-r1:1.5b'; then
+  echo "[WARN] deepseek-r1:1.5b not found — pulling ..."
+  ollama pull deepseek-r1:1.5b
+fi
+MODEL="$(ollama list 2>/dev/null | awk 'NR>1 && /deepseek-r1:1\.5b/ {print $1; exit}')"
 if [[ -z "$MODEL" ]]; then
-  echo "[WARN] deepseek-r1 not found — pulling ..."
-  ollama pull deepseek-r1
   MODEL="$(ollama list 2>/dev/null | awk 'NR>1 && /deepseek-r1/ {print $1; exit}')"
 fi
 if [[ -z "$MODEL" ]]; then
-  echo "[FAIL] Could not resolve deepseek-r1 model name from ollama list"
+  echo "[FAIL] Could not resolve deepseek-r1:1.5b from ollama list"
   exit 1
 fi
 
@@ -91,7 +94,7 @@ fi
 
 CHAT_RESP="$(curl -sf --max-time 120 "${LOCAL_BASE}/chat/completions" \
   -H "Content-Type: application/json" \
-  -d "{\"model\":\"${MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply: pong\"}],\"stream\":false,\"options\":{\"num_thread\":16,\"num_predict\":16}}" 2>&1)" && CHAT_OK=1 || CHAT_OK=0
+  -d "{\"model\":\"${MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply: pong\"}],\"stream\":false,\"options\":{\"num_thread\":16,\"num_predict\":256}}" 2>&1)" && CHAT_OK=1 || CHAT_OK=0
 if [[ "$CHAT_OK" == "1" ]]; then
   echo "[OK]   POST /v1/chat/completions — inference works on iMac"
 else

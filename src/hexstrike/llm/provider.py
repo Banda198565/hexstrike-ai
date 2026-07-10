@@ -12,9 +12,9 @@ from typing import Any
 
 
 DEFAULT_HOST = "http://127.0.0.1:11434"
-DEFAULT_MODEL = "deepseek-r1"
+DEFAULT_MODEL = "deepseek-r1:1.5b"
 DEFAULT_NUM_THREAD = 16
-DEFAULT_NUM_PREDICT = 16
+DEFAULT_NUM_PREDICT = 256
 
 
 def ollama_request_options() -> dict[str, int]:

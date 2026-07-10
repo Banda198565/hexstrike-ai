@@ -7,7 +7,7 @@ cd "$ROOT"
 
 LOCAL_HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"
 LOCAL_BASE="${LOCAL_HOST%/}/v1"
-MODEL="${OLLAMA_MODEL:-deepseek-r1}"
+MODEL="${OLLAMA_MODEL:-deepseek-r1:1.5b}"
 SETTINGS="$ROOT/.cursor/settings.json"
 ENV_FILE="$ROOT/.env"
 

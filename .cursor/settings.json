@@ -1,31 +1,31 @@
 {
   "$schema": "https://cursor.com/schemas/settings.json",
-  "_comment": "System Integration Mode \u2014 localhost-first, OFFLINE_PRIMARY for reasoning",
+  "_comment": "System Integration Mode — localhost-first, OFFLINE_PRIMARY, fast 1.5b",
   "systemIntegrationMode": "OFFLINE_PRIMARY",
   "AUTHORIZED_OPERATOR_MODE": false,
   "ollama": {
     "host": "http://127.0.0.1:11434",
-    "model": "deepseek-r1:latest",
+    "model": "deepseek-r1:1.5b",
     "openai_compatible_base": "http://127.0.0.1:11434/v1",
     "api_key_placeholder": "ollama",
     "options": {
       "num_thread": 16,
-      "num_predict": 16
+      "num_predict": 256
     }
   },
   "cursor": {
     "chat": {
-      "defaultModel": "deepseek-r1:latest",
+      "defaultModel": "deepseek-r1:1.5b",
       "useLocalLlm": true,
       "model_type": "openai_compatible"
     },
     "composer": {
-      "defaultModel": "deepseek-r1:latest",
+      "defaultModel": "deepseek-r1:1.5b",
       "useLocalLlm": true,
       "model_type": "openai_compatible"
     },
     "maxMode": {
-      "defaultModel": "deepseek-r1:latest",
+      "defaultModel": "deepseek-r1:1.5b",
       "preferHighReasoning": true,
       "routeToLocal": true,
       "model_type": "openai_compatible"
@@ -33,15 +33,15 @@
     "models": {
       "custom": [
         {
-          "id": "deepseek-r1:latest",
-          "name": "deepseek-r1:latest",
+          "id": "deepseek-r1:1.5b",
+          "name": "deepseek-r1:1.5b",
           "provider": "openai-compatible",
           "model_type": "openai_compatible",
           "baseUrl": "http://127.0.0.1:11434/v1",
           "supportsChainOfThought": true,
           "options": {
             "num_thread": 16,
-            "num_predict": 16
+            "num_predict": 256
           }
         }
       ],
@@ -67,9 +67,9 @@
     "OLLAMA_BYPASS_TUNNEL": "true",
     "LLM_PROVIDER": "ollama-local",
     "LLM_BASE_URL": "http://127.0.0.1:11434/v1",
-    "LLM_MODEL": "deepseek-r1:latest",
+    "LLM_MODEL": "deepseek-r1:1.5b",
     "OLLAMA_NUM_THREAD": "16",
-    "OLLAMA_NUM_PREDICT": "16",
+    "OLLAMA_NUM_PREDICT": "256",
     "CURSOR_INTEGRATION_MODE": "OFFLINE_PRIMARY"
   }
 }
