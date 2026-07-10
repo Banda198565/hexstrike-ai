@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+# enable-system-integration-mode.sh — localhost-first Cursor ↔ Ollama integration
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+LOCAL_HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"
+LOCAL_BASE="${LOCAL_HOST%/}/v1"
+MODEL="${OLLAMA_MODEL:-deepseek-r1}"
+SETTINGS="$ROOT/.cursor/settings.json"
+ENV_FILE="$ROOT/.env"
+
+echo "=== HexStrike System Integration Mode ==="
+echo "Detecting local Ollama at $LOCAL_HOST ..."
+
+if ! curl -sf --max-time 3 "${LOCAL_HOST}/api/tags" >/dev/null 2>&1; then
+  echo "[FAIL] Ollama not reachable at $LOCAL_HOST — start: ollama serve"
+  exit 1
+fi
+
+TAGS="$(curl -sf --max-time 5 "${LOCAL_HOST}/api/tags")"
+if ! echo "$TAGS" | grep -qi 'deepseek-r1'; then
+  echo "[WARN] deepseek-r1 not in manifest — run: ollama pull deepseek-r1"
+  echo "       Available: $(echo "$TAGS" | python3 -c "import sys,json; d=json.load(sys.stdin); print([m.get('name') for m in d.get('models',[])])" 2>/dev/null || echo '?')"
+else
+  echo "[OK]   deepseek-r1 present in local model manifest"
+fi
+
+touch "$ENV_FILE"
+set_env() {
+  local key="$1" val="$2"
+  if grep -q "^${key}=" "$ENV_FILE" 2>/dev/null; then
+    sed -i.bak "s|^${key}=.*|${key}=${val}|" "$ENV_FILE"
+  else
+    echo "${key}=${val}" >> "$ENV_FILE"
+  fi
+}
+
+set_env "OLLAMA_HOST" "$LOCAL_HOST"
+set_env "OLLAMA_ORIGINS" "*"
+set_env "OLLAMA_PUBLIC_BASE_URL" "$LOCAL_BASE"
+set_env "OLLAMA_BYPASS_TUNNEL" "true"
+set_env "LLM_PROVIDER" "ollama-local"
+set_env "LLM_BASE_URL" "$LOCAL_BASE"
+set_env "LLM_MODEL" "$MODEL"
+set_env "CURSOR_INTEGRATION_MODE" "OFFLINE_PRIMARY"
+
+export OLLAMA_HOST="$LOCAL_HOST"
+export OLLAMA_PUBLIC_BASE_URL="$LOCAL_BASE"
+export OLLAMA_BYPASS_TUNNEL=true
+export LLM_PROVIDER=ollama-local
+export LLM_BASE_URL="$LOCAL_BASE"
+export LLM_MODEL="$MODEL"
+export CURSOR_INTEGRATION_MODE=OFFLINE_PRIMARY
+
+mkdir -p "$(dirname "$SETTINGS")"
+python3 - "$SETTINGS" "$LOCAL_BASE" "$MODEL" <<'PY'
+import json, sys
+from pathlib import Path
+
+settings_path = Path(sys.argv[1])
+base_url = sys.argv[2]
+model = sys.argv[3]
+
+settings = {
+    "$schema": "https://cursor.com/schemas/settings.json",
+    "_comment": "System Integration Mode — localhost-first, OFFLINE_PRIMARY for reasoning",
+    "systemIntegrationMode": "OFFLINE_PRIMARY",
+    "AUTHORIZED_OPERATOR_MODE": False,
+    "ollama": {
+        "host": "http://127.0.0.1:11434",
+        "model": model,
+        "openai_compatible_base": base_url,
+        "api_key_placeholder": "ollama",
+    },
+    "cursor": {
+        "chat": {
+            "defaultModel": model,
+            "useLocalLlm": True,
+            "model_type": "openai_compatible",
+        },
+        "composer": {
+            "defaultModel": model,
+            "useLocalLlm": True,
+            "model_type": "openai_compatible",
+        },
+        "maxMode": {
+            "defaultModel": model,
+            "preferHighReasoning": True,
+            "routeToLocal": True,
+            "model_type": "openai_compatible",
+        },
+        "models": {
+            "custom": [
+                {
+                    "id": model,
+                    "name": model,
+                    "provider": "openai-compatible",
+                    "model_type": "openai_compatible",
+                    "baseUrl": base_url,
+                    "supportsChainOfThought": True,
+                }
+            ],
+            "disabled": [],
+        },
+        "openai": {
+            "overrideBaseUrl": True,
+            "baseUrl": base_url,
+            "apiKey": "ollama",
+            "model_type": "openai_compatible",
+        },
+        "routing": {
+            "preferLocalhost": True,
+            "bypassTunnel": True,
+            "offlinePrimary": True,
+            "tunnelFallback": False,
+        },
+    },
+    "env": {
+        "OLLAMA_HOST": "http://127.0.0.1:11434",
+        "OLLAMA_ORIGINS": "*",
+        "OLLAMA_PUBLIC_BASE_URL": base_url,
+        "OLLAMA_BYPASS_TUNNEL": "true",
+        "LLM_PROVIDER": "ollama-local",
+        "LLM_BASE_URL": base_url,
+        "LLM_MODEL": model,
+        "CURSOR_INTEGRATION_MODE": "OFFLINE_PRIMARY",
+    },
+}
+
+settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+print(f"[OK]   Wrote {settings_path}")
+PY
+
+echo "[OK]   .env updated — localhost bypasses Cloud VM tunnel"
+echo ""
+echo "Running handshake verification ..."
+"$ROOT/scripts/verify-ollama-handshake.sh"
+VERIFY_RC=$?
+
+echo ""
+echo "Measuring model-to-Cursor hook latency ..."
+python3 - <<'PY'
+import json, sys
+sys.path.insert(0, "src")
+from hexstrike.llm.provider import LocalLlmProvider
+
+p = LocalLlmProvider()
+models_lat = p.measure_hook_latency(probe="models")
+chat_lat = p.measure_hook_latency(probe="chat")
+print(json.dumps({"models_probe": models_lat, "chat_probe": chat_lat}, indent=2))
+PY
+
+exit "$VERIFY_RC"

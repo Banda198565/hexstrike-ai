@@ -1,34 +1,39 @@
 {
   "$schema": "https://cursor.com/schemas/settings.json",
-  "_comment": "HexStrike local LLM brain — deepseek-r1 via Ollama. Requires Ollama on host + tunnel for Cursor cloud backend.",
+  "_comment": "System Integration Mode \u2014 localhost-first, OFFLINE_PRIMARY for reasoning",
+  "systemIntegrationMode": "OFFLINE_PRIMARY",
   "AUTHORIZED_OPERATOR_MODE": false,
   "ollama": {
     "host": "http://127.0.0.1:11434",
-    "model": "deepseek-r1",
+    "model": "deepseek-r1:1.5b",
     "openai_compatible_base": "http://127.0.0.1:11434/v1",
     "api_key_placeholder": "ollama"
   },
   "cursor": {
     "chat": {
-      "defaultModel": "deepseek-r1",
-      "useLocalLlm": true
+      "defaultModel": "deepseek-r1:1.5b",
+      "useLocalLlm": true,
+      "model_type": "openai_compatible"
     },
     "composer": {
-      "defaultModel": "deepseek-r1",
-      "useLocalLlm": true
+      "defaultModel": "deepseek-r1:1.5b",
+      "useLocalLlm": true,
+      "model_type": "openai_compatible"
     },
     "maxMode": {
-      "defaultModel": "deepseek-r1",
+      "defaultModel": "deepseek-r1:1.5b",
       "preferHighReasoning": true,
-      "routeToLocal": true
+      "routeToLocal": true,
+      "model_type": "openai_compatible"
     },
     "models": {
       "custom": [
         {
-          "id": "deepseek-r1",
-          "name": "deepseek-r1",
+          "id": "deepseek-r1:1.5b",
+          "name": "deepseek-r1:1.5b",
           "provider": "openai-compatible",
-          "baseUrl": "${OLLAMA_PUBLIC_BASE_URL:-http://127.0.0.1:11434/v1}",
+          "model_type": "openai_compatible",
+          "baseUrl": "http://127.0.0.1:11434/v1",
           "supportsChainOfThought": true
         }
       ],
@@ -36,12 +41,25 @@
     },
     "openai": {
       "overrideBaseUrl": true,
-      "baseUrl": "${OLLAMA_PUBLIC_BASE_URL:-http://127.0.0.1:11434/v1}",
-      "apiKey": "ollama"
+      "baseUrl": "http://127.0.0.1:11434/v1",
+      "apiKey": "ollama",
+      "model_type": "openai_compatible"
+    },
+    "routing": {
+      "preferLocalhost": true,
+      "bypassTunnel": true,
+      "offlinePrimary": true,
+      "tunnelFallback": false
     }
   },
   "env": {
     "OLLAMA_HOST": "http://127.0.0.1:11434",
-    "OLLAMA_ORIGINS": "*"
+    "OLLAMA_ORIGINS": "*",
+    "OLLAMA_PUBLIC_BASE_URL": "http://127.0.0.1:11434/v1",
+    "OLLAMA_BYPASS_TUNNEL": "true",
+    "LLM_PROVIDER": "ollama-local",
+    "LLM_BASE_URL": "http://127.0.0.1:11434/v1",
+    "LLM_MODEL": "deepseek-r1:1.5b",
+    "CURSOR_INTEGRATION_MODE": "OFFLINE_PRIMARY"
   }
 }

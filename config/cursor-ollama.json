@@ -1,7 +1,8 @@
 {
   "integration": "cursor-ollama-deepseek-r1",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "operator": "Banda198565",
+  "system_integration_mode": "OFFLINE_PRIMARY",
   "ollama": {
     "host_env": "OLLAMA_HOST",
     "default_host": "http://127.0.0.1:11434",
@@ -10,18 +11,30 @@
   },
   "cursor": {
     "settings_file": ".cursor/settings.json",
+    "enable_script": "scripts/enable-system-integration-mode.sh",
     "default_models": {
       "chat": "deepseek-r1",
       "composer": "deepseek-r1",
       "maxMode": "deepseek-r1"
     },
+    "model_type": "openai_compatible",
+    "routing": {
+      "preferLocalhost": true,
+      "bypassTunnel": true,
+      "offlinePrimary": true
+    },
     "ui_steps": [
-      "Settings → Models → Add model: deepseek-r1",
-      "Override OpenAI Base URL → ${OLLAMA_PUBLIC_BASE_URL}/v1",
+      "Run: ./scripts/enable-system-integration-mode.sh",
+      "Settings → Models → Override OpenAI Base URL → http://127.0.0.1:11434/v1",
       "OpenAI API Key → ollama",
-      "Set deepseek-r1 as default for Chat and Composer"
+      "Set deepseek-r1 as default for Chat, Composer, and Max Mode"
     ],
-    "localhost_limitation": "Cursor cloud routes via its backend — use cloudflared/ngrok tunnel for remote Cursor"
+    "localhost_note": "OFFLINE_PRIMARY routes all reasoning to localhost — no Cloud VM tunnel required on desktop Cursor"
+  },
+  "orchestrator": {
+    "llm_provider_env": "LLM_PROVIDER",
+    "default_provider": "ollama-local",
+    "handshake_command": "python3 hexstrike_orchestrator.py llm-handshake"
   },
   "verification": {
     "script": "scripts/verify-ollama-handshake.sh",

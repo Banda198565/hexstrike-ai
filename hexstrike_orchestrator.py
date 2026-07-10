@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from hexstrike.agent_manager import AgentManager
 from hexstrike.bus.context_bus import ContextBus
+from hexstrike.llm.provider import LocalLlmProvider, LlmConfig, resolve_llm_config
 from hexstrike.core.execution.broadcaster import ExecutionBroadcaster, SnipingProfile
 from hexstrike.core.forensics.engine import ForensicsEngine
 from hexstrike.core.monitor.mempool import MempoolMonitor, MonitorConfig
@@ -47,10 +48,25 @@ MONITOR_AGENT_ID = "core.monitor"
 MONITOR_SYSTEM_PROMPT = load_instruction(MONITOR_AGENT_ID)
 
 
+def _bootstrap_llm_env() -> LlmConfig:
+    """Initialize LLM_PROVIDER and related env vars for local deepseek-r1."""
+    config = resolve_llm_config()
+    os.environ.setdefault("LLM_PROVIDER", config.provider)
+    os.environ.setdefault("LLM_BASE_URL", config.base_url)
+    os.environ.setdefault("LLM_MODEL", config.model)
+    os.environ.setdefault("OLLAMA_HOST", config.host)
+    if config.bypass_tunnel:
+        os.environ.setdefault("OLLAMA_BYPASS_TUNNEL", "true")
+        os.environ.setdefault("OLLAMA_PUBLIC_BASE_URL", config.base_url)
+    return config
+
+
 class HexStrikeOrchestrator:
     """Central dispatcher: recon → forensics → execution with ContextBus."""
 
     def __init__(self, config_path: Path = RPC_CONFIG) -> None:
+        self.llm_config = _bootstrap_llm_env()
+        self.llm = LocalLlmProvider(self.llm_config)
         self.bus = ContextBus()
         self.config_path = config_path
 
@@ -104,8 +120,11 @@ class HexStrikeOrchestrator:
 
     def health(self) -> dict[str, Any]:
         timing_best = self.timing.recommend_endpoint()
+        llm_status = self.llm.status()
+        llm_latency = self.llm.measure_hook_latency(probe="models")
         return {
             "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+            "llm": {**llm_status, "hook_latency_ms": llm_latency.get("latency_ms")},
             "rpc": self.rpc_mcp.health(),
             "stealth": self.stealth.status(),
             "vault": self.vault.status(),
@@ -296,6 +315,7 @@ class HexStrikeOrchestrator:
     def status(self) -> dict[str, Any]:
         return {
             "version": "8.0.0",
+            "llm_provider": self.llm.status(),
             "components": {
                 "core.monitor": "active",
                 "core.stealth": self.stealth.status(),
@@ -324,6 +344,10 @@ class HexStrikeOrchestrator:
 
 
 def main() -> int:
+    from api_auth import load_dotenv
+
+    load_dotenv(ROOT / ".env")
+
     parser = argparse.ArgumentParser(description="HexStrike-AI orchestrator")
     parser.add_argument("--config", default=str(RPC_CONFIG))
     sub = parser.add_subparsers(dest="command", required=True)
@@ -364,6 +388,9 @@ def main() -> int:
     ops_p = sub.add_parser("ops-vectors", help="Run vectors B+C (network + forensics); A skipped by policy")
     ops_p.add_argument("--target-ip", default="51.250.97.223")
     ops_p.add_argument("--wallet", default="0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a")
+
+    llm_p = sub.add_parser("llm-handshake", help="Verify local Ollama hook + latency diagnostic")
+    llm_p.add_argument("--probe", choices=("models", "chat", "both"), default="both")
 
     args = parser.parse_args()
     orch = HexStrikeOrchestrator(config_path=Path(args.config))
@@ -430,6 +457,15 @@ def main() -> int:
         result = orch.run_ops_vectors(args.target_ip, args.wallet)
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
+    if args.command == "llm-handshake":
+        probes = ["models", "chat"] if args.probe == "both" else [args.probe]
+        report = {
+            "integration_mode": orch.llm_config.integration_mode,
+            "llm": orch.llm.status(),
+            "latency": {p: orch.llm.measure_hook_latency(probe=p) for p in probes},
+        }
+        print(json.dumps(report, indent=2))
+        return 0 if report["llm"].get("local_inference") else 1
 
     return 1
 
