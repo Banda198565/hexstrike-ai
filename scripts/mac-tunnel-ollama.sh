@@ -49,7 +49,7 @@ echo ""
 METHOD="${1:-cloudflared}"
 case "$METHOD" in
   cloudflared) try_cloudflared || { echo "[FAIL] cloudflared failed (error 1101 = retry later)"; exit 1; } ;;
-  ngrok)       try_ngrok || die "ngrok not installed" ;;
+  ngrok)       try_ngrok || { echo "[FAIL] ngrok not installed: brew install ngrok"; exit 1; } ;;
   localtunnel) try_localtunnel ;;
   *)           try_cloudflared || try_ngrok || try_localtunnel ;;
 esac

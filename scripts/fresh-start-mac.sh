@@ -103,25 +103,84 @@ LOCAL_REPLY=$(curl -sf --max-time 60 "${HOST}/v1/chat/completions" \
 echo "$LOCAL_REPLY" | jq -r '.choices[0].message.content // .error.message' | head -1
 echo "[OK]   local inference works"
 
-# --- tunnel (background) ---
-echo ""
-echo "[tunnel] starting cloudflared..."
-: > "$LOG"
-cloudflared tunnel --url "${HOST}" --protocol http2 >>"$LOG" 2>&1 &
-CF_PID=$!
+# --- tunnel (cloudflared retry + localtunnel fallback) ---
+start_cloudflared() {
+  : > "$LOG"
+  cloudflared tunnel --url "${HOST}" --protocol http2 >>"$LOG" 2>&1 &
+  CF_PID=$!
+  TUNNEL=""
+  for _ in $(seq 1 45); do
+    if ! kill -0 "$CF_PID" 2>/dev/null; then
+      return 1
+    fi
+    TUNNEL=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$LOG" | head -1 || true)
+    [[ -n "$TUNNEL" ]] && return 0
+    if grep -qE 'error code: 1101|failed to unmarshal quick Tunnel' "$LOG" 2>/dev/null; then
+      kill "$CF_PID" 2>/dev/null || true
+      return 1
+    fi
+    sleep 1
+  done
+  kill "$CF_PID" 2>/dev/null || true
+  return 1
+}
 
+start_localtunnel() {
+  command -v npx >/dev/null || return 1
+  LT_LOG="/tmp/hexstrike-localtunnel.log"
+  : > "$LT_LOG"
+  npx --yes localtunnel --port 11434 >>"$LT_LOG" 2>&1 &
+  LT_PID=$!
+  TUNNEL=""
+  for _ in $(seq 1 30); do
+    TUNNEL=$(grep -oE 'https://[a-z0-9-]+\.loca\.lt' "$LT_LOG" | head -1 || true)
+    [[ -n "$TUNNEL" ]] && { CF_PID=$LT_PID; LOG=$LT_LOG; return 0; }
+    sleep 1
+  done
+  kill "$LT_PID" 2>/dev/null || true
+  return 1
+}
+
+echo ""
+echo "[tunnel] starting (cloudflared, up to 3 tries)..."
 TUNNEL=""
-for i in $(seq 1 30); do
-  TUNNEL=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$LOG" | head -1 || true)
-  [[ -n "$TUNNEL" ]] && break
-  sleep 1
+for attempt in 1 2 3; do
+  echo "  attempt ${attempt}/3..."
+  if start_cloudflared; then
+    break
+  fi
+  echo "  cloudflared failed (1101 = Cloudflare API glitch), retry in 5s..."
+  sleep 5
 done
 
 if [[ -z "$TUNNEL" ]]; then
-  echo "[FAIL] tunnel URL not found. Log:"
-  tail -20 "$LOG"
-  kill "$CF_PID" 2>/dev/null || true
-  exit 1
+  echo "[WARN] cloudflared unavailable — trying localtunnel..."
+  start_localtunnel || true
+fi
+
+if [[ -z "$TUNNEL" ]]; then
+  echo ""
+  echo "=========================================="
+  echo "  LOCAL OK — TUNNEL FAILED (Cloudflare 1101)"
+  echo "=========================================="
+  echo ""
+  echo "  Ollama + deepseek-r1:1.5b work locally."
+  echo "  Cursor Agents need a public URL. Try manually:"
+  echo ""
+  echo "  Option A — retry cloudflared in separate terminal:"
+  echo "    cloudflared tunnel --url http://127.0.0.1:11434 --protocol http2"
+  echo ""
+  echo "  Option B — ngrok:"
+  echo "    brew install ngrok && ngrok http 11434"
+  echo ""
+  echo "  Option C — localtunnel:"
+  echo "    npx localtunnel --port 11434"
+  echo ""
+  echo "  Then Cursor Settings → Base URL: https://YOUR-URL/v1"
+  echo "  Model: ${MODEL} | API Key: ollama"
+  echo ""
+  tail -5 "$LOG" 2>/dev/null || true
+  exit 0
 fi
 
 BASE="${TUNNEL}/v1"
