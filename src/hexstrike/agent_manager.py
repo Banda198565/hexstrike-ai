@@ -14,10 +14,10 @@ from hexstrike.paths import MANIFEST_PATH
 
 # Manifest module/skill → MCP attachment map
 MCP_ATTACHMENT_MAP: dict[str, list[str]] = {
-    "core.monitor": ["mcp_rpc_gateway", "mcp_rag_memory"],
-    "core.forensics": ["mcp_rag_memory"],
-    "core.execution": ["mcp_execution_gate"],
-    "skill.recon_osint": ["mcp_rpc_gateway"],
+    "core.monitor": ["mcp_rpc_gateway", "mcp_rag_memory", "mcp_geth_p2p"],
+    "core.forensics": ["mcp_rag_memory", "mcp_blockscout_api"],
+    "core.execution": ["mcp_execution_gate", "mcp_storage_gate"],
+    "skill.recon_osint": ["mcp_rpc_gateway", "mcp_shodan"],
     "skill.timing_analysis": ["mcp_rpc_gateway"],
 }
 

@@ -29,6 +29,10 @@ from hexstrike.mcp.execution_gate import ExecutionGateMcp
 from hexstrike.mcp.github_bridge import GithubBridgeMcp
 from hexstrike.mcp.rag_memory import RagMemoryMcp
 from hexstrike.mcp.rpc_gateway import RpcGatewayMcp
+from hexstrike.mcp.shodan import ShodanMcp
+from hexstrike.mcp.blockscout_api import BlockscoutApiMcp
+from hexstrike.mcp.geth_p2p import GethP2pMcp
+from hexstrike.mcp.storage_gate import StorageGateMcp
 from hexstrike.paths import MANIFEST_PATH, PENDING_ACTION, RPC_CONFIG
 from hexstrike.skills.bytecode_deobfuscator import BytecodeDeobfuscatorSkill
 from hexstrike.skills.chain_tracer import ChainTracerSkill
@@ -83,6 +87,10 @@ class HexStrikeOrchestrator:
         self.rag_mcp = RagMemoryMcp(bus=self.bus)
         self.execution_mcp = ExecutionGateMcp(bus=self.bus, broadcaster=self.broadcaster)
         self.github_mcp = GithubBridgeMcp(bus=self.bus)
+        self.shodan_mcp = ShodanMcp(bus=self.bus)
+        self.blockscout_mcp = BlockscoutApiMcp(bus=self.bus)
+        self.geth_p2p_mcp = GethP2pMcp(bus=self.bus)
+        self.storage_mcp = StorageGateMcp(bus=self.bus)
 
         self.recon = ReconOsintSkill(bus=self.bus)
         self.chain_tracer = ChainTracerSkill(bus=self.bus, forensics=self.forensics)
@@ -98,6 +106,10 @@ class HexStrikeOrchestrator:
                 "mcp_rag_memory": self.rag_mcp,
                 "mcp_execution_gate": self.execution_mcp,
                 "mcp_github_bridge": self.github_mcp,
+                "mcp_shodan": self.shodan_mcp,
+                "mcp_blockscout_api": self.blockscout_mcp,
+                "mcp_geth_p2p": self.geth_p2p_mcp,
+                "mcp_storage_gate": self.storage_mcp,
             },
             module_registry={
                 "core.monitor": self.monitor,
@@ -129,6 +141,10 @@ class HexStrikeOrchestrator:
             "stealth": self.stealth.status(),
             "vault": self.vault.status(),
             "execution_gate": self.execution_mcp.status(),
+            "shodan": self.shodan_mcp.status(),
+            "blockscout": self.blockscout_mcp.status(),
+            "geth_p2p": self.geth_p2p_mcp.status(),
+            "storage_gate": self.storage_mcp.status(),
             "dedup": self.dedup.snapshot(),
             "timing_best_rpc": timing_best.get("endpoint") if isinstance(timing_best, dict) else None,
             "forensics_entries": len((self.forensics.load_context() or {}).get("entries", [])),
@@ -336,6 +352,10 @@ class HexStrikeOrchestrator:
                 "mcp_rag_memory",
                 "mcp_execution_gate",
                 "mcp_github_bridge",
+                "mcp_shodan",
+                "mcp_blockscout_api",
+                "mcp_geth_p2p",
+                "mcp_storage_gate",
             ],
             "agents": self.agent_manager.status(),
             "pending_action": str(PENDING_ACTION),
