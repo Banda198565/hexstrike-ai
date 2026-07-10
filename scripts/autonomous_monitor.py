@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -19,6 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from context_utils import load_master_context
+from api_auth import api_headers, get_api_key, hexstrike_handshake, load_dotenv
 from crypto_rpc_orchestrator import (
     iter_txpool_txs,
     load_config,
@@ -40,6 +42,38 @@ ADDR_RE = re.compile(r"0x[a-fA-F0-9]{40}")
 
 RECONNECT_DELAY = 5.0
 INDEXER_COOLDOWN_SEC = 60
+
+
+def resolve_hexstrike_api(cfg: dict[str, Any]) -> tuple[str, str]:
+    """Resolve server URL and API key from config + environment."""
+    load_dotenv()
+    api_cfg = cfg.get("hexstrike_api", {})
+    server = api_cfg.get("server", "http://127.0.0.1:8888")
+    env_name = api_cfg.get("api_key_env", "HEXSTRIKE_API_KEY")
+    api_key = api_cfg.get("api_key") or os.environ.get(env_name, "") or get_api_key()
+    return server, api_key.strip()
+
+
+def api_handshake(cfg: dict[str, Any]) -> dict[str, Any]:
+    server, api_key = resolve_hexstrike_api(cfg)
+    result = hexstrike_handshake(server, api_key)
+    result["server"] = server
+    return result
+
+
+def fetch_context_via_api(cfg: dict[str, Any]) -> dict[str, Any] | None:
+    server, api_key = resolve_hexstrike_api(cfg)
+    headers = api_headers(api_key)
+    if not headers:
+        return None
+    try:
+        resp = requests.get(f"{server.rstrip('/')}/api/context/latest", headers=headers, timeout=10)
+        if resp.status_code != 200:
+            return None
+        body = resp.json()
+        return body.get("context") or body
+    except requests.RequestException:
+        return None
 
 
 def extract_addresses(obj: Any, found: dict[str, set[str]] | None = None, label: str = "") -> dict[str, set[str]]:
@@ -74,7 +108,7 @@ def load_watched_addresses(config: dict[str, Any]) -> dict[str, Any]:
     sinks: set[str] = set()
     sources: list[str] = []
 
-    ctx = load_master_context()
+    ctx = fetch_context_via_api(config) or load_master_context()
     if ctx:
         sources.append("master_context.json")
         for entry in ctx.get("entries", []):
@@ -253,6 +287,12 @@ def run_monitor(
     cfg = load_config(config_path)
     endpoints = [cfg["primary"], *cfg.get("fallbacks", [])]
     poll_interval = float(cfg.get("monitoring", {}).get("poll_interval_seconds", poll_interval))
+
+    handshake = api_handshake(cfg)
+    if handshake.get("success"):
+        print(f"[handshake] OK — {handshake['server']} (entries={handshake.get('data', {}).get('entry_count', '?')})")
+    else:
+        print(f"[handshake] WARN — {handshake.get('error')} (falling back to local context files)")
 
     watch = load_watched_addresses(cfg)
     watched = watch["watched"]

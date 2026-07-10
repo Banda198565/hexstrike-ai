@@ -11,5 +11,9 @@
     ],
     "poll_interval_seconds": 1
   },
-  "cex_cluster_map": "config/cex-cluster-map.json"
+  "cex_cluster_map": "config/cex-cluster-map.json",
+  "hexstrike_api": {
+    "server": "http://127.0.0.1:8888",
+    "api_key_env": "HEXSTRIKE_API_KEY"
+  }
 }
