@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from hexstrike.agent_manager import AgentManager
 from hexstrike.bus.context_bus import ContextBus
 from hexstrike.core.execution.broadcaster import ExecutionBroadcaster, SnipingProfile
 from hexstrike.core.forensics.engine import ForensicsEngine
@@ -33,7 +34,17 @@ from hexstrike.skills.chain_tracer import ChainTracerSkill
 from hexstrike.skills.dedup_engine import DedupEngine
 from hexstrike.skills.recon_osint import ReconOsintSkill
 from hexstrike.skills.timing_analysis import TimingAnalysisSkill
+from hexstrike.instructions import load_instruction
+from hexstrike.paths import (
+    ALERTS_LOG as HS_ALERTS,
+    PENDING_ACTION as HS_PENDING,
+    RPC_CONFIG as HS_RPC_CONFIG,
+)
 from hexstrike.skills.vulnerability_scanner import VulnerabilityScanner
+
+# Monitor agent system prompt (instruction protocol)
+MONITOR_AGENT_ID = "core.monitor"
+MONITOR_SYSTEM_PROMPT = load_instruction(MONITOR_AGENT_ID)
 
 
 class HexStrikeOrchestrator:
@@ -63,6 +74,24 @@ class HexStrikeOrchestrator:
         self.timing = TimingAnalysisSkill(bus=self.bus, config_path=config_path)
         self.bytecode = BytecodeDeobfuscatorSkill(bus=self.bus, config_path=config_path)
         self.vuln_scanner = VulnerabilityScanner(bus=self.bus)
+
+        self.agent_manager = AgentManager(
+            bus=self.bus,
+            mcp_registry={
+                "mcp_rpc_gateway": self.rpc_mcp,
+                "mcp_rag_memory": self.rag_mcp,
+                "mcp_execution_gate": self.execution_mcp,
+                "mcp_github_bridge": self.github_mcp,
+            },
+            module_registry={
+                "core.monitor": self.monitor,
+                "core.forensics": self.forensics,
+                "core.execution": self.broadcaster,
+                "skill.recon_osint": self.recon,
+                "skill.timing_analysis": self.timing,
+            },
+        )
+        self.agent_manager.initialize_all()
 
         self._wire_bus_logging()
 
@@ -133,6 +162,23 @@ class HexStrikeOrchestrator:
     def run_vuln_scan(self) -> dict[str, Any]:
         return self.vuln_scanner.run_full_scan()
 
+    def run_analyze(self, address: str) -> dict[str, Any]:
+        """Instruction-driven forensics analysis (hot-wallet protocol)."""
+        prompt = self.agent_manager.get_system_prompt("core.forensics")
+        entity = self.forensics.resolve_entity(address)
+        contract = self.forensics.analyze_contract(address)
+        trace = self.chain_tracer.trace(address, depth=2)
+        rag_hits = self.rag_mcp.search(f"address {address} rhino bridge hot wallet usdt")
+        return {
+            "address": address.lower(),
+            "instruction_loaded": "forensics.md",
+            "instruction_bytes": len(prompt),
+            "entity": entity,
+            "contract": contract,
+            "trace": trace,
+            "rag_hits": rag_hits[:3],
+        }
+
     def run_monitor_loop(
         self,
         *,
@@ -201,6 +247,7 @@ class HexStrikeOrchestrator:
                 "mcp_execution_gate",
                 "mcp_github_bridge",
             ],
+            "agents": self.agent_manager.status(),
             "pending_action": str(PENDING_ACTION),
             "manifest": str(MANIFEST_PATH),
         }
@@ -214,6 +261,11 @@ def main() -> int:
     sub.add_parser("status", help="Show component status")
     sub.add_parser("health", help="Run health checks and update manifest")
     sub.add_parser("manifest", help="Update project_manifest.json runtime section")
+
+    sub.add_parser("agents", help="Show bound agents and instruction files")
+
+    analyze_p = sub.add_parser("analyze", help="Forensics analysis on address (instruction-driven)")
+    analyze_p.add_argument("address", help="Target address (0x...)")
 
     recon_p = sub.add_parser("recon", help="Passive RPC recon scan")
     recon_p.add_argument("--limit", type=int, default=3)
@@ -244,6 +296,12 @@ def main() -> int:
         return 0
     if args.command == "manifest":
         print(json.dumps(orch.update_manifest(), indent=2))
+        return 0
+    if args.command == "agents":
+        print(json.dumps(orch.agent_manager.status(), indent=2))
+        return 0
+    if args.command == "analyze":
+        print(json.dumps(orch.run_analyze(args.address), indent=2))
         return 0
     if args.command == "recon":
         print(json.dumps(orch.run_recon(limit=args.limit), indent=2))

@@ -18,5 +18,6 @@ MASTER_CONTEXT = ARTIFACTS_DIR / "master_context.json"
 ALERTS_LOG = ARTIFACTS_DIR / "alerts.log"
 PENDING_ACTION = ARTIFACTS_DIR / "pending_action.json"
 MANIFEST_PATH = ROOT / "project_manifest.json"
+INSTRUCTIONS_DIR = ROOT / "src" / "hexstrike" / "instructions"
 EVA_MOUNT = Path(os.environ.get("HEXSTRIKE_EVA_MOUNT", "/Volumes/Eva"))
 RAG_ROOT = Path(os.environ.get("RAG_STORAGE_ROOT", str(EVA_MOUNT / "rag-storage")))

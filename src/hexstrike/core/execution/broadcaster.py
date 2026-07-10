@@ -139,15 +139,28 @@ class ExecutionBroadcaster:
 
         return {"queued": False, "reason": "approval_required_disabled"}
 
+    def _pending_approved(self) -> bool:
+        """Verify PendingAction file has operator approval."""
+        if not PENDING_ACTION.is_file():
+            return False
+        try:
+            data = json.loads(PENDING_ACTION.read_text(encoding="utf-8"))
+            return data.get("status") == "approved"
+        except (json.JSONDecodeError, OSError):
+            return False
+
     def broadcast(self, signed_tx_hex: str, *, approved: bool = False) -> dict[str, Any]:
-        """Broadcast only when explicitly approved by operator."""
-        if self.require_approval and not approved:
+        """Broadcast only when explicitly approved via mcp_execution_gate / PendingAction."""
+        if self.require_approval and (not approved or not self._pending_approved()):
             self.bus.publish(
                 "execution.denied",
-                {"reason": "missing_operator_approval"},
+                {"reason": "missing_operator_approval", "pending_checked": True},
                 source="core.execution",
             )
-            return {"success": False, "error": "Operator approval required"}
+            return {
+                "success": False,
+                "error": "Operator approval required — set pending_action.json status to approved",
+            }
 
         endpoints = self._rpc_endpoints()
         try:

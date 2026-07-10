@@ -1,7 +1,8 @@
 {
   "name": "HexStrike-AI",
-  "version": "8.0.0",
-  "architecture": "production_autonomous_agent",
+  "version": "8.1.0",
+  "architecture": "autonomous_execution_phase",
+  "instructions_dir": "src/hexstrike/instructions/",
   "updated_at": null,
   "layers": {
     "modules": {
@@ -94,6 +95,28 @@
       }
     }
   },
+  "instructions": {
+    "core.monitor": {
+      "file": "src/hexstrike/instructions/monitor.md",
+      "status": "active"
+    },
+    "core.forensics": {
+      "file": "src/hexstrike/instructions/forensics.md",
+      "status": "active"
+    },
+    "core.execution": {
+      "file": "src/hexstrike/instructions/execution.md",
+      "status": "active"
+    },
+    "skill.recon_osint": {
+      "file": "src/hexstrike/instructions/recon_osint.md",
+      "status": "active"
+    },
+    "skill.timing_analysis": {
+      "file": "src/hexstrike/instructions/timing_analysis.md",
+      "status": "active"
+    }
+  },
   "services": {
     "hexstrike_server": {
       "script": "hexstrike_server.py",
@@ -103,11 +126,12 @@
     "autonomous_monitor": {
       "script": "scripts/autonomous_monitor.py",
       "status": "active",
-      "note": "Refactored — uses src/ stealth RPC + bootstrap"
+      "note": "Monitor client — bound to monitor.md instruction protocol"
     },
     "orchestrator": {
       "script": "hexstrike_orchestrator.py",
-      "status": "active"
+      "status": "active",
+      "agent_manager": "src/hexstrike/agent_manager.py"
     },
     "health_check": {
       "script": "scripts/health_check.sh",

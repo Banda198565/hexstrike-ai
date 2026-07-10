@@ -20,6 +20,8 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from hexstrike.compat.bootstrap import bootstrap_paths
+from hexstrike.instructions import load_instruction
+from hexstrike.integrations.rpc_client import StealthRpcClient
 
 bootstrap_paths()
 
@@ -33,13 +35,16 @@ from crypto_rpc_orchestrator import (
     normalize_addr,
     rpc_with_fallback,
 )
-from hexstrike.integrations.rpc_client import StealthRpcClient
 from rag_core import (
     RagStorageError,
     index_false_positive,
     is_false_positive_pattern,
     search_history,
 )
+
+# Agent instruction protocol — base system prompt for monitor client
+MONITOR_AGENT_ID = "core.monitor"
+MONITOR_SYSTEM_PROMPT = load_instruction(MONITOR_AGENT_ID)
 
 DEFAULT_CONFIG = ROOT / "config" / "rpc_config.json"
 ALERTS_LOG = ROOT / "artifacts" / "alerts.log"
@@ -482,6 +487,7 @@ def run_monitor(
     dedup_pairs: dict[str, float] = dict(state.get("dedup_pairs", {}))
 
     print(f"[monitor] RPC primary: {cfg['primary']}")
+    print(f"[agent] {MONITOR_AGENT_ID} instructions loaded ({len(MONITOR_SYSTEM_PROMPT)} bytes from monitor.md)")
     print(f"[monitor] Watching {len(watched)} addresses | sinks={len(sinks)}")
     print(f"[monitor] Context sources: {', '.join(watch['sources']) or 'rpc_config only'}")
     print(f"[monitor] Feedback ignores: {len(ignored_hashes)} tx hashes")
