@@ -1,0 +1,133 @@
+{
+  "name": "HexStrike-AI",
+  "version": "7.0.0",
+  "architecture": "layered_recon_forensics_execution",
+  "updated_at": "2026-07-10T10:47:52.881238+00:00",
+  "layers": {
+    "modules": {
+      "core.monitor": {
+        "description": "Optimized mempool stream listener (Geth RPC) with auto-failover",
+        "path": "src/hexstrike/core/monitor/mempool.py",
+        "status": "active",
+        "dependencies": [
+          "mcp_rpc_gateway",
+          "config/rpc_config.json"
+        ],
+        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+      },
+      "core.forensics": {
+        "description": "Chain analysis engine with cex-cluster-map support",
+        "path": "src/hexstrike/core/forensics/engine.py",
+        "status": "active",
+        "dependencies": [
+          "artifacts/master_context.json",
+          "mcp_rag_memory"
+        ],
+        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+      },
+      "core.execution": {
+        "description": "Safe transaction broadcaster with pre-flight gas estimation and slippage protection",
+        "path": "src/hexstrike/core/execution/broadcaster.py",
+        "status": "active",
+        "dependencies": [
+          "mcp_execution_gate",
+          "core.vault"
+        ],
+        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+      },
+      "core.vault": {
+        "description": "AES-256 encrypted local key management (never exposed)",
+        "path": "src/hexstrike/core/vault/keystore.py",
+        "status": "ready",
+        "dependencies": [
+          "cryptography"
+        ],
+        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+      }
+    },
+    "skills": {
+      "recon_osint": {
+        "description": "Passive infra mapping (Jenkins/IP/CVE scanning)",
+        "path": "src/hexstrike/skills/recon_osint.py",
+        "status": "active",
+        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+      },
+      "chain_tracer": {
+        "description": "Recipient depth analysis and entity resolution",
+        "path": "src/hexstrike/skills/chain_tracer.py",
+        "status": "active",
+        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+      },
+      "dedup_engine": {
+        "description": "Pattern-based alert filtering (15-min window)",
+        "path": "src/hexstrike/skills/dedup_engine.py",
+        "status": "active",
+        "window_seconds": 900,
+        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+      },
+      "vulnerability_scanner": {
+        "description": "Sweep-sniping windows and EIP-7702/delegation risks",
+        "path": "src/hexstrike/skills/vulnerability_scanner.py",
+        "status": "active",
+        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+      }
+    },
+    "mcps": {
+      "mcp_rpc_gateway": {
+        "description": "Unified interface for node management",
+        "path": "src/hexstrike/mcp/rpc_gateway.py",
+        "status": "active",
+        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+      },
+      "mcp_rag_memory": {
+        "description": "LanceDB interface for historical pattern retrieval",
+        "path": "src/hexstrike/mcp/rag_memory.py",
+        "status": "active",
+        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+      },
+      "mcp_execution_gate": {
+        "description": "Human-in-the-loop approval bridge (PendingAction queue)",
+        "path": "src/hexstrike/mcp/execution_gate.py",
+        "status": "active",
+        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+      },
+      "mcp_github_bridge": {
+        "description": "Real-time event ingestion from GitHub webhooks",
+        "path": "src/hexstrike/mcp/github_bridge.py",
+        "status": "ready",
+        "last_checked": "2026-07-10T10:47:52.881238+00:00"
+      }
+    }
+  },
+  "services": {
+    "hexstrike_server": {
+      "script": "hexstrike_server.py",
+      "port": 8888,
+      "status": "external"
+    },
+    "autonomous_monitor": {
+      "script": "scripts/autonomous_monitor.py",
+      "status": "legacy_compat",
+      "note": "Wrapped by orchestrator monitor mode"
+    },
+    "orchestrator": {
+      "script": "hexstrike_orchestrator.py",
+      "status": "active"
+    },
+    "health_check": {
+      "script": "scripts/health_check.sh",
+      "status": "active"
+    },
+    "watch_duty": {
+      "script": "watch_duty.sh",
+      "status": "active"
+    }
+  },
+  "runtime": {
+    "last_health_check": "2026-07-10T10:47:52.881238+00:00",
+    "rpc_status": "ok",
+    "active_rpc": "http://51.222.42.220:8545",
+    "pending_action": false,
+    "dedup_pairs": 0
+  }
+}

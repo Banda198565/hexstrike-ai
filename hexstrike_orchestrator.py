@@ -1,0 +1,231 @@
+#!/usr/bin/env python3
+"""HexStrike-AI orchestrator — wires core modules, skills, and MCPs via ContextBus."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from hexstrike.bus.context_bus import ContextBus
+from hexstrike.core.execution.broadcaster import ExecutionBroadcaster
+from hexstrike.core.forensics.engine import ForensicsEngine
+from hexstrike.core.monitor.mempool import MempoolMonitor, MonitorConfig
+from hexstrike.core.vault.keystore import KeyVault
+from hexstrike.mcp.execution_gate import ExecutionGateMcp
+from hexstrike.mcp.github_bridge import GithubBridgeMcp
+from hexstrike.mcp.rag_memory import RagMemoryMcp
+from hexstrike.mcp.rpc_gateway import RpcGatewayMcp
+from hexstrike.paths import MANIFEST_PATH, PENDING_ACTION, RPC_CONFIG
+from hexstrike.skills.chain_tracer import ChainTracerSkill
+from hexstrike.skills.dedup_engine import DedupEngine
+from hexstrike.skills.recon_osint import ReconOsintSkill
+from hexstrike.skills.vulnerability_scanner import VulnerabilityScanner
+
+
+class HexStrikeOrchestrator:
+    """Central brain connecting recon → forensics → execution with shared ContextBus."""
+
+    def __init__(self, config_path: Path = RPC_CONFIG) -> None:
+        self.bus = ContextBus()
+        self.config_path = config_path
+
+        self.monitor = MempoolMonitor(
+            bus=self.bus,
+            config=MonitorConfig(config_path=config_path),
+        )
+        self.forensics = ForensicsEngine(bus=self.bus)
+        self.broadcaster = ExecutionBroadcaster(bus=self.bus, config_path=config_path)
+        self.vault = KeyVault(bus=self.bus)
+
+        self.rpc_mcp = RpcGatewayMcp(bus=self.bus, monitor=self.monitor)
+        self.rag_mcp = RagMemoryMcp(bus=self.bus)
+        self.execution_mcp = ExecutionGateMcp(bus=self.bus, broadcaster=self.broadcaster)
+        self.github_mcp = GithubBridgeMcp(bus=self.bus)
+
+        self.recon = ReconOsintSkill(bus=self.bus)
+        self.chain_tracer = ChainTracerSkill(bus=self.bus, forensics=self.forensics)
+        self.dedup = DedupEngine(bus=self.bus)
+        self.vuln_scanner = VulnerabilityScanner(bus=self.bus)
+
+        self._wire_bus_logging()
+
+    def _wire_bus_logging(self) -> None:
+        def _log(event) -> None:
+            if event.topic.startswith(("monitor.", "execution.", "mcp.execution.")):
+                print(f"[bus] {event.topic} ← {event.source}")
+
+        self.bus.subscribe("*", _log)
+
+    def health(self) -> dict[str, Any]:
+        return {
+            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+            "rpc": self.rpc_mcp.health(),
+            "vault": self.vault.status(),
+            "execution_gate": self.execution_mcp.status(),
+            "dedup": self.dedup.snapshot(),
+            "forensics_entries": len((self.forensics.load_context() or {}).get("entries", [])),
+        }
+
+    def update_manifest(self) -> dict[str, Any]:
+        manifest_path = MANIFEST_PATH
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        health = self.health()
+
+        runtime = {
+            "last_health_check": health["timestamp"],
+            "rpc_status": health["rpc"].get("status"),
+            "active_rpc": health["rpc"].get("active_rpc"),
+            "pending_action": health["execution_gate"].get("has_pending"),
+            "dedup_pairs": health["dedup"].get("active_pairs"),
+        }
+        manifest["updated_at"] = health["timestamp"]
+        manifest["runtime"] = runtime
+
+        for layer in ("modules", "skills", "mcps"):
+            for name, meta in manifest["layers"][layer].items():
+                if meta.get("status") == "external":
+                    continue
+                meta["last_checked"] = health["timestamp"]
+
+        manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        self.bus.publish("orchestrator.manifest_updated", runtime, source="orchestrator")
+        return manifest
+
+    def run_health_suite(self) -> dict[str, Any]:
+        script = ROOT / "scripts" / "health_check.sh"
+        if script.is_file():
+            proc = subprocess.run([str(script)], cwd=str(ROOT), capture_output=True, text=True)
+            return {"returncode": proc.returncode, "stdout": proc.stdout, "stderr": proc.stderr}
+        return self.health()
+
+    def run_recon(self, limit: int = 3) -> list[dict[str, Any]]:
+        return self.recon.scan_rpc_nodes(limit=limit)
+
+    def run_vuln_scan(self) -> dict[str, Any]:
+        return self.vuln_scanner.run_full_scan()
+
+    def run_monitor_loop(
+        self,
+        *,
+        duration_seconds: int | None = None,
+        delegate_legacy: bool = True,
+    ) -> dict[str, Any]:
+        """Run mempool monitoring — delegates to legacy autonomous_monitor when available."""
+        if delegate_legacy:
+            legacy = ROOT / "scripts" / "autonomous_monitor.py"
+            if legacy.is_file():
+                cmd = [sys.executable, str(legacy), "--config", str(self.config_path)]
+                if duration_seconds:
+                    cmd.extend(["--duration", str(duration_seconds)])
+                proc = subprocess.run(cmd, cwd=str(ROOT))
+                return {"mode": "legacy_monitor", "returncode": proc.returncode}
+
+        alerts = 0
+        dedup_skipped = 0
+        txs = 0
+        deadline = time.time() + duration_seconds if duration_seconds else None
+
+        for tx in self.monitor.stream(duration_seconds=duration_seconds):
+            txs += 1
+            frm, to = tx.get("from", ""), tx.get("to", "")
+            fp, _ = self.rag_mcp.is_false_positive(tx.get("hash", ""), frm, to)
+            if fp:
+                continue
+
+            alert = {"hash": tx.get("hash"), "from": frm, "to": to, "severity": "WARN"}
+            if self.dedup.filter_alert(alert) is None:
+                dedup_skipped += 1
+                continue
+
+            entity = self.forensics.resolve_entity(to)
+            if entity.get("labels"):
+                alert["severity"] = "CRITICAL"
+
+            self.execution_mcp.submit(
+                {"hash": tx.get("hash"), "from": frm, "to": to, "value": tx.get("value")},
+                reason="mempool_watch_hit",
+                severity=alert["severity"],
+            )
+            alerts += 1
+            if deadline and time.time() >= deadline:
+                break
+
+        return {"mode": "orchestrator", "txs": txs, "alerts": alerts, "dedup_skipped": dedup_skipped}
+
+    def status(self) -> dict[str, Any]:
+        return {
+            "components": {
+                "monitor": "active",
+                "forensics": "active",
+                "execution": "active",
+                "vault": self.vault.status(),
+                "skills": ["recon_osint", "chain_tracer", "dedup_engine", "vulnerability_scanner"],
+                "mcps": ["rpc_gateway", "rag_memory", "execution_gate", "github_bridge"],
+            },
+            "pending_action": str(PENDING_ACTION),
+            "manifest": str(MANIFEST_PATH),
+        }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="HexStrike-AI orchestrator")
+    parser.add_argument("--config", default=str(RPC_CONFIG))
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("status", help="Show component status")
+    sub.add_parser("health", help="Run health checks and update manifest")
+    sub.add_parser("manifest", help="Update project_manifest.json runtime section")
+
+    recon_p = sub.add_parser("recon", help="Passive RPC recon scan")
+    recon_p.add_argument("--limit", type=int, default=3)
+
+    sub.add_parser("vuln-scan", help="Run vulnerability scanner")
+
+    mon_p = sub.add_parser("monitor", help="Run mempool monitor loop")
+    mon_p.add_argument("--duration", type=int, default=None)
+    mon_p.add_argument("--native", action="store_true", help="Use orchestrator native loop (not legacy script)")
+
+    args = parser.parse_args()
+    orch = HexStrikeOrchestrator(config_path=Path(args.config))
+
+    if args.command == "status":
+        print(json.dumps(orch.status(), indent=2))
+        return 0
+    if args.command == "health":
+        result = orch.run_health_suite()
+        orch.update_manifest()
+        print(json.dumps(result, indent=2) if isinstance(result, dict) else result.get("stdout", ""))
+        return 0 if (isinstance(result, dict) and result.get("returncode", 0) == 0) else 0
+    if args.command == "manifest":
+        print(json.dumps(orch.update_manifest(), indent=2))
+        return 0
+    if args.command == "recon":
+        print(json.dumps(orch.run_recon(limit=args.limit), indent=2))
+        return 0
+    if args.command == "vuln-scan":
+        print(json.dumps(orch.run_vuln_scan(), indent=2))
+        return 0
+    if args.command == "monitor":
+        result = orch.run_monitor_loop(
+            duration_seconds=args.duration,
+            delegate_legacy=not args.native,
+        )
+        orch.update_manifest()
+        print(json.dumps(result, indent=2))
+        return 0
+
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
