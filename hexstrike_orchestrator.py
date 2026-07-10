@@ -214,6 +214,57 @@ class HexStrikeOrchestrator:
             "rag_hits": rag_hits[:3],
         }
 
+    def run_bridge_decode(self) -> dict[str, Any]:
+        """P2: Rhino.fi bridge cross-chain decode via HexStrike pipeline (RPC + RAG + forensics)."""
+        bridge = "0xb80a582fa430645a043bb4f6135321ee01005fef"
+        script = ROOT / "scripts" / "bsc-rhino-decode-p2.py"
+        if not script.is_file():
+            return {"error": f"missing script: {script}"}
+
+        rag_hits = self.rag_mcp.search("rhino bridge top3 cross-chain deposit commitmentId")
+        entity_bridge = self.forensics.resolve_entity(bridge)
+        entity_contract = self.forensics.analyze_contract(bridge)
+        rpc_health = self.rpc_mcp.health()
+
+        proc = subprocess.run(
+            [sys.executable, str(script)],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+        )
+        artifact_path = ROOT / "artifacts" / "2026-07-10" / "p2-rhino-crosschain-decode.json"
+        p2_payload: dict[str, Any] = {}
+        if artifact_path.is_file():
+            p2_payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+
+        report = {
+            "operation": "bridge_decode_p2",
+            "policy": "read_only",
+            "hexstrike": {
+                "orchestrator": "8.0.0",
+                "agent": "core.forensics",
+                "instruction": "forensics.md",
+                "mcps_used": ["mcp_rpc_gateway", "mcp_rag_memory"],
+                "rpc_health": rpc_health,
+            },
+            "entity": entity_bridge,
+            "contract": entity_contract,
+            "rag_hits": rag_hits[:5],
+            "p2_decode": p2_payload,
+            "script": {
+                "path": str(script),
+                "returncode": proc.returncode,
+                "stderr_tail": (proc.stderr or "")[-500:],
+            },
+            "artifact": str(artifact_path),
+        }
+
+        out = ROOT / "artifacts" / "forensics" / "p2-rhino-crosschain-decode.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        self.bus.publish("forensics.bridge_decode", report, source="orchestrator")
+        return report
+
     def run_monitor_loop(
         self,
         *,
@@ -381,6 +432,8 @@ def main() -> int:
     analyze_p = sub.add_parser("analyze", help="Forensics analysis on address (instruction-driven)")
     analyze_p.add_argument("address", help="Target address (0x...)")
 
+    sub.add_parser("bridge-decode", help="P2 Rhino.fi cross-chain decode (forensics pipeline)")
+
     recon_p = sub.add_parser("recon", help="Passive RPC recon scan")
     recon_p.add_argument("--limit", type=int, default=3)
 
@@ -434,6 +487,9 @@ def main() -> int:
         return 0
     if args.command == "analyze":
         print(json.dumps(orch.run_analyze(args.address), indent=2))
+        return 0
+    if args.command == "bridge-decode":
+        print(json.dumps(orch.run_bridge_decode(), indent=2))
         return 0
     if args.command == "recon":
         print(json.dumps(orch.run_recon(limit=args.limit), indent=2))
