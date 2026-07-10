@@ -1,0 +1,182 @@
+{
+  "meta": {
+    "timestamp": "2026-07-10T21:21:52.757795+00:00",
+    "rpc": "http://51.222.42.220:8545",
+    "chain": "bsc",
+    "policy": "read_only",
+    "block_range": {
+      "from": 108941522,
+      "to": 109041522,
+      "chunk_size": 5000
+    },
+    "latest_block_seen": 109242792,
+    "usdt": "0x55d398326f99059fF775485246999027B3197955",
+    "transfer_topic": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+  },
+  "p0_rhino_bridge": {
+    "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+    "incoming_usdt": {
+      "count": 2359,
+      "total_usdt": 1770737.475094,
+      "unique_senders": 1899,
+      "unique_recipients": 1,
+      "top_senders": [
+        {
+          "address": "0xc1a8bae79ada7b1f0e4a4e0171d19f71d95a4607",
+          "usdt": 500000.0
+        },
+        {
+          "address": "0xa8c1a5e479c5c796e6e1a861c8b455521b3b5f89",
+          "usdt": 107000.0
+        },
+        {
+          "address": "0x5d910d78c1a5d72a810937668ebb1c07f7924185",
+          "usdt": 33287.866484
+        },
+        {
+          "address": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+          "usdt": 22486.98
+        },
+        {
+          "address": "0xe84c6a44ba8393702a929195c81aaa29a8b0fe8b",
+          "usdt": 13699.97
+        },
+        {
+          "address": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+          "usdt": 12268.34
+        },
+        {
+          "address": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+          "usdt": 11804.0
+        },
+        {
+          "address": "0x6133c2318f30f146c9bf64fd95005e21ba8ffa19",
+          "usdt": 10176.47968
+        },
+        {
+          "address": "0xca539850dabbdebd943b1241f0b5358db1386271",
+          "usdt": 10118.3916
+        },
+        {
+          "address": "0x3e0b65c9c31e9593e2b357be6eecd28bef6da03e",
+          "usdt": 9758.49
+        }
+      ],
+      "top_recipients": [
+        {
+          "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+          "usdt": 1770737.475094
+        }
+      ]
+    },
+    "contract_events": {
+      "count": 449,
+      "unique_topic0": 3,
+      "topic0_counts": {
+        "0xe4f4f1fb3534fe80225d336f6e5a73007dc992e5f6740152bf13ed2a08f3851a": 379,
+        "0x1655dc426ee0145d9436d28cfb463fb0e0717ae145566e5e534da64b735e49f3": 60,
+        "0xad50835dbfd8ee369e3d3c5ffa2f72b0f250cb3cf4331f29e78fa780f20ef998": 10
+      }
+    },
+    "artifact": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/2026-07-10/p0-rhino-bridge-trace.json",
+    "artifact_paths": [
+      "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/2026-07-10/p0-rhino-bridge-trace.json",
+      "/Users/mufasaai/Desktop/on-chain-forensics/artifacts/2026-07-10/p0-rhino-bridge-trace.json"
+    ]
+  },
+  "p1_top3_outgoing_usdt": {
+    "contracts": [
+      "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+      "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+      "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a"
+    ],
+    "per_contract": {
+      "0x730ea0231808f42a20f8921ba7fbc788226768f5": {
+        "count": 5,
+        "total_usdt": 22486.98,
+        "unique_senders": 1,
+        "unique_recipients": 1,
+        "top_senders": [
+          {
+            "address": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "usdt": 22486.98
+          }
+        ],
+        "top_recipients": [
+          {
+            "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "usdt": 22486.98
+          }
+        ]
+      },
+      "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08": {
+        "count": 4,
+        "total_usdt": 12268.34,
+        "unique_senders": 1,
+        "unique_recipients": 1,
+        "top_senders": [
+          {
+            "address": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "usdt": 12268.34
+          }
+        ],
+        "top_recipients": [
+          {
+            "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "usdt": 12268.34
+          }
+        ]
+      },
+      "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a": {
+        "count": 5,
+        "total_usdt": 11804.0,
+        "unique_senders": 1,
+        "unique_recipients": 1,
+        "top_senders": [
+          {
+            "address": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "usdt": 11804.0
+          }
+        ],
+        "top_recipients": [
+          {
+            "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "usdt": 11804.0
+          }
+        ]
+      }
+    },
+    "aggregate": {
+      "count": 14,
+      "total_usdt": 46559.32,
+      "unique_senders": 3,
+      "unique_recipients": 1,
+      "top_senders": [
+        {
+          "address": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+          "usdt": 22486.98
+        },
+        {
+          "address": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+          "usdt": 12268.34
+        },
+        {
+          "address": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+          "usdt": 11804.0
+        }
+      ],
+      "top_recipients": [
+        {
+          "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+          "usdt": 46559.32
+        }
+      ]
+    },
+    "artifact": "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/2026-07-10/p1-top3-outgoing-usdt.json",
+    "artifact_paths": [
+      "/Volumes/Eva/mufasaai-storage/hexstrike-ai/artifacts/2026-07-10/p1-top3-outgoing-usdt.json",
+      "/Users/mufasaai/Desktop/on-chain-forensics/artifacts/2026-07-10/p1-top3-outgoing-usdt.json"
+    ]
+  },
+  "errors": []
+}

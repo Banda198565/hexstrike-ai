@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "timestamp": "2026-07-10T21:17:52.450018+00:00",
+    "policy": "read_only_depth2",
+    "rpc": "http://51.222.42.220:8545"
+  },
+  "graph": {
+    "hop0": {
+      "address": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "label": "hot_wallet",
+      "out_usdt": 22486.98
+    },
+    "hop1": {
+      "address": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+      "label": "authority_eip7702_contract",
+      "in_usdt": 22486.98,
+      "out_usdt": 22486.98
+    },
+    "hop2": {
+      "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+      "label": "Rhino.fi Bridge",
+      "in_usdt": 22486.98
+    }
+  },
+  "transfers_hop1_to_hop2": {
+    "count": 5,
+    "total_usdt": 22486.98,
+    "sample": [
+      {
+        "value_usdt": 3353.15,
+        "block": 108972005,
+        "tx_hash": "0xe4ea1d5f36e89b176ddd98a661fd317eaa661b8c8e5399e1f13c23a25b193636"
+      },
+      {
+        "value_usdt": 4816.0,
+        "block": 109017305,
+        "tx_hash": "0xa7279140ccaefb092ea63690a1db6a5354acf3ccaf6368b7e80beb1bb5a93667"
+      },
+      {
+        "value_usdt": 4797.0,
+        "block": 109018651,
+        "tx_hash": "0x7f9cba2507bf7aea6b9ec1d7e9273a31120b384a8ea4c0caa4ee0f3bf597727c"
+      },
+      {
+        "value_usdt": 4797.0,
+        "block": 109019979,
+        "tx_hash": "0x1441d8b9eddb5cda67a03b04b682e1a2645d2a868877a89da8cef168054c3598"
+      },
+      {
+        "value_usdt": 4723.83,
+        "block": 109021315,
+        "tx_hash": "0xc4c5b18bf3bcab377ebdb7890569405672b06ffcd797131ae1387776f89a91a3"
+      }
+    ]
+  },
+  "verdict": "Funds route: hot wallet -> authority contract -> Rhino.fi bridge (cross-chain exit hub)"
+}

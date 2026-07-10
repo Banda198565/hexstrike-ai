@@ -1,17 +1,135 @@
-[
-  {
-    "addr": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
-    "type": "CONTRACT",
-    "bnb": 0.0
+{
+  "meta": {
+    "rpc": "http://51.222.42.220:8545",
+    "period_blocks": [
+      108941522,
+      109041522
+    ],
+    "hot_wallet": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da"
   },
-  {
-    "addr": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
-    "type": "CONTRACT",
-    "bnb": 0.0
-  },
-  {
-    "addr": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
-    "type": "CONTRACT",
-    "bnb": 0.0
-  }
-]
+  "results": [
+    {
+      "addr": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+      "type": "CONTRACT",
+      "bnb": 0.0,
+      "incoming_from_hot_wallet": {
+        "count": 5,
+        "total_usdt": 22486.98,
+        "sample": [
+          {
+            "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+            "value_usdt": 3353.15,
+            "block": 108971956,
+            "tx_hash": "0xb311119345e3755ae8d4159bddc8b74fd73a253f91e3e4ef8d3472a3bab72c9e"
+          },
+          {
+            "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+            "value_usdt": 4816.0,
+            "block": 109017145,
+            "tx_hash": "0x15cae4d8d0df7be751f17ae7330b5e9aa51f46424fe37e4d0bfbc683f74c4501"
+          },
+          {
+            "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+            "value_usdt": 4797.0,
+            "block": 109017698,
+            "tx_hash": "0x5a34b97a112f60154af203dc5f1a64cb42286964652cad50ac8ee2ac895384f2"
+          },
+          {
+            "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+            "value_usdt": 4797.0,
+            "block": 109019255,
+            "tx_hash": "0x07618f0d8cae3cdcc52125bbbabe0d6f1c8c6b932e7b5a7767d6a94df5cd3e5a"
+          },
+          {
+            "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+            "value_usdt": 4723.83,
+            "block": 109021195,
+            "tx_hash": "0x90895074e69ba270d6bb41dcdfcb43f1e814fa7be24794ceff9d2f5e65feb567"
+          }
+        ]
+      },
+      "note": "Incoming USDT from hot wallet in period blocks (read-only)",
+      "artifact_total_usdt": 22486.98
+    },
+    {
+      "addr": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+      "type": "CONTRACT",
+      "bnb": 0.0,
+      "incoming_from_hot_wallet": {
+        "count": 4,
+        "total_usdt": 12268.34,
+        "sample": [
+          {
+            "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+            "value_usdt": 1820.85,
+            "block": 108945389,
+            "tx_hash": "0x948d906374b37f0abf623e8eef34a22c521c64ac71cb53c8e8069f75f5d2d63d"
+          },
+          {
+            "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+            "value_usdt": 1343.25,
+            "block": 108956940,
+            "tx_hash": "0x50c9964c5595f117865f83a23a302c01dbe9b58dda63e7c5e4859f8b1a88c8f2"
+          },
+          {
+            "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+            "value_usdt": 4997.07,
+            "block": 108981408,
+            "tx_hash": "0x0636fa544f6d5314b784d5947fad34b05127c19fce6d8ff61bb525737e53381c"
+          },
+          {
+            "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+            "value_usdt": 4107.17,
+            "block": 108986718,
+            "tx_hash": "0xd371328f1af5189b760b63f375f6ed95962b79cb85c5c83ee7802b2696df93b8"
+          }
+        ]
+      },
+      "note": "Incoming USDT from hot wallet in period blocks (read-only)",
+      "artifact_total_usdt": 12268.34
+    },
+    {
+      "addr": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+      "type": "CONTRACT",
+      "bnb": 0.0,
+      "incoming_from_hot_wallet": {
+        "count": 7,
+        "total_usdt": 11804.0,
+        "sample": [
+          {
+            "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+            "value_usdt": 4000.0,
+            "block": 108958428,
+            "tx_hash": "0x8eaa30461bbfaa47a9ccc0dbe659cbe21ba08a2f9597f4c54a08aa49aa59980a"
+          },
+          {
+            "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+            "value_usdt": 1000.0,
+            "block": 108958498,
+            "tx_hash": "0x564c658c0b66fae7d13b655ce73fe74ff1b3b31fa03cca036e95cad6cce5e68a"
+          },
+          {
+            "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+            "value_usdt": 1000.0,
+            "block": 108958685,
+            "tx_hash": "0x121b1b78a3c936b3e5247c3200c85c8acb3fb67fc6186c36a7e561c3dcaa34d0"
+          },
+          {
+            "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+            "value_usdt": 500.0,
+            "block": 108965558,
+            "tx_hash": "0x41e5d6d322ee7f92bef461b0e8933ec21aa080550fc7bc09e7f3517654e2d7ca"
+          },
+          {
+            "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+            "value_usdt": 4500.0,
+            "block": 108976439,
+            "tx_hash": "0x9460d701cf35dc90866aec74688d63c92d5f59acfb9f83137f6b66f8b9e08782"
+          }
+        ]
+      },
+      "note": "Incoming USDT from hot wallet in period blocks (read-only)",
+      "artifact_total_usdt": 11804.0
+    }
+  ]
+}

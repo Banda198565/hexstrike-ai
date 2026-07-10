@@ -1,0 +1,221 @@
+{
+  "block_range": {
+    "from": 108941522,
+    "to": 109041522
+  },
+  "contracts": {
+    "0x730ea0231808f42a20f8921ba7fbc788226768f5": {
+      "address": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+      "outgoing_usdt": {
+        "summary": {
+          "count": 5,
+          "total_usdt": 22486.98,
+          "unique_senders": 1,
+          "unique_recipients": 1,
+          "top_senders": [
+            {
+              "address": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+              "usdt": 22486.98
+            }
+          ],
+          "top_recipients": [
+            {
+              "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+              "usdt": 22486.98
+            }
+          ]
+        },
+        "transfers": [
+          {
+            "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 3353.15,
+            "block": 108972005,
+            "tx_hash": "0xe4ea1d5f36e89b176ddd98a661fd317eaa661b8c8e5399e1f13c23a25b193636",
+            "log_index": 152
+          },
+          {
+            "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 4816.0,
+            "block": 109017305,
+            "tx_hash": "0xa7279140ccaefb092ea63690a1db6a5354acf3ccaf6368b7e80beb1bb5a93667",
+            "log_index": 140
+          },
+          {
+            "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 4797.0,
+            "block": 109018651,
+            "tx_hash": "0x7f9cba2507bf7aea6b9ec1d7e9273a31120b384a8ea4c0caa4ee0f3bf597727c",
+            "log_index": 278
+          },
+          {
+            "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 4797.0,
+            "block": 109019979,
+            "tx_hash": "0x1441d8b9eddb5cda67a03b04b682e1a2645d2a868877a89da8cef168054c3598",
+            "log_index": 240
+          },
+          {
+            "from": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 4723.83,
+            "block": 109021315,
+            "tx_hash": "0xc4c5b18bf3bcab377ebdb7890569405672b06ffcd797131ae1387776f89a91a3",
+            "log_index": 182
+          }
+        ]
+      }
+    },
+    "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08": {
+      "address": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+      "outgoing_usdt": {
+        "summary": {
+          "count": 4,
+          "total_usdt": 12268.34,
+          "unique_senders": 1,
+          "unique_recipients": 1,
+          "top_senders": [
+            {
+              "address": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+              "usdt": 12268.34
+            }
+          ],
+          "top_recipients": [
+            {
+              "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+              "usdt": 12268.34
+            }
+          ]
+        },
+        "transfers": [
+          {
+            "from": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 1820.85,
+            "block": 108946677,
+            "tx_hash": "0x2b9138d958bff384c3bb2ff337977d56cec32a97baf56e6dbf8b48740168e261",
+            "log_index": 112
+          },
+          {
+            "from": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 1343.25,
+            "block": 108957819,
+            "tx_hash": "0x1135f4aecddac2285b90fe0b07a5d823b0af3b79d9d00ac52c50f3429d645cfa",
+            "log_index": 330
+          },
+          {
+            "from": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 4997.07,
+            "block": 108982660,
+            "tx_hash": "0x56662176e260639ca038e8f8d0d59a7dba7a6a58374456a0ec895663a455ce6e",
+            "log_index": 323
+          },
+          {
+            "from": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 4107.17,
+            "block": 108988004,
+            "tx_hash": "0x9fdd3d50c6ddba83f906e523a6472b22904d80da1f291e554977253534f221f4",
+            "log_index": 412
+          }
+        ]
+      }
+    },
+    "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a": {
+      "address": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+      "outgoing_usdt": {
+        "summary": {
+          "count": 5,
+          "total_usdt": 11804.0,
+          "unique_senders": 1,
+          "unique_recipients": 1,
+          "top_senders": [
+            {
+              "address": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+              "usdt": 11804.0
+            }
+          ],
+          "top_recipients": [
+            {
+              "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+              "usdt": 11804.0
+            }
+          ]
+        },
+        "transfers": [
+          {
+            "from": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 5000.0,
+            "block": 108959729,
+            "tx_hash": "0xa0e2407de31014d352d23708cfbe9d5436be18d0a9b972ca60cb5eca82e512de",
+            "log_index": 220
+          },
+          {
+            "from": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 1000.0,
+            "block": 108963175,
+            "tx_hash": "0xd3b1ce96fcab056abe5f408a38e4d5e17b3c7f45a9dfab9bd7808b9362e55596",
+            "log_index": 288
+          },
+          {
+            "from": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 500.0,
+            "block": 108966652,
+            "tx_hash": "0x757167d6df209ff97cf8df20c2ad5ca2a95080f25e673cf7a05b7346ff66eb3e",
+            "log_index": 218
+          },
+          {
+            "from": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 4804.0,
+            "block": 108977329,
+            "tx_hash": "0x9992b2e3325bfb5911573986e66adfbd5bc0f91efccc81ff99173e5efa9dc072",
+            "log_index": 360
+          },
+          {
+            "from": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+            "to": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+            "value_usdt": 500.0,
+            "block": 108985326,
+            "tx_hash": "0x0f4f6b6cbc6090bebe0c12619f46ddeff71482b3cfe1419ea7fbc77c56fce6b7",
+            "log_index": 229
+          }
+        ]
+      }
+    }
+  },
+  "aggregate_outgoing_usdt": {
+    "count": 14,
+    "total_usdt": 46559.32,
+    "unique_senders": 3,
+    "unique_recipients": 1,
+    "top_senders": [
+      {
+        "address": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "usdt": 22486.98
+      },
+      {
+        "address": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+        "usdt": 12268.34
+      },
+      {
+        "address": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+        "usdt": 11804.0
+      }
+    ],
+    "top_recipients": [
+      {
+        "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "usdt": 46559.32
+      }
+    ]
+  }
+}
