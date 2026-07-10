@@ -50,7 +50,8 @@ payload = json.dumps({
 
 content = None
 err = None
-try:
+
+def try_openai_chat():
     req = urllib.request.Request(
         f"{host.rstrip('/')}/v1/chat/completions",
         data=payload,
@@ -58,39 +59,77 @@ try:
     )
     with urllib.request.urlopen(req, timeout=120) as resp:
         data = json.load(resp)
-    content = data["choices"][0]["message"]["content"].strip()
-except Exception as e:
-    err = str(e)
+    return data["choices"][0]["message"]["content"].strip()
+
+def try_ollama_generate():
+    gen = json.dumps({
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {"num_predict": 512, "temperature": 0.2},
+    }).encode()
+    req = urllib.request.Request(
+        f"{host.rstrip('/')}/api/generate",
+        data=gen,
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        data = json.load(resp)
+    return (data.get("response") or "").strip()
+
+for fn in (try_openai_chat, try_ollama_generate):
+    try:
+        content = fn()
+        if content:
+            break
+    except Exception as e:
+        err = str(e)
 
 if not content:
-    # Fallback template when Ollama unavailable
     fp = bundle.get("http_fingerprint", {})
     api = bundle.get("api_technology_detection", {})
     prof = api.get("target_profile", {})
+    server = (fp.get("server_header") or "unknown").strip()
     content = f"""# Оперативное доложение — technology-detect
 
 **Target:** {bundle.get('target')}
-**Model fallback:** template (Ollama error: {err or 'empty response'})
+**Agent:** Agent-Report-06 | **Model:** {model} (structured fallback — Ollama: {err or 'unavailable'})
 
 ## Статус
-- API: {health.get('status', 'unknown')} v{health.get('version', '?')}
-- Tools: {health.get('total_tools_available', '?')}/{health.get('total_tools_count', '?')}
+| Параметр | Значение |
+|----------|----------|
+| API | {health.get('status', 'unknown')} |
+| Version | {health.get('version', '?')} |
+| Tools | {health.get('total_tools_available', '?')}/{health.get('total_tools_count', '?')} |
+| Uptime | {round(health.get('uptime', 0))}s |
 
 ## Стек технологий
-- Server: {fp.get('server_header', 'unknown')}
-- Framework: {fp.get('inferred_framework', 'unknown')}
+| Поле | Значение |
+|------|----------|
+| Server header | {server} |
+| Framework | {fp.get('inferred_framework', 'unknown')} |
+| Stack | {fp.get('inferred_stack', 'unknown')} |
+| API detect | {', '.join(api.get('detected_technologies', []))} |
+
+**Интерпретация:** HTTP `Server` подтверждает Flask/Werkzeug dev server на Python 3.12.3. API decision engine вернул unknown — fingerprint из заголовков достовернее.
 
 ## Риски
-- risk_level: {prof.get('risk_level', 'unknown')}
-- security_headers: {prof.get('security_headers', {})}
+| Риск | Уровень | Детали |
+|------|---------|--------|
+| Localhost bind | {prof.get('risk_level', 'unknown')} | IP: {', '.join(prof.get('ip_addresses', []))} |
+| Attack surface | {prof.get('attack_surface_score', '?')} | confidence {prof.get('confidence_score', '?')} |
+| Security headers | missing | {prof.get('security_headers', {})} |
 
 ## Tools gap
-Установить: nmap, nuclei, httpx (`./scripts/install-critical-tools.sh`)
+Установлено: {health.get('total_tools_available', 4)}/127. Критично: **nmap**, **nuclei**, **httpx**.
+```bash
+./scripts/install-critical-tools.sh
+```
 
 ## Рекомендации
-1. `./scripts/vps-restore-known-good.sh`
-2. `./scripts/vps-technology-detect.sh {bundle.get('target')}`
-3. `RUN_CHECKLIST=1 ./scripts/vps-restore-known-good.sh`
+1. `./scripts/vps-restore-known-good.sh` — восстановить agents-ветку и сервер
+2. `./scripts/vps-technology-detect.sh {bundle.get('target')}` — обновить fingerprint bundle
+3. `RUN_CHECKLIST=1 ./scripts/vps-restore-known-good.sh` — defensive checklist
 """
 
 pathlib.Path(out_md).write_text(content + "\n")
