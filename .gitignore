@@ -1,0 +1,5 @@
+hexstrike-env/
+artifacts/
+__pycache__/
+*.pyc
+.env
