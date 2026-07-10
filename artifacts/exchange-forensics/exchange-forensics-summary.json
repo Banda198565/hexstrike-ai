@@ -1,11 +1,12 @@
 {
-  "generated_at": "2026-07-10T09:04:55Z",
+  "generated_at": "2026-07-10T09:12:19Z",
   "steps_completed": [
     "binance_lea_pack",
     "rhino_bridge_trace",
     "cex_depth2_scan",
     "rhino_destination_trace",
-    "cex_depth3_scan"
+    "cex_depth3_scan",
+    "base_usdc_outflow_trace"
   ],
   "outputs": [
     "artifacts/exchange-forensics/binance-lea-pack.json",
@@ -28,6 +29,11 @@
     },
     "hot_wallet_base_usdc_live": {
       "error": "HTTP Error 403: Forbidden"
-    }
+    },
+    "base_usdc_balance_approx": 489285,
+    "base_outflow_recipients_sample": 575,
+    "base_cex_hits": 0,
+    "base_pattern": "payroll/disbursement",
+    "authority_on_base": false
   }
 }

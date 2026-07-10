@@ -1,0 +1,1140 @@
+{
+  "generated_at": "2026-07-10T09:11:45Z",
+  "task": "base-usdc-outflow-trace",
+  "mode": "read-only",
+  "chain": "base",
+  "target": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+  "depth": 3,
+  "stable": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  "scan_params": {
+    "pages": 8,
+    "page_size": 100,
+    "tx_rows_fetched": 800
+  },
+  "live_balance_usdc": null,
+  "summary": {
+    "outflow_tx_count": 641,
+    "inflow_tx_count": 159,
+    "unique_outflow_recipients": 575,
+    "total_outflow_usdc_sampled": 144584.32,
+    "total_inflow_usdc_sampled": 16497.9,
+    "cex_hits_count": 0,
+    "protocol_hits_count": 0,
+    "bsc_hop_correlation_rows": 0
+  },
+  "top_outflow_recipients": [
+    {
+      "address": "0x99935ebbbc3124e769a0b01edc1597623571e515",
+      "total_usdc": 4999.7,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x99935ebbbc3124e769a0b01edc1597623571e515"
+    },
+    {
+      "address": "0xe9dda552afa874c8536d577f4c24ccce2b90d768",
+      "total_usdc": 4450.0,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0xe9dda552afa874c8536d577f4c24ccce2b90d768"
+    },
+    {
+      "address": "0x0095e3a0b798d37e7dddd0e24bcac5828d770f46",
+      "total_usdc": 4000.0,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x0095e3a0b798d37e7dddd0e24bcac5828d770f46"
+    },
+    {
+      "address": "0x94532b77e5d4ed744bbfc616160b1b0312f1f59c",
+      "total_usdc": 3471.53,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x94532b77e5d4ed744bbfc616160b1b0312f1f59c"
+    },
+    {
+      "address": "0x4685db69c4e560e0b906feaa970c27d137c8dcb7",
+      "total_usdc": 3081.92,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x4685db69c4e560e0b906feaa970c27d137c8dcb7"
+    },
+    {
+      "address": "0x56731aaf2f9dbe44462506ef7b3d594e2ea91386",
+      "total_usdc": 2383.91,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x56731aaf2f9dbe44462506ef7b3d594e2ea91386"
+    },
+    {
+      "address": "0xa888ef6ef9f9ea6076f4d45ddf409fa726e4ad98",
+      "total_usdc": 1990.0,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0xa888ef6ef9f9ea6076f4d45ddf409fa726e4ad98"
+    },
+    {
+      "address": "0xca7b6e6fb75c4046a4b0ec956a363b3f92b4dcb5",
+      "total_usdc": 1984.71,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0xca7b6e6fb75c4046a4b0ec956a363b3f92b4dcb5"
+    },
+    {
+      "address": "0xe33af33a11e2ec7db773f38a003a97357fbb83f8",
+      "total_usdc": 1983.93,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0xe33af33a11e2ec7db773f38a003a97357fbb83f8"
+    },
+    {
+      "address": "0x93ccdac19cf122e6a64eb5065ded182c268ea87f",
+      "total_usdc": 1981.0,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x93ccdac19cf122e6a64eb5065ded182c268ea87f"
+    },
+    {
+      "address": "0x836690f6aaf6818e543e28720ed05bc7fe01efdd",
+      "total_usdc": 1890.5,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x836690f6aaf6818e543e28720ed05bc7fe01efdd"
+    },
+    {
+      "address": "0x485dcf073caf7ed621d509cbf7d71af2fbf99c10",
+      "total_usdc": 1800.0,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x485dcf073caf7ed621d509cbf7d71af2fbf99c10"
+    },
+    {
+      "address": "0xee2d03559c4aae0443c5b6364748b3454eea584a",
+      "total_usdc": 1756.0,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0xee2d03559c4aae0443c5b6364748b3454eea584a"
+    },
+    {
+      "address": "0x18c7defb29356085e102f83ca20247fe8a6589c4",
+      "total_usdc": 1691.5,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x18c7defb29356085e102f83ca20247fe8a6589c4"
+    },
+    {
+      "address": "0xb28cfc7989e284bfb52119b6088ad5162d08693f",
+      "total_usdc": 1635.77,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0xb28cfc7989e284bfb52119b6088ad5162d08693f"
+    },
+    {
+      "address": "0x247e984b7aeaf5313cce3ed8e304bd18dee0982c",
+      "total_usdc": 1587.0,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x247e984b7aeaf5313cce3ed8e304bd18dee0982c"
+    },
+    {
+      "address": "0x33732f4c180e9634d3d9ee420cfc1c2b9c90cbe7",
+      "total_usdc": 1493.47,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x33732f4c180e9634d3d9ee420cfc1c2b9c90cbe7"
+    },
+    {
+      "address": "0xc32b73ebc3bc87ca02071951b5f1723b88b5fac9",
+      "total_usdc": 1490.0,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0xc32b73ebc3bc87ca02071951b5f1723b88b5fac9"
+    },
+    {
+      "address": "0x059ba0a11a8b4e90ef8dce0fd94dd9363b456384",
+      "total_usdc": 1487.8,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x059ba0a11a8b4e90ef8dce0fd94dd9363b456384"
+    },
+    {
+      "address": "0x19255a6e6a5aa2c41c79f22a09a1e00fbee6c23a",
+      "total_usdc": 1481.64,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x19255a6e6a5aa2c41c79f22a09a1e00fbee6c23a"
+    },
+    {
+      "address": "0x3174510fe81d73d564025504aba9c9521fb8071b",
+      "total_usdc": 1430.14,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x3174510fe81d73d564025504aba9c9521fb8071b"
+    },
+    {
+      "address": "0x5911c0385681a1a2f268130825d7eff286d28446",
+      "total_usdc": 1400.0,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x5911c0385681a1a2f268130825d7eff286d28446"
+    },
+    {
+      "address": "0x74fbabb229fbd46717af7a5fdf0875b99729901f",
+      "total_usdc": 1306.0,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x74fbabb229fbd46717af7a5fdf0875b99729901f"
+    },
+    {
+      "address": "0xb7ae87acdf4632602b000a7d2bc260afaff3dd68",
+      "total_usdc": 1290.0,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0xb7ae87acdf4632602b000a7d2bc260afaff3dd68"
+    },
+    {
+      "address": "0x45d2feec5e4d68cf8d2a484f9b26034c3d52546f",
+      "total_usdc": 1243.75,
+      "tag": null,
+      "basescan": "https://basescan.org/address/0x45d2feec5e4d68cf8d2a484f9b26034c3d52546f"
+    }
+  ],
+  "top_inflow_senders": [
+    {
+      "address": "0x399c2c7c2c4bfbbe42744a4a3881a3c642f16e59",
+      "total_usdc": 2050.0,
+      "tag": null,
+      "is_bsc_hop": false
+    },
+    {
+      "address": "0xd104198c2360718407474fad1f80c0e93b68ec9b",
+      "total_usdc": 1538.0,
+      "tag": null,
+      "is_bsc_hop": false
+    },
+    {
+      "address": "0x719a5953e6ece29eeb015e138be51fcb00439aec",
+      "total_usdc": 1021.03,
+      "tag": null,
+      "is_bsc_hop": false
+    },
+    {
+      "address": "0xf0c111700de2b421e21eaa95491cbe1a9b46585f",
+      "total_usdc": 960.13,
+      "tag": null,
+      "is_bsc_hop": false
+    },
+    {
+      "address": "0xae10dfea5e705ec9b5ea0d2d2e359f4077a361b3",
+      "total_usdc": 936.38,
+      "tag": null,
+      "is_bsc_hop": false
+    },
+    {
+      "address": "0x43c3bf4d472201831cd29e2ae3d9b55c3a051431",
+      "total_usdc": 835.54,
+      "tag": null,
+      "is_bsc_hop": false
+    },
+    {
+      "address": "0xf501a67f2de9f695da782a44dcef1dc3c939f9a7",
+      "total_usdc": 800.0,
+      "tag": null,
+      "is_bsc_hop": false
+    },
+    {
+      "address": "0x84c451069a2f68236b1212680b3c3bc88856b80f",
+      "total_usdc": 625.41,
+      "tag": null,
+      "is_bsc_hop": false
+    },
+    {
+      "address": "0xaea1910ac0d10e31499a3eb4eed9032adec01465",
+      "total_usdc": 405.0,
+      "tag": null,
+      "is_bsc_hop": false
+    },
+    {
+      "address": "0xecbf54a78b68846e1e5ed067e5743edc251ae90e",
+      "total_usdc": 360.0,
+      "tag": null,
+      "is_bsc_hop": false
+    },
+    {
+      "address": "0x4f099c730542318598ff2227279e8110ad1b7c18",
+      "total_usdc": 348.43,
+      "tag": null,
+      "is_bsc_hop": false
+    },
+    {
+      "address": "0x481639947301e2871ba97c46d5b61de512b080c9",
+      "total_usdc": 300.0,
+      "tag": null,
+      "is_bsc_hop": false
+    },
+    {
+      "address": "0xb7eda8b83f36501b51ae0c8fca280f693b53c276",
+      "total_usdc": 290.0,
+      "tag": null,
+      "is_bsc_hop": false
+    },
+    {
+      "address": "0xef9f1988214bca390d3d92e6685841b0a0f71ae3",
+      "total_usdc": 266.3,
+      "tag": null,
+      "is_bsc_hop": false
+    },
+    {
+      "address": "0x6b646376bbfb6f6dca98d913b4ff992fb47309b0",
+      "total_usdc": 250.0,
+      "tag": null,
+      "is_bsc_hop": false
+    }
+  ],
+  "cex_hits": {},
+  "protocol_hits": {},
+  "cross_chain_correlation": {},
+  "depth2_recipient_scans": {
+    "0x99935ebbbc3124e769a0b01edc1597623571e515": {
+      "received_from_hot_usdc": 4999.7,
+      "out_sample": [
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 4999.7,
+          "tag": null,
+          "tx": "0x24c7bade5e1e52f3ea8f59c876d09ca8babb34424ed24ca6fe95d99f853ec207"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1751.35,
+          "tag": null,
+          "tx": "0x0db091c62bc2b22c1e9fb1abd7600f1b2481c12e285f66b791fb272779614a78"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1791.0,
+          "tag": null,
+          "tx": "0xcff46252780d43cde081e40c1c6cb5e6035e3524f048f1a867bff93d22750049"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1807.26,
+          "tag": null,
+          "tx": "0xc9a298a90e59093d24e7d55c5a22591e6ab2fa3c02eec318374d9fe3c73f99d9"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1061.18,
+          "tag": null,
+          "tx": "0x32f15fe921ff2491264a92d425d39979de2320e77e89ca6d9b71c12622e57aac"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 2621.09,
+          "tag": null,
+          "tx": "0xdfa869ada42e3ec9bbbad2cad7a65e4a117d38907c8f7de0f5fb0580bbfdfb31"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 13.36,
+          "tag": null,
+          "tx": "0x388e4db90867f92533499d19b7e688e288966ec3eb74fdcae0883e2bc1efa506"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1093.2,
+          "tag": null,
+          "tx": "0x4c854e550d9427c4d8e9bfdcca384bb18bdb1b39b224683b4baa3cadeda65724"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1399.33,
+          "tag": null,
+          "tx": "0xcadc578230e952f8fa655a4374904164cd340f78521ee06e58046636fb98752b"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 927.05,
+          "tag": null,
+          "tx": "0xc447c4bdb623d0ad4ae2e2409aef551155f4eb73d9d39c516d57617d02025e79"
+        }
+      ],
+      "cex_in_sample": []
+    },
+    "0xe9dda552afa874c8536d577f4c24ccce2b90d768": {
+      "received_from_hot_usdc": 4450.0,
+      "out_sample": [
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 4450.0,
+          "tag": null,
+          "tx": "0xb3f44f1eddc72957f91f59fb5f08ffb68eb11728429f0afb7b804a1592cb0718"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 198.0,
+          "tag": null,
+          "tx": "0x54b80f39e4078981a8c608c712f66b030a56f2b042e11684f8b4ef541ad17faa"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 199.0,
+          "tag": null,
+          "tx": "0x1451b9cf0502428357b069d5402bc7bccc5b167ad4ff125877e00c456baed7ca"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 99.0,
+          "tag": null,
+          "tx": "0x5f103e7964333c650264cd6e9d8349946e7e142df9025f3d00c5bba2df13c20c"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 99.0,
+          "tag": null,
+          "tx": "0x15e3b71cbc04ea845ecc5893b4aa2aa9b35f9ab7bfa58b85028a6b0b9a122772"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 99.0,
+          "tag": null,
+          "tx": "0x100ec1a23f93b4ab4b19980016d574868b6f1cc04ea6790e73904004c26501fe"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 99.0,
+          "tag": null,
+          "tx": "0xd925095a6524b73a0900aeac86bf1f0c7d0ec3ffcb4462d422f8d153fdcc1f5f"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 199.0,
+          "tag": null,
+          "tx": "0x86a3315c104fc3d28133e4bd6e231023e6df93e0548857da95f29ba59758d251"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 99.0,
+          "tag": null,
+          "tx": "0x4ffcbbe7c4c3e5449d04b3b7c2e047149cbee280d437c846b142940b817dc5b3"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 99.0,
+          "tag": null,
+          "tx": "0x83a038d5d0a0251db738aad4c08d0ea3a6c19c3e04e512315532772faa80e7ff"
+        }
+      ],
+      "cex_in_sample": []
+    },
+    "0x0095e3a0b798d37e7dddd0e24bcac5828d770f46": {
+      "received_from_hot_usdc": 4000.0,
+      "out_sample": [
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 4000.0,
+          "tag": null,
+          "tx": "0xd51d1334f6d2677e110d1b6ac695c83f5c72b31d36278b4882428d5a318ac2f0"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 30.0,
+          "tag": null,
+          "tx": "0xe8c26c557a89b7e65add3eb8f572f84914ffc958e734c14dbef0243c4a0f95ba"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 50.0,
+          "tag": null,
+          "tx": "0xa8e48a347044aeb1eed5a4e45f47cf7aae036f2e3b19b1049d49cc2c772b884f"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 150.0,
+          "tag": null,
+          "tx": "0xd0af8fd21f3521b802be2ccb1da0fe148ca80f22f675a5ad5ab402b3a0feeeba"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 30.0,
+          "tag": null,
+          "tx": "0x87f43498343fdd0b47cca022c4b811a4659ea6f059e0964239879b622c5739ed"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 2000.0,
+          "tag": null,
+          "tx": "0xb4f6676ccda760887cfc43ea04bab4e42f15ec639e08fb808adb9b8f4c59e1dc"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 50.0,
+          "tag": null,
+          "tx": "0x8d9b52c26c193e9259a2a4d86539a21e6cab741f5fbcda936028b724566814c8"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 100.0,
+          "tag": null,
+          "tx": "0xdb9c6ddb6e66776154698080d18a339bfebe5e915a1da6af46ed2a567527e3a5"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 200.0,
+          "tag": null,
+          "tx": "0x2d4b1466705186e45286a0d414c6bb03552c83f4ca419af642775a49ab4d3870"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 100.0,
+          "tag": null,
+          "tx": "0x5ad1db20141b5f334ce1c9290f933512135512904e49857c117894a6435bacc3"
+        }
+      ],
+      "cex_in_sample": []
+    },
+    "0x94532b77e5d4ed744bbfc616160b1b0312f1f59c": {
+      "received_from_hot_usdc": 3471.53,
+      "out_sample": [
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 3471.53,
+          "tag": null,
+          "tx": "0xa1bc271bb57042d280ec385125c4ec7f86c0d418db5e70ea82602785287846fe"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 3965.49,
+          "tag": null,
+          "tx": "0x2afbe0f0327bd22ede8c0a0eca4637f2eda19e5ffd9f5a608870afa88861cf11"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 3470.15,
+          "tag": null,
+          "tx": "0xafa973addc8ce7b1e6f9ca201e9675e49fc974f415732fd96bd501ce5e4b8d9b"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 3470.15,
+          "tag": null,
+          "tx": "0x3343f44a9f3cc15531d603904c2c62cb97f15872d449305ce8ebfc9c0f258b46"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 3569.65,
+          "tag": null,
+          "tx": "0x505df13f500c707ffbadca2d0c62ae1e88a155cde02a0cf2f2a833f156a35bdb"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1012.3,
+          "tag": null,
+          "tx": "0x6dbebb879a7c4ace6ba8c37e564026e12f22a236623a38332f0a302329579427"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 500.0,
+          "tag": null,
+          "tx": "0xc12d6271ff2cf01dde4ed3c0d0384cd4f5ef9cc84a0fd4836555f3e7a2cb197d"
+        },
+        {
+          "to": "0xbac09dcf3fcfa106d8151940c37abe3e06cdaf61",
+          "amount_usdc": 1819.91,
+          "tag": null,
+          "tx": "0x1ec1fa4c99669bd34abecf7605ea57da6316822a786c901d2b22f185ba2effcc"
+        },
+        {
+          "to": "0xbac09dcf3fcfa106d8151940c37abe3e06cdaf61",
+          "amount_usdc": 1000.0,
+          "tag": null,
+          "tx": "0x4b09497199c1a42ba3de0ab9b810c668f7c50521cd69acf53ca39f4ecd200d07"
+        },
+        {
+          "to": "0xbac09dcf3fcfa106d8151940c37abe3e06cdaf61",
+          "amount_usdc": 500.0,
+          "tag": null,
+          "tx": "0x127290980a46e2f9dbbda201700724871880efa3ea88986db94da75dcbcc627c"
+        }
+      ],
+      "cex_in_sample": []
+    },
+    "0x4685db69c4e560e0b906feaa970c27d137c8dcb7": {
+      "received_from_hot_usdc": 3081.92,
+      "out_sample": [
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1988.25,
+          "tag": null,
+          "tx": "0x0315cd08b3935432054ed830cf637f343e76fe168314f2ef687770e79be24344"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1093.67,
+          "tag": null,
+          "tx": "0xbf30f3dcbbad3a8bc7016e36c8211bfed3f85d36184cb3d2872878e7af72f0ba"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 42.73,
+          "tag": null,
+          "tx": "0x582d83b2637cf704d762a15fca5cd66b34f04f55bdbabbcec0f2815133731d2d"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 157.04,
+          "tag": null,
+          "tx": "0xe7579293dab134a4fc3a2c2603f8ed64347e9325827ba6693cb3ddefad98844c"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 99.41,
+          "tag": null,
+          "tx": "0xc9a87410131bbfaedd47a1881b28c072dd6acb194c7e8c72cc1a25c00a470043"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 49.7,
+          "tag": null,
+          "tx": "0x3777a706296b1eefe5a923cc08ea75974b4aeabe0e2730fdf2fbd03e3626b0f7"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 49.69,
+          "tag": null,
+          "tx": "0x94c88d8a4fc7ef7350c201d3eb5820b3a4425bd332faf7ca1b00adc69ccbd38c"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 39.76,
+          "tag": null,
+          "tx": "0xc9e3f58742ae1613ebc3e6be851a4bd4437233eda5bbf45dd68bec4b7a6ae473"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 149.1,
+          "tag": null,
+          "tx": "0x6e51dc12e597ca6bbbc7495a777b04a26056d8fb7731a38352fd196da6d40d1c"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 149.05,
+          "tag": null,
+          "tx": "0x61d710eb702fded87db4e767321a10b259e5bddd1292adc4257e841dcb16d2d2"
+        }
+      ],
+      "cex_in_sample": []
+    },
+    "0x56731aaf2f9dbe44462506ef7b3d594e2ea91386": {
+      "received_from_hot_usdc": 2383.91,
+      "out_sample": [
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 2383.91,
+          "tag": null,
+          "tx": "0x33d28b4c0f2b6f2097e3e12fd38fb88aa92ab2360b4863e504e3aa2bb994a787"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 500.0,
+          "tag": null,
+          "tx": "0x8588353d865fcae776599c7c1c4c127776d922920d8b9e39d765a07cab168269"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 500.0,
+          "tag": null,
+          "tx": "0xc4b76012fb33288cebed0880af6f5180d6134d8eb147a70b9b6903e5d633b3d2"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 993.5,
+          "tag": null,
+          "tx": "0x9c276cdeed495eee689a52cae31d772d92e169a0ceda137f216512d1fc7601d1"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 994.4,
+          "tag": null,
+          "tx": "0x65486fb55ee1ae0906c9e6d5035e78a7669a14d92acfb503f2d0c205e49756f6"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 833.01,
+          "tag": null,
+          "tx": "0xcf675ede8413906b39a2ba340e479ac957c4ab59a340da255fb89fa979f9d855"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 994.5,
+          "tag": null,
+          "tx": "0x589292c84ec8c1fc73a1c1184cc720974368c71c2de4abde47b59b39d2bbc230"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1689.7,
+          "tag": null,
+          "tx": "0x32c5922585e5fd6b9cf41c1e5dea6f40e3a2bf931e6bfb986b31ebd3ef2ef7e3"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 668.23,
+          "tag": null,
+          "tx": "0x0a527819c854998abdbc1131a38f2d6ecb8ad29aa8fc9afdd9e07ffb1cb79cb5"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 222.73,
+          "tag": null,
+          "tx": "0x8141bc8e5039d8410343d87f1834ecd0cc7adf57f67b9793c50181e5b07d7b6b"
+        }
+      ],
+      "cex_in_sample": []
+    },
+    "0xa888ef6ef9f9ea6076f4d45ddf409fa726e4ad98": {
+      "received_from_hot_usdc": 1990.0,
+      "out_sample": [
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1990.0,
+          "tag": null,
+          "tx": "0x33c03657020c9d74a99fe0fe8975756a266da50fa748046a53436f02b653c20d"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 2974.62,
+          "tag": null,
+          "tx": "0x6bfe7e6a2ee30d02ccd2a24dd2fd0dc0568e1d6b5ed1dad6d891a79351aa52e1"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1876.24,
+          "tag": null,
+          "tx": "0xd9ab007dcb1d8b588311df8d5ef4f268a019d04e2727d23f872eadcc2c84e7c6"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 3084.5,
+          "tag": null,
+          "tx": "0x9e2eb18de2a75d93994cceaa9e723e0e910b8d86f69d5548e5f7863b78626c7b"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 869.26,
+          "tag": null,
+          "tx": "0x83a498636a6a62c7fb0c8a4d34ab7a85d691beb3836420f65919b1f72b97987f"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 2109.16,
+          "tag": null,
+          "tx": "0x32947a229295e7ec1f3170c093a5c6a992087913a5cbdfbe71afb75215021a18"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1489.05,
+          "tag": null,
+          "tx": "0x29c7ac5a978b65c93865d11f0a287c4d8387699507ffaa315f782f478185f880"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 987.56,
+          "tag": null,
+          "tx": "0xe77a5ee1a0155ee9dc8a09ed5207d85ea068b57d6c2cba6f90e0988c4a5c525d"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1983.12,
+          "tag": null,
+          "tx": "0xd8b13b383685832cba3ac8ab2c966ff96ff80abc2f0a4f309ad5006fd949132c"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 995.0,
+          "tag": null,
+          "tx": "0x3a849c1ae69ffbe6af785fa34771078eb9a5c26fcd879f28d95794bcbf4acea4"
+        }
+      ],
+      "cex_in_sample": []
+    },
+    "0xca7b6e6fb75c4046a4b0ec956a363b3f92b4dcb5": {
+      "received_from_hot_usdc": 1984.71,
+      "out_sample": [
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1984.71,
+          "tag": null,
+          "tx": "0x8d893aefc0a429fe44db27255bf4503cb044ee31303a10f14e12aabc79182176"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1620.7,
+          "tag": null,
+          "tx": "0x7f4e06c281082dd0a66ea44d59fe4b192d194c33f11ed8ec93928948aa925496"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 995.0,
+          "tag": null,
+          "tx": "0x64d45de08f040d4c5446539875efe60abd07e4fc55dd4bcae832d827c3e7026a"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 597.0,
+          "tag": null,
+          "tx": "0xff259f295e1612b97d96721f2a074c2ddaee59dbf62ceca542497b1d1aed53a2"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 996.6,
+          "tag": null,
+          "tx": "0xdf8745447161be6b7cee554fbdd6d8a77c7195031f26371a4fcde0035cb20956"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 2238.75,
+          "tag": null,
+          "tx": "0xc1b8168abc8fca2be6f0a4dec61df655ac57d753432ed7bd27d46d1d13a10d96"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 485.1,
+          "tag": null,
+          "tx": "0x2c940062dedea2d94ec67d9b279d8dbec135d600b8db4abb3a2133d3f40f70d3"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 2682.94,
+          "tag": null,
+          "tx": "0x053e84703a8e5ff9ec21c2f6d9a15d9e97b612402cba2860697793a20ac491c0"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 1989.67,
+          "tag": null,
+          "tx": "0x334491beacab0c2048ae2a95ca8fe46c0aff25834ed1fa702db1d023d2447e24"
+        },
+        {
+          "to": "0xbface6ad3c7f07714f2cc0a2651436f897537a95",
+          "amount_usdc": 995.0,
+          "tag": null,
+          "tx": "0xae2a9b428e5ec4e114bda2361f56a7de5fbbbb93bfc296b82b34b34105e9aded"
+        }
+      ],
+      "cex_in_sample": []
+    }
+  },
+  "sample_recent_outflows": [
+    {
+      "tx": "0x990b6e0862f2aa504b191493bdff13dc6fa5ab18d138f05183ff48792d1a5e43",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x4398e7d41353b54f0e3197a3483c5526d3aabb9a",
+      "amount_usdc": 23.0,
+      "block": 48442627,
+      "timestamp": 1783674601,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x990b6e0862f2aa504b191493bdff13dc6fa5ab18d138f05183ff48792d1a5e43"
+    },
+    {
+      "tx": "0x25e16a9b636de3c573262ee4b77c3a3f2a819a123bc43682b6ce542278b762d4",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x18c034c69b55ccca62e20828a2205cf69356b9e4",
+      "amount_usdc": 98.9,
+      "block": 48442616,
+      "timestamp": 1783674579,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x25e16a9b636de3c573262ee4b77c3a3f2a819a123bc43682b6ce542278b762d4"
+    },
+    {
+      "tx": "0x5efd22e70ef82cbec8405ed73733619c1c21b67b51616935738067aa0e70955c",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x09cecae5536a77592aaf8812a0810d524969c489",
+      "amount_usdc": 20.0,
+      "block": 48442611,
+      "timestamp": 1783674569,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x5efd22e70ef82cbec8405ed73733619c1c21b67b51616935738067aa0e70955c"
+    },
+    {
+      "tx": "0x1944df5cd0a49d4c5ae522bdda08046637ff6a108d3e907593e6fc94adca4ba9",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0xcf26a5f2d1b83817eba2a5d81af7d77c2c7965dc",
+      "amount_usdc": 81.7,
+      "block": 48442573,
+      "timestamp": 1783674493,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x1944df5cd0a49d4c5ae522bdda08046637ff6a108d3e907593e6fc94adca4ba9"
+    },
+    {
+      "tx": "0x8c5fb64fbd8ffc60f5ec46b8b2327c73d7fff78a924fb9880a3e8159e4b74014",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x2cdd51727662d14324f372f48b5d658f0afe0139",
+      "amount_usdc": 99.19,
+      "block": 48442571,
+      "timestamp": 1783674489,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x8c5fb64fbd8ffc60f5ec46b8b2327c73d7fff78a924fb9880a3e8159e4b74014"
+    },
+    {
+      "tx": "0xa0303a01fee7ef7e6a2461c6a75cd35ff78f386ea66ba67e22b0a016e4dff263",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x0fa519446065d00bf18b90c3e10b0334788f9df5",
+      "amount_usdc": 99.19,
+      "block": 48442571,
+      "timestamp": 1783674489,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0xa0303a01fee7ef7e6a2461c6a75cd35ff78f386ea66ba67e22b0a016e4dff263"
+    },
+    {
+      "tx": "0xe2a96e72d9cb695d4d5690470abf73b231017aa5c59a6284bfacd8dc1f8a24bb",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x53b909438de6c8752f7a4c173422a12a5cbe1878",
+      "amount_usdc": 98.0,
+      "block": 48442558,
+      "timestamp": 1783674463,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0xe2a96e72d9cb695d4d5690470abf73b231017aa5c59a6284bfacd8dc1f8a24bb"
+    },
+    {
+      "tx": "0x4df43ce5a631342f3ee4088d15da273b8cb4a57f8430238bd9a4fe0ec1d3a0da",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x1dd94b0831eb24bc0e1b9f3786f47b6c03cd23bf",
+      "amount_usdc": 248.0,
+      "block": 48442552,
+      "timestamp": 1783674451,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x4df43ce5a631342f3ee4088d15da273b8cb4a57f8430238bd9a4fe0ec1d3a0da"
+    },
+    {
+      "tx": "0xbf254ac32747ac3e33e76faf49a5df0d6b947b83a53ef395dcb272dcfe046f32",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x4685db69c4e560e0b906feaa970c27d137c8dcb7",
+      "amount_usdc": 1988.25,
+      "block": 48442550,
+      "timestamp": 1783674447,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0xbf254ac32747ac3e33e76faf49a5df0d6b947b83a53ef395dcb272dcfe046f32"
+    },
+    {
+      "tx": "0xddf0b4018769c3122f3a3bef795e827f295941acd852ce806b3153564d593708",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0xc8c8c9f76ea09ad46ffb9abe21c736e577beb41b",
+      "amount_usdc": 119.4,
+      "block": 48442546,
+      "timestamp": 1783674439,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0xddf0b4018769c3122f3a3bef795e827f295941acd852ce806b3153564d593708"
+    },
+    {
+      "tx": "0xf9ec02193db150ee6cb8f8d312bc567c934ab83e584424a5c90ef51b8f2135f6",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x74cf5ac2c1ccec557619d0d4234a512cc6fbdac9",
+      "amount_usdc": 11.0,
+      "block": 48442529,
+      "timestamp": 1783674405,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0xf9ec02193db150ee6cb8f8d312bc567c934ab83e584424a5c90ef51b8f2135f6"
+    },
+    {
+      "tx": "0x6dba7340371b1ba69ad7131c4a91de8ce6dde877a8c1e86116fa4e6ef368a3d8",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0xcf84856f4ca94f9964507666f0dca9d6452f49a6",
+      "amount_usdc": 990.0,
+      "block": 48442526,
+      "timestamp": 1783674399,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x6dba7340371b1ba69ad7131c4a91de8ce6dde877a8c1e86116fa4e6ef368a3d8"
+    },
+    {
+      "tx": "0x78d7a9a3468d2773db9825f9e19217da6e7f45331df1c443c70b07f9aa414178",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x4c2c4c736e9135df598d73b01fa55bd6d1800015",
+      "amount_usdc": 13.93,
+      "block": 48442522,
+      "timestamp": 1783674391,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x78d7a9a3468d2773db9825f9e19217da6e7f45331df1c443c70b07f9aa414178"
+    },
+    {
+      "tx": "0x9a97bbff4cdce985b4fa6d9b3e40f9bfbd979a00460a33ac7288757d53d52433",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0xb229e8c69fb6752656d38e3252dbd01ab4982cfc",
+      "amount_usdc": 11.0,
+      "block": 48442510,
+      "timestamp": 1783674367,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x9a97bbff4cdce985b4fa6d9b3e40f9bfbd979a00460a33ac7288757d53d52433"
+    },
+    {
+      "tx": "0xa303fdee925990941db558863c75f2c2ad7cf3f2a973dfbff0f9dc46a268d11e",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x7aede6507e2a6ea1c98ce937285c579b10a0183c",
+      "amount_usdc": 100.0,
+      "block": 48442499,
+      "timestamp": 1783674345,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0xa303fdee925990941db558863c75f2c2ad7cf3f2a973dfbff0f9dc46a268d11e"
+    },
+    {
+      "tx": "0x345458f3742609fa7d54b1b75074a1f8d7a53a4d09d2962c998ed9efbe80d50f",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x85c72e79f157ed6306744dd607dbc30bb63d75a2",
+      "amount_usdc": 150.0,
+      "block": 48442490,
+      "timestamp": 1783674327,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x345458f3742609fa7d54b1b75074a1f8d7a53a4d09d2962c998ed9efbe80d50f"
+    },
+    {
+      "tx": "0x1f2b92fc38ed89c68efeded2a9a099e9ec2285fed6faeac3687d0cbb29e13169",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x31ffa2f6dbfc37e6befe5c35a9f05cf7f7b3327f",
+      "amount_usdc": 16.85,
+      "block": 48442488,
+      "timestamp": 1783674323,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x1f2b92fc38ed89c68efeded2a9a099e9ec2285fed6faeac3687d0cbb29e13169"
+    },
+    {
+      "tx": "0x10e472fa3c5ebfe581b26771ac2cbb1f277271bb531681a0c0bcf7004e36591e",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0xc3750b16e11f36fe48ed7c95797fe84d9e9af6b1",
+      "amount_usdc": 50.0,
+      "block": 48442487,
+      "timestamp": 1783674321,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x10e472fa3c5ebfe581b26771ac2cbb1f277271bb531681a0c0bcf7004e36591e"
+    },
+    {
+      "tx": "0x66e5152614f126f339f909bbc75f473ca34a1cbbd08c996c17d0c80c3cc7b9bd",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0xb45ab12b67fcd534c5aba1f30197a11292443acd",
+      "amount_usdc": 99.41,
+      "block": 48442486,
+      "timestamp": 1783674319,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x66e5152614f126f339f909bbc75f473ca34a1cbbd08c996c17d0c80c3cc7b9bd"
+    },
+    {
+      "tx": "0xff6f5f01a7dada03bfea86d4f076686cf38a40a731dc50cc9d1ee6aada8de490",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x0397b481dd8e20607331b1e0def42c9b165ad4fe",
+      "amount_usdc": 26.0,
+      "block": 48442478,
+      "timestamp": 1783674303,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0xff6f5f01a7dada03bfea86d4f076686cf38a40a731dc50cc9d1ee6aada8de490"
+    },
+    {
+      "tx": "0x3acd1e1a05ac373cca96f35f8ef50e005676013950c3b857c85c5b5d6e5f1015",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x79ae02e1b53d1cf1c305d59a1c1ac7a6368132dd",
+      "amount_usdc": 95.21,
+      "block": 48442476,
+      "timestamp": 1783674299,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x3acd1e1a05ac373cca96f35f8ef50e005676013950c3b857c85c5b5d6e5f1015"
+    },
+    {
+      "tx": "0x9238ee0f82463a4e4d229d62c3bda84773f62c1d8df2e075e9beb488178f2d69",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x4ca3ae7351a9273389aa02429de99847db184fc4",
+      "amount_usdc": 54.27,
+      "block": 48442475,
+      "timestamp": 1783674297,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x9238ee0f82463a4e4d229d62c3bda84773f62c1d8df2e075e9beb488178f2d69"
+    },
+    {
+      "tx": "0x28ed877212fd679e1e9780fc75502663a9792f3dae96730cdf089ebdea8d66ae",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0xdaf51bedd85ae016cda912ce41afff259e798e85",
+      "amount_usdc": 60.0,
+      "block": 48442467,
+      "timestamp": 1783674281,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x28ed877212fd679e1e9780fc75502663a9792f3dae96730cdf089ebdea8d66ae"
+    },
+    {
+      "tx": "0x857847827e067b595959259836142da66008f3bc988b56e6ba95acbf37149949",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0xb3469d2bbd7ed65ad379c313e15d2eebd15c8420",
+      "amount_usdc": 19.83,
+      "block": 48442461,
+      "timestamp": 1783674269,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x857847827e067b595959259836142da66008f3bc988b56e6ba95acbf37149949"
+    },
+    {
+      "tx": "0x325ef67a520e22320c1c1a8aff4784b5a1580914a766300709e61fcfb58b1c0a",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x357fed302b59be214d9700a3ee21805357eccdfa",
+      "amount_usdc": 497.5,
+      "block": 48442453,
+      "timestamp": 1783674253,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x325ef67a520e22320c1c1a8aff4784b5a1580914a766300709e61fcfb58b1c0a"
+    },
+    {
+      "tx": "0x03a23a4a625743d93a0875ad8ee15bcd12a5d604dd44a1ce56e6a4dc5172b0bb",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x503dfb529ecc86a42382fbdeb8c35a4107f562a1",
+      "amount_usdc": 249.0,
+      "block": 48442449,
+      "timestamp": 1783674245,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x03a23a4a625743d93a0875ad8ee15bcd12a5d604dd44a1ce56e6a4dc5172b0bb"
+    },
+    {
+      "tx": "0x93b7c0d72c463fa525a48ecc6404aba310dd9f335be227ee8148b3cb9d33026d",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x4ede975f02ced9f9efcf6baf929c50cddcbd3d82",
+      "amount_usdc": 30.0,
+      "block": 48442443,
+      "timestamp": 1783674233,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x93b7c0d72c463fa525a48ecc6404aba310dd9f335be227ee8148b3cb9d33026d"
+    },
+    {
+      "tx": "0x7fbe6537687e7c3abc79b10424a5e50e7e8faaa390a9fa3cbe6931a11b1659e8",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0xc4398a1147290e0e1d19cc3fb38ba971bf59e38e",
+      "amount_usdc": 26.77,
+      "block": 48442434,
+      "timestamp": 1783674215,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x7fbe6537687e7c3abc79b10424a5e50e7e8faaa390a9fa3cbe6931a11b1659e8"
+    },
+    {
+      "tx": "0xc55ca2d2a3e68394736173a881ee1ec4d5d18b398ad2cb012029ea649125aec4",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0xe7a112b4a0d73d7e7b165804dcf0fc6111076306",
+      "amount_usdc": 19.64,
+      "block": 48442417,
+      "timestamp": 1783674181,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0xc55ca2d2a3e68394736173a881ee1ec4d5d18b398ad2cb012029ea649125aec4"
+    },
+    {
+      "tx": "0x9df608d8e2321fce961ffea1cf64c40a618206bd74f347b89be45cda6e2cf22e",
+      "from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+      "to": "0x18c7defb29356085e102f83ca20247fe8a6589c4",
+      "amount_usdc": 696.5,
+      "block": 48442396,
+      "timestamp": 1783674139,
+      "tag_to": null,
+      "tag_from": null,
+      "basescan": "https://basescan.org/tx/0x9df608d8e2321fce961ffea1cf64c40a618206bd74f347b89be45cda6e2cf22e"
+    }
+  ],
+  "verdict": {
+    "cex_deposits_found": false,
+    "defi_protocol_usage": false,
+    "authority_on_base": false,
+    "pattern": "payroll/disbursement"
+  }
+}
