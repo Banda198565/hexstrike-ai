@@ -293,8 +293,8 @@ def main() -> int:
         for i in range(1, args.runs + 1):
             summary["attack"].append(run_attack_session(i, args.ip, args.monitor_duration))
 
-    def _avg_lat(rows: list[dict], key: str) -> float | None:
-        vals = [r.get("hot_path", {}).get(key) or r.get("pipeline", {}).get("latency_ms") for r in rows]
+    def _avg_pipeline_sec(rows: list[dict]) -> float | None:
+        vals = [r.get("pipeline", {}).get("elapsed_sec") for r in rows]
         nums = [v for v in vals if isinstance(v, (int, float))]
         return round(sum(nums) / len(nums), 2) if nums else None
 
@@ -308,7 +308,7 @@ def main() -> int:
         if summary["attack"]
         else None
     )
-    summary["defense_avg_pipeline_sec"] = _avg_lat(summary["defense"], "latency_ms")
+    summary["defense_avg_pipeline_sec"] = _avg_pipeline_sec(summary["defense"])
     summary["go_test_final"] = go_test_all()
     summary["go_test_pass"] = summary["go_test_final"]["exit_code"] == 0
 
