@@ -27,3 +27,15 @@ func TestCalculateAggressiveFeesZeroBase(t *testing.T) {
 		t.Fatalf("zero base: %s", fees.GasFeeCap)
 	}
 }
+
+func TestBumpFeeSuggestion(t *testing.T) {
+	base := &FeeSuggestion{
+		GasTipCap: big.NewInt(2_000_000_000),
+		GasFeeCap: big.NewInt(62_000_000_000),
+	}
+	bumped := BumpFeeSuggestion(base, 15)
+	wantTip := int64(2_300_000_000)
+	if bumped.GasTipCap.Int64() != wantTip {
+		t.Fatalf("bumped tip %s want %d", bumped.GasTipCap, wantTip)
+	}
+}

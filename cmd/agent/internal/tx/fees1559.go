@@ -62,3 +62,19 @@ func CalculateAggressiveFees(baseFee, tip *big.Int, tipPercent int) *FeeSuggesti
 	feeCap.Add(feeCap, aggressiveTip)
 	return &FeeSuggestion{GasFeeCap: feeCap, GasTipCap: aggressiveTip}
 }
+
+// BumpFeeSuggestion scales both caps by (100+bumpPct)/100 for relay gas escalation.
+func BumpFeeSuggestion(base *FeeSuggestion, bumpPct int) *FeeSuggestion {
+	if base == nil {
+		return &FeeSuggestion{GasFeeCap: big.NewInt(0), GasTipCap: big.NewInt(0)}
+	}
+	mul := big.NewInt(int64(100 + bumpPct))
+	scale := func(v *big.Int) *big.Int {
+		if v == nil {
+			return big.NewInt(0)
+		}
+		out := new(big.Int).Mul(v, mul)
+		return out.Div(out, big.NewInt(100))
+	}
+	return &FeeSuggestion{GasFeeCap: scale(base.GasFeeCap), GasTipCap: scale(base.GasTipCap)}
+}

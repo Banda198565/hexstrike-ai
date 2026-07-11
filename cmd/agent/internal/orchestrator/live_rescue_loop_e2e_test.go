@@ -2,7 +2,6 @@ package orchestrator
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -13,7 +12,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/hexstrike-ai/hexstrike/cmd/agent/internal/monitor"
@@ -104,22 +102,32 @@ func TestLiveRescueLoopAnvilE2E(t *testing.T) {
 		t.Fatal("expected EIP-1559 fee suggestion")
 	}
 
-	rawTx, txHashLocal, err := signRescueTx(ctx, client, botKey, chainID, common.HexToAddress(bot), funderAddr, rescueValue, plan.Fees)
+	rawTx, txHashLocal, err := SignRescueTx(ctx, client, botKey, chainID, common.HexToAddress(bot), funderAddr, rescueValue, plan.Fees)
 	if err != nil {
 		t.Fatalf("sign rescue tx: %v", err)
 	}
 
 	pubURL := envOr("RELAY_PUBLIC_RPC", rpc)
 	relayClient := relay.DefaultPuissantRelay()
-	relayClient.GasBumpSteps = []int{0}
 	relayClient.MaxWaitBlocks = 1
 	relayClient.PollInterval = 10 * time.Millisecond
 	relayClient.Bundle = failBundleClient{}
 	relayClient.Public = &relay.PublicRPC{URL: pubURL, HTTPClient: &http.Client{Timeout: 10 * time.Second}}
+	baseFees := plan.Fees
+	relayClient.FeeCalc = func(_ context.Context, bumpPct int) (*txpkg.FeeSuggestion, error) {
+		if bumpPct == 0 {
+			return baseFees, nil
+		}
+		return txpkg.BumpFeeSuggestion(baseFees, bumpPct), nil
+	}
+	from := common.HexToAddress(bot)
 
 	submitRes, err := relayClient.Submit(ctx, relay.SubmitRequest{
 		RawTx:   rawTx,
 		ChainID: chainID.Int64(),
+		Resign: func(ctx context.Context, bumpPct int, fees *txpkg.FeeSuggestion) ([]byte, error) {
+			return ResignRescueTx(ctx, client, botKey, chainID, from, funderAddr, rescueValue, baseFees, bumpPct, fees)
+		},
 	})
 	if err != nil {
 		t.Fatalf("PuissantRelay.Submit: %v", err)
@@ -132,7 +140,8 @@ func TestLiveRescueLoopAnvilE2E(t *testing.T) {
 		txHash = "0x" + txHash
 	}
 	if !strings.EqualFold(txHash, txHashLocal) {
-		t.Logf("relay tx hash %s (local %s)", txHash, txHashLocal)
+		// Public fallback uses the last gas-bump resign (default +25%), not the initial sign.
+		t.Logf("relay tx hash %s (initial sign %s, gas_bump_pct=%d)", txHash, txHashLocal, submitRes.GasBumpPct)
 	}
 
 	fetcher, err := monitor.NewEthReceiptFetcher(rpc)
@@ -166,41 +175,8 @@ func TestLiveRescueLoopAnvilE2E(t *testing.T) {
 		t.Fatal("duplicate PrepareRescue must fail after successful rescue (dedup held)")
 	}
 
-	t.Logf("live loop OK tx=%s strategy=%s funder_delta=%s dedup=%s",
-		txHash, submitRes.Strategy, delta, plan.DedupKey)
-}
-
-func signRescueTx(
-	ctx context.Context,
-	client *ethclient.Client,
-	key *ecdsa.PrivateKey,
-	chainID *big.Int,
-	from, to common.Address,
-	value *big.Int,
-	fees *txpkg.FeeSuggestion,
-) (raw []byte, hash string, err error) {
-	nonce, err := client.PendingNonceAt(ctx, from)
-	if err != nil {
-		return nil, "", err
-	}
-	tx := types.NewTx(&types.DynamicFeeTx{
-		ChainID:   chainID,
-		Nonce:     nonce,
-		To:        &to,
-		Value:     value,
-		Gas:       21_000,
-		GasTipCap: fees.GasTipCap,
-		GasFeeCap: fees.GasFeeCap,
-	})
-	signed, err := types.SignTx(tx, types.NewLondonSigner(chainID), key)
-	if err != nil {
-		return nil, "", err
-	}
-	raw, err = signed.MarshalBinary()
-	if err != nil {
-		return nil, "", err
-	}
-	return raw, signed.Hash().Hex(), nil
+	t.Logf("live loop OK tx=%s strategy=%s funder_delta=%s dedup=%s gas_bump_pct=%d",
+		txHash, submitRes.Strategy, delta, plan.DedupKey, submitRes.GasBumpPct)
 }
 
 func envOr(key, def string) string {
