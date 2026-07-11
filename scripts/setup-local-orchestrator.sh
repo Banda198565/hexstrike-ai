@@ -20,9 +20,9 @@ if ! curl -sf --max-time 5 "${HOST}/api/tags" >/dev/null; then
   exit 1
 fi
 
-if ! ollama list 2>/dev/null | grep -q 'deepseek-r1:1.5b'; then
-  echo "[pull] deepseek-r1:1.5b ..."
-  ollama pull deepseek-r1:1.5b
+if ! ollama list 2>/dev/null | grep -q 'deepseek-r1:7b'; then
+  echo "[pull] deepseek-r1:7b (средняя модель) ..."
+  ollama pull deepseek-r1:7b
 fi
 
 if [[ -f "$ROOT/config/hexstrike-orchestrator.modelfile" ]]; then
@@ -40,7 +40,7 @@ for kv in \
   "OLLAMA_HOST=${HOST}" \
   "OLLAMA_ORIGINS=*" \
   "LLM_PROVIDER=ollama-local" \
-  "LLM_MODEL=deepseek-r1:1.5b" \
+  "LLM_MODEL=deepseek-r1:7b" \
   "HEXSTRIKE_OLLAMA_MODEL=${MODEL}" \
   "CURSOR_INTEGRATION_MODE=OFFLINE_PRIMARY"; do
   key="${kv%%=*}"

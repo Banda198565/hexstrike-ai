@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
+BASE_MODEL="${HEXSTRIKE_BASE_MODEL:-deepseek-r1:7b}"
 MODEL="${HEXSTRIKE_OLLAMA_MODEL:-hexstrike-orchestrator}"
 HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"
 FASTFILE="/tmp/hexstrike-fast.modelfile"
@@ -29,15 +30,17 @@ check_ollama() {
 }
 
 ensure_models() {
-  ollama list 2>/dev/null | grep -q 'deepseek-r1:1.5b' || ollama pull deepseek-r1:1.5b
-  cat > "$FASTFILE" << 'EOF'
-FROM deepseek-r1:1.5b
-PARAMETER num_predict 64
+  ylw "[pull] базовая модель (средняя): ${BASE_MODEL} ..."
+  ollama list 2>/dev/null | grep -q "${BASE_MODEL}" || ollama pull "${BASE_MODEL}"
+  cat > "$FASTFILE" << EOF
+FROM ${BASE_MODEL}
+PARAMETER num_predict 128
 PARAMETER num_thread 8
-PARAMETER temperature 0.2
+PARAMETER temperature 0.3
 SYSTEM "Ты HexStrike Orchestrator. Кратко по-русски. Агенты: OSINT-03, Web-04, Vuln-05, Report-06. Команды: /run defensive-disclosure, /run vps-full-readonly, /dispatch Agent-Vuln-05 passive-cve-check. Read-only, без эксплойтов."
 EOF
   ollama create "${MODEL}" -f "$FASTFILE" >/dev/null 2>&1 || ollama create "${MODEL}" -f "$FASTFILE"
+  grn "[OK]   ${MODEL} ← ${BASE_MODEL}"
 }
 
 preflight_agents() {
@@ -64,7 +67,7 @@ menu() {
   read -r -p "Выбор [1]: " choice
   choice="${choice:-1}"
   case "$choice" in
-    1) export OLLAMA_NUM_PREDICT=64 OLLAMA_NUM_THREAD=8; exec python3 "$ROOT/scripts/hexstrike-terminal.py" ;;
+    1) export OLLAMA_NUM_PREDICT=128 OLLAMA_NUM_THREAD=8; exec python3 "$ROOT/scripts/hexstrike-terminal.py" ;;
     2) ./hexstrike-orchestrator run defensive-disclosure ;;
     3) ./hexstrike-orchestrator run vps-full-readonly ;;
     4) exec ollama run "${MODEL}" ;;

@@ -16,7 +16,7 @@ REGISTRY = ROOT / "agents/registry.json"
 WORKFLOWS = ROOT / "agents/workflows.json"
 ORCHESTRATOR = ROOT / "scripts/hexstrike-orchestrator.py"
 MODELFILE = ROOT / "config/hexstrike-orchestrator.modelfile"
-OLLAMA_MODEL = os.environ.get("HEXSTRIKE_OLLAMA_MODEL", "hexstrike-orchestrator")
+BASE_MODEL = os.environ.get("HEXSTRIKE_BASE_MODEL", "deepseek-r1:7b")
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/")
 
 
@@ -188,7 +188,7 @@ def ensure_ollama_model() -> None:
 
     if not MODELFILE.is_file():
         print(f"[WARN] Modelfile не найден: {MODELFILE}")
-        print(f"Буду использовать deepseek-r1:1.5b")
+        print(f"Буду использовать deepseek-r1:7b")
         return
 
     print(f"[setup] Создаю модель {OLLAMA_MODEL} ...")
