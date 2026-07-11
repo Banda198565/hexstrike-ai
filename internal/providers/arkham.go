@@ -30,6 +30,7 @@ var toxicArkhamPatterns = []string{
 	"ransom",
 	"malware",
 	"darknet",
+	"drainer",
 }
 
 // ArkhamEntity describes an attributed on-chain entity.
