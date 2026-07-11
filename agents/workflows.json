@@ -43,6 +43,14 @@
         {"agent": "Agent-Report-06", "task": "generate-defensive-checklist"}
       ]
     },
+    "sandbox-battle": {
+      "description": "Local Anvil red-team: 7 attacks + battle-report readiness score",
+      "steps": [
+        {"agent": "Agent-Battle-07", "task": "battle-suite"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "optional": true, "depends_on": "battle-suite"}
+      ],
+      "note": "Requires Foundry (anvil, cast). LOCAL SANDBOX ONLY."
+    },
     "vps-full-readonly": {
       "description": "VPS end-to-end: full recon + master report (no Mac operator audit)",
       "steps": [

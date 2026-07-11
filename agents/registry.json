@@ -27,7 +27,8 @@
         "Agent-Infra-01",
         "Agent-Contract-02",
         "Agent-Vuln-05",
-        "Agent-Report-06"
+        "Agent-Report-06",
+        "Agent-Battle-07"
       ]
     },
     "Agent-OSINT-03": {
@@ -120,6 +121,25 @@
           "constraints": ["no-exploit", "read-only"]
         }
       }
+    },
+    "Agent-Battle-07": {
+      "role": "sandbox-redteam",
+      "description": "Autonomous Go agent — 7-attack Anvil battle suite + readiness score",
+      "tasks": {
+        "battle-suite": {
+          "script": "cmd/agent/build.sh",
+          "runner_note": "build then: bin/hexstrike-agent battle",
+          "output": "artifacts/sandbox/battle-report.json",
+          "constraints": ["local-anvil-only", "authorized-lab", "no-remote-exploit"]
+        },
+        "redteam-all": {
+          "script": "scripts/sandbox/redteam/run-all.sh",
+          "output": "artifacts/sandbox/redteam-report.json",
+          "constraints": ["local-anvil-only"]
+        }
+      },
+      "cli": "./bin/hexstrike-agent",
+      "depends_on": ["foundry", "python3"]
     },
     "Agent-Report-06": {
       "role": "reporting",

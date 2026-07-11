@@ -17,3 +17,5 @@ rag-storage/
 # Sandbox files
 scripts/sandbox/.venv/
 scripts/sandbox/anvil.env
+bin/hexstrike-agent
+artifacts/sandbox/
