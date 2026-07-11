@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,10 +20,15 @@ const (
 )
 
 func main() {
+	apiKey := os.Getenv("ARKHAM_API_KEY")
+	if apiKey == "" {
+		log.Println("[ВНИМАНИЕ] Переменная ARKHAM_API_KEY не задана. Модуль Arkham запущен в режиме симуляции.")
+	}
+
 	memCache := cache.NewMemoryCache()
 	engine := core.NewOsintEngine(
 		memCache,
-		providers.NewArkhamProvider(),
+		providers.NewArkhamProvider(apiKey),
 		providers.NewNetworkProvider(),
 	)
 
