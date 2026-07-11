@@ -142,7 +142,8 @@ Target score formula unchanged: `50 + vuln*3 + defended*5 - inconclusive*10` →
 | Ollama prewarm | `internal/async/prewarm.go` + `bootstrap.go` | Background `/api/tags` on `battle` start |
 
 **Verify:** `python3 scripts/sandbox/run-p3-fork-verify.py`  
-**Revert e2e:** `bash scripts/sandbox/test-revert-flow.sh`
+**Revert e2e:** `bash scripts/sandbox/test-revert-flow.sh`  
+**Live loop e2e:** `bash scripts/sandbox/test-live-rescue-loop.sh`
 
 ### Ethereum relay (Flashbots)
 
