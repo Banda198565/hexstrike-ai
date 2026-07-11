@@ -52,6 +52,15 @@ def load_env_file(path: Path) -> None:
         os.environ.setdefault(key.strip(), val.strip())
 
 
+def resolve_bot_private_key() -> str:
+    """Only the operator/bot key — never the Target watch address."""
+    for key in ("BOT_PRIVATE_KEY", "AGENT_PRIVATE_KEY"):
+        val = os.environ.get(key, "").strip()
+        if val and "<" not in val:
+            return val
+    return os.environ.get("BOT_PRIVATE_KEY", "")
+
+
 @dataclass(frozen=True)
 class BotConfig:
     rpc_url: str
@@ -76,7 +85,7 @@ class BotConfig:
             ),
             bot_address=os.environ["BOT_ADDRESS"],
             watch_address=os.environ.get("TARGET_WATCH_ADDRESS") or os.environ["BOT_ADDRESS"],
-            bot_private_key=os.environ["BOT_PRIVATE_KEY"],
+            bot_private_key=resolve_bot_private_key(),
             funder_address=os.environ.get("FUNDER_ADDRESS", "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
             threshold_wei=int(os.environ.get("THRESHOLD_WEI", "500000000000000000")),
             min_gas_wei=int(os.environ.get("MIN_GAS_WEI", "10000000000000000")),
@@ -118,16 +127,15 @@ def resolve_env_path() -> Path:
 
 def validate_secrets() -> list[str]:
     dry = os.environ.get("DRY_RUN", "false").lower() in ("1", "true", "yes")
-    required = ["BOT_ADDRESS"]
-    if not dry:
-        required.append("BOT_PRIVATE_KEY")
-    missing = [k for k in required if not os.environ.get(k)]
-    for key in ("BOT_ADDRESS", "BOT_PRIVATE_KEY", "FUNDER_ADDRESS"):
+    missing = [k for k in ("BOT_ADDRESS",) if not os.environ.get(k)]
+    if not dry and not resolve_bot_private_key():
+        missing.append("BOT_PRIVATE_KEY or AGENT_PRIVATE_KEY (operator only — NOT Target)")
+    for key in ("BOT_ADDRESS", "BOT_PRIVATE_KEY", "AGENT_PRIVATE_KEY", "FUNDER_ADDRESS"):
         val = os.environ.get(key, "")
         if not val:
             continue
         if "<" in val or "DO NOT USE" in val.upper():
-            missing.append(f"{key} (placeholder — run ./scripts/sandbox/setup-anvil-env.sh)")
+            missing.append(f"{key} (placeholder)")
     return missing
 
 
