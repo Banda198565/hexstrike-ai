@@ -114,9 +114,11 @@ Target score formula unchanged: `50 + vuln*3 + defended*5 - inconclusive*10` →
 
 1. ✅ `internal/guard/limits.go` + tests
 2. ✅ `internal/entity/cache.go` + tests (artifact bootstrap)
-3. Wire `limits` into `dummy_bot.py` parity check script (Python guard alignment)
-4. `internal/tx/fees1559.go` stub + Anvil integration test
-5. Arkham HTTP client behind `ARKHAM_API_KEY` env
+3. ✅ `internal/entity/gate.go` + bootstrap + Arkham HTTP client
+4. ✅ `internal/tx/fees1559.go` + pure math tests
+5. ✅ `internal/orchestrator/engine.go` — PrepareRescue pipeline (limits → gate → allowlist → dedup → fees)
+6. Wire `PrepareRescue` into live signing path (Python parity / Go rescue signer)
+7. P3: `internal/relay/` Puissant + Flashbots
 
 ---
 
