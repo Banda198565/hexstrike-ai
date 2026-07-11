@@ -1,5 +1,6 @@
 hexstrike-env/
 scripts/sandbox/.venv/
+scripts/sandbox/anvil.env
 .env
 __pycache__/
 scripts/__pycache__/

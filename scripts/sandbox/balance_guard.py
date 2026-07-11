@@ -19,9 +19,9 @@ def utc_now() -> str:
 
 
 def append_alert(entry: dict[str, Any]) -> None:
-    ALERTS.parent.mkdir(parents=True, exist_ok=True)
-    with ALERTS.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    from log_utils import append_jsonl
+
+    append_jsonl(ALERTS, entry)
 
 
 def rpc_call(url: str, method: str, params: list[Any], timeout: float = 10.0) -> Any:

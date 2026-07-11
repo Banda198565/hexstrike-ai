@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SANDBOX="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="${SANDBOX_ENV:-$SANDBOX/anvil.env.example}"
+ENV_FILE="${SANDBOX_ENV:-$("$SANDBOX/resolve-anvil-env.sh")}"
 PROXY_PORT="${PROXY_PORT:-8546}"
 UPSTREAM_RPC="${UPSTREAM_RPC:-http://127.0.0.1:8545}"
 PROXY_URL="http://127.0.0.1:${PROXY_PORT}"

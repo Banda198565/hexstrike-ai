@@ -19,6 +19,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import argparse
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,7 +27,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 SANDBOX = Path(__file__).resolve().parent
-DEFAULT_ENV = SANDBOX / "anvil.env.example"
+DEFAULT_ENV = SANDBOX / "anvil.env"
+FALLBACK_ENV = SANDBOX / "anvil.env.example"
 ARTIFACT = ROOT / "artifacts" / "sandbox" / "dummy-bot-events.jsonl"
 
 sys.path.insert(0, str(SANDBOX))
@@ -98,9 +100,27 @@ def wei_to_eth(wei: int) -> str:
 
 
 def append_event(event: dict[str, Any]) -> None:
-    ARTIFACT.parent.mkdir(parents=True, exist_ok=True)
-    with ARTIFACT.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(event, ensure_ascii=False) + "\n")
+    from log_utils import append_jsonl
+
+    append_jsonl(ARTIFACT, event)
+
+
+def resolve_env_path() -> Path:
+    explicit = os.environ.get("SANDBOX_ENV")
+    if explicit:
+        return Path(explicit)
+    if DEFAULT_ENV.is_file():
+        return DEFAULT_ENV
+    return FALLBACK_ENV
+
+
+def validate_secrets() -> list[str]:
+    missing = [k for k in ("BOT_ADDRESS", "BOT_PRIVATE_KEY") if not os.environ.get(k)]
+    for key in ("BOT_ADDRESS", "BOT_PRIVATE_KEY", "FUNDER_ADDRESS"):
+        val = os.environ.get(key, "")
+        if "<" in val or "DO NOT USE" in val.upper():
+            missing.append(f"{key} (placeholder — run ./scripts/sandbox/setup-anvil-env.sh)")
+    return missing
 
 
 def sign_rescue_tx_cast(cfg: BotConfig) -> str:
@@ -269,25 +289,38 @@ def run_once(cfg: BotConfig, guard_state: Any | None = None) -> None:
     append_event(event)
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="HexStrike sandbox dummy signing bot")
+    parser.add_argument("--once", action="store_true", help="Run a single poll cycle (smoke/CI)")
+    parser.add_argument("--dry-run", action="store_true", help="Log triggers without signing")
+    return parser.parse_args()
+
+
 def main() -> int:
-    env_path = Path(os.environ.get("SANDBOX_ENV", DEFAULT_ENV))
+    args = parse_args()
+    if args.dry_run:
+        os.environ["DRY_RUN"] = "true"
+
+    env_path = resolve_env_path()
     load_env_file(env_path)
 
-    missing = [k for k in ("BOT_ADDRESS", "BOT_PRIVATE_KEY") if not os.environ.get(k)]
+    missing = validate_secrets()
     if missing:
-        log.error("Missing env vars: %s — copy scripts/sandbox/anvil.env.example", ", ".join(missing))
+        log.error("Missing or invalid env: %s", ", ".join(missing))
+        log.error("Run: ./scripts/sandbox/setup-anvil-env.sh")
         return 1
 
     cfg = BotConfig.from_env()
     check_rpc(cfg)
 
     log.info(
-        "Watching %s every %ss (threshold=%s ETH, dry_run=%s, hardening=%s)",
+        "Watching %s every %ss (threshold=%s ETH, dry_run=%s, hardening=%s, once=%s)",
         cfg.bot_address,
         cfg.poll_interval_sec,
         wei_to_eth(cfg.threshold_wei),
         cfg.dry_run,
         cfg.hardening,
+        args.once,
     )
     if cfg.hardening:
         log.info("Direct RPC (truth source): %s", cfg.direct_rpc_url)
@@ -299,6 +332,10 @@ def main() -> int:
         from balance_guard import GuardState
 
         guard_state = GuardState()
+
+    if args.once:
+        run_once(cfg, guard_state)
+        return 0
 
     try:
         while True:
