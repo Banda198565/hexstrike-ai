@@ -213,12 +213,7 @@ def run_once(cfg: BotConfig, guard_state: Any | None = None) -> None:
     if cfg.hardening:
         from balance_guard import GuardConfig, GuardState, evaluate_poll, pre_sign_verify
 
-        guard_cfg = GuardConfig(
-            primary_rpc=cfg.rpc_url,
-            direct_rpc=cfg.direct_rpc_url,
-            address=cfg.bot_address,
-            enabled=True,
-        )
+        guard_cfg = GuardConfig.from_env()
         state = guard_state if guard_state is not None else GuardState()
         checks = evaluate_poll(guard_cfg, state)
         balance = checks["use_balance_wei"]

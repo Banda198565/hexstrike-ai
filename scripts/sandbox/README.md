@@ -117,6 +117,9 @@ rm -f artifacts/sandbox/*.jsonl artifacts/sandbox/*.jsonl.1
 | `DIRECT_RPC_URL` | `:8545` | Truth source for hardening |
 | `THRESHOLD_WEI` | 0.5 ETH | Rescue trigger |
 | `HARDENING_ENABLED` | `false` | Enable Step 3 guards |
+| `MAX_BALANCE_DELTA_WEI` | `0` | Allowed proxy vs direct delta (0 = exact) |
+| `ANOMALY_STALE_TIMEOUT_SEC` | `120` | Skip anomaly check if state is stale |
+| `GUARD_RPC_TIMEOUT_SEC` | `10` | Direct RPC timeout for guards |
 | `DRY_RUN` | `false` | Log only, no signing |
 
 ---

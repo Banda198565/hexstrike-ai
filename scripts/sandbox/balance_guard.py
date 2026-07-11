@@ -3,15 +3,27 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 ALERTS = ROOT / "artifacts" / "sandbox" / "anomaly-alerts.jsonl"
+
+
+class RpcFetchError(Exception):
+    """Direct RPC call failed (timeout, connection, JSON-RPC error)."""
+
+    def __init__(self, url: str, method: str, reason: str, *, kind: str = "rpc_error") -> None:
+        self.url = url
+        self.method = method
+        self.reason = reason
+        self.kind = kind
+        super().__init__(f"{kind}@{url} {method}: {reason}")
 
 
 def utc_now() -> str:
@@ -27,20 +39,26 @@ def append_alert(entry: dict[str, Any]) -> None:
 def rpc_call(url: str, method: str, params: list[Any], timeout: float = 10.0) -> Any:
     body = json.dumps({"jsonrpc": "2.0", "method": method, "params": params, "id": 1}).encode()
     req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        data = json.loads(resp.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode())
+    except TimeoutError as exc:
+        raise RpcFetchError(url, method, str(exc), kind="timeout") from exc
+    except urllib.error.URLError as exc:
+        kind = "timeout" if isinstance(exc.reason, TimeoutError) else "connection"
+        raise RpcFetchError(url, method, str(exc.reason or exc), kind=kind) from exc
     if "error" in data:
-        raise RuntimeError(data["error"])
+        raise RpcFetchError(url, method, str(data["error"]), kind="jsonrpc_error")
     return data["result"]
 
 
-def fetch_balance(url: str, address: str) -> int:
-    result = rpc_call(url, "eth_getBalance", [address, "latest"])
+def fetch_balance(url: str, address: str, *, timeout: float = 10.0) -> int:
+    result = rpc_call(url, "eth_getBalance", [address, "latest"], timeout=timeout)
     return int(result, 16)
 
 
-def fetch_nonce(url: str, address: str) -> int:
-    result = rpc_call(url, "eth_getTransactionCount", [address, "latest"])
+def fetch_nonce(url: str, address: str, *, timeout: float = 10.0) -> int:
+    result = rpc_call(url, "eth_getTransactionCount", [address, "latest"], timeout=timeout)
     return int(result, 16)
 
 
@@ -50,6 +68,9 @@ class GuardConfig:
     direct_rpc: str
     address: str
     enabled: bool
+    max_balance_delta_wei: int
+    anomaly_stale_timeout_sec: float
+    rpc_timeout_sec: float
 
     @classmethod
     def from_env(cls) -> GuardConfig:
@@ -61,6 +82,9 @@ class GuardConfig:
             direct_rpc=direct,
             address=os.environ["BOT_ADDRESS"],
             enabled=enabled,
+            max_balance_delta_wei=int(os.environ.get("MAX_BALANCE_DELTA_WEI", "0")),
+            anomaly_stale_timeout_sec=float(os.environ.get("ANOMALY_STALE_TIMEOUT_SEC", "120")),
+            rpc_timeout_sec=float(os.environ.get("GUARD_RPC_TIMEOUT_SEC", "10")),
         )
 
 
@@ -68,29 +92,36 @@ class GuardConfig:
 class GuardState:
     last_balance: int | None = None
     last_nonce: int | None = None
+    last_updated_monotonic: float | None = None
 
 
 @dataclass(frozen=True)
 class BalanceSnapshot:
     primary_wei: int
     direct_wei: int
-    match: bool
     delta_wei: int
+    within_tolerance: bool
+
+    @property
+    def match(self) -> bool:
+        return self.within_tolerance
 
 
 def multi_source_balance(cfg: GuardConfig) -> BalanceSnapshot:
-    primary = fetch_balance(cfg.primary_rpc, cfg.address)
-    direct = fetch_balance(cfg.direct_rpc, cfg.address)
+    primary = fetch_balance(cfg.primary_rpc, cfg.address, timeout=cfg.rpc_timeout_sec)
+    direct = fetch_balance(cfg.direct_rpc, cfg.address, timeout=cfg.rpc_timeout_sec)
+    delta = abs(primary - direct)
     return BalanceSnapshot(
         primary_wei=primary,
         direct_wei=direct,
-        match=primary == direct,
-        delta_wei=abs(primary - direct),
+        delta_wei=delta,
+        within_tolerance=delta <= cfg.max_balance_delta_wei,
     )
 
 
-def detect_rpc_mismatch(snapshot: BalanceSnapshot) -> dict[str, Any] | None:
-    if snapshot.match:
+def detect_rpc_mismatch(cfg: GuardConfig, snapshot: BalanceSnapshot) -> dict[str, Any] | None:
+    """Block when proxy and direct balances diverge beyond MAX_BALANCE_DELTA_WEI."""
+    if snapshot.within_tolerance:
         return None
     alert = {
         "ts": utc_now(),
@@ -99,6 +130,7 @@ def detect_rpc_mismatch(snapshot: BalanceSnapshot) -> dict[str, Any] | None:
         "primary_wei": snapshot.primary_wei,
         "direct_wei": snapshot.direct_wei,
         "delta_wei": snapshot.delta_wei,
+        "max_balance_delta_wei": cfg.max_balance_delta_wei,
         "action": "block_signing",
         "message": "Primary RPC balance differs from direct upstream — possible tampering",
     }
@@ -111,13 +143,28 @@ def detect_anomaly_no_onchain_activity(
     state: GuardState,
     current_balance: int,
 ) -> dict[str, Any] | None:
-    """Flag balance drop without a matching nonce increase on direct RPC."""
-    if state.last_balance is None or state.last_nonce is None:
+    """Flag balance drop without a matching nonce increase on direct RPC.
+
+    Assumptions (sandbox):
+    - Any nonce increase on direct RPC implies legitimate on-chain activity from this wallet.
+      Multiple txs in one poll interval still satisfy the check (nonce strictly increased).
+    - We cannot detect partial drains where nonce unchanged (e.g. incoming transfers only).
+    - First poll after startup/restart skips this check (last_balance/last_nonce unset).
+    - If state is older than ANOMALY_STALE_TIMEOUT_SEC, skip to avoid stale comparisons
+      after bot crash/restart mid-session.
+    """
+    if state.last_balance is None or state.last_nonce is None or state.last_updated_monotonic is None:
         return None
+
+    age_sec = time.monotonic() - state.last_updated_monotonic
+    if age_sec > cfg.anomaly_stale_timeout_sec:
+        return None
+
     if current_balance >= state.last_balance:
         return None
 
-    current_nonce = fetch_nonce(cfg.direct_rpc, cfg.address)
+    current_nonce = fetch_nonce(cfg.direct_rpc, cfg.address, timeout=cfg.rpc_timeout_sec)
+    # Nonce increase of any amount → assume legitimate on-chain drain; partial drains not detected.
     if current_nonce > state.last_nonce:
         return None
 
@@ -129,6 +176,7 @@ def detect_anomaly_no_onchain_activity(
         "current_balance_wei": current_balance,
         "nonce": current_nonce,
         "prev_nonce": state.last_nonce,
+        "state_age_sec": round(age_sec, 2),
         "action": "block_signing",
         "message": "Balance dropped but no new tx from wallet on direct RPC",
     }
@@ -137,39 +185,71 @@ def detect_anomaly_no_onchain_activity(
 
 
 def pre_sign_verify(cfg: GuardConfig, threshold_wei: int) -> tuple[bool, dict[str, Any]]:
-    """Allow signing only when direct RPC also confirms balance below threshold."""
-    direct_bal = fetch_balance(cfg.direct_rpc, cfg.address)
-    ok = direct_bal < threshold_wei
+    """Allow signing only when direct RPC confirms balance below threshold.
+
+    Distinguishes RPC unreachable/timeout from threshold rejection so operators
+    can tell source-of-truth failures apart from proxy false triggers.
+    """
     detail: dict[str, Any] = {
         "ts": utc_now(),
         "type": "pre_sign_verify",
-        "direct_wei": direct_bal,
         "threshold_wei": threshold_wei,
-        "allowed": ok,
+        "direct_rpc": cfg.direct_rpc,
     }
-    if not ok:
-        detail["severity"] = "critical"
-        detail["action"] = "block_signing"
-        detail["message"] = "Direct RPC balance above threshold — proxy trigger rejected"
+
+    try:
+        direct_bal = fetch_balance(cfg.direct_rpc, cfg.address, timeout=cfg.rpc_timeout_sec)
+    except RpcFetchError as exc:
+        detail.update(
+            {
+                "allowed": False,
+                "outcome": "direct_rpc_unavailable",
+                "error_kind": exc.kind,
+                "error": exc.reason,
+                "severity": "critical",
+                "action": "block_signing",
+                "message": "Direct RPC unreachable — cannot verify trigger (fail closed)",
+            }
+        )
         append_alert(detail)
+        return False, detail
+
+    ok = direct_bal < threshold_wei
+    detail.update({"direct_wei": direct_bal, "allowed": ok, "outcome": "verified" if ok else "threshold_rejected"})
+
+    if not ok:
+        detail.update(
+            {
+                "severity": "critical",
+                "action": "block_signing",
+                "message": "Direct RPC balance above threshold — proxy trigger rejected",
+            }
+        )
+        append_alert(detail)
+
     return ok, detail
 
 
 def evaluate_poll(cfg: GuardConfig, state: GuardState) -> dict[str, Any]:
-    """Run all defensive checks; return decision payload for bot event log."""
+    """Run defensive checks; return decision payload for bot event log.
+
+    First failure wins for block_reason (mismatch is checked before anomaly).
+    """
     snapshot = multi_source_balance(cfg)
     checks: dict[str, Any] = {
         "hardening": True,
         "primary_wei": snapshot.primary_wei,
         "direct_wei": snapshot.direct_wei,
-        "balances_match": snapshot.match,
+        "delta_wei": snapshot.delta_wei,
+        "max_balance_delta_wei": cfg.max_balance_delta_wei,
+        "balances_match": snapshot.within_tolerance,
         "use_balance_wei": snapshot.direct_wei,
         "block_signing": False,
         "block_reason": None,
         "alerts": [],
     }
 
-    mismatch = detect_rpc_mismatch(snapshot)
+    mismatch = detect_rpc_mismatch(cfg, snapshot)
     if mismatch:
         checks["block_signing"] = True
         checks["block_reason"] = "rpc_mismatch"
@@ -179,9 +259,11 @@ def evaluate_poll(cfg: GuardConfig, state: GuardState) -> dict[str, Any]:
     anomaly = detect_anomaly_no_onchain_activity(cfg, state, snapshot.direct_wei)
     if anomaly:
         checks["block_signing"] = True
+        # Preserve first (most critical) block_reason — mismatch wins over anomaly.
         checks["block_reason"] = checks["block_reason"] or "anomaly_no_onchain_activity"
         checks["alerts"].append(anomaly)
 
     state.last_balance = snapshot.direct_wei
-    state.last_nonce = fetch_nonce(cfg.direct_rpc, cfg.address)
+    state.last_nonce = fetch_nonce(cfg.direct_rpc, cfg.address, timeout=cfg.rpc_timeout_sec)
+    state.last_updated_monotonic = time.monotonic()
     return checks
