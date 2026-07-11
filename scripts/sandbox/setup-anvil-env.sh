@@ -5,23 +5,35 @@ set -euo pipefail
 SANDBOX="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT="$SANDBOX/anvil.env"
 EXAMPLE="$SANDBOX/anvil.env.example"
+MNEMONIC="${ANVIL_MNEMONIC:-test test test test test test test test test test test junk}"
+BOT_INDEX="${ANVIL_BOT_INDEX:-1}"
+FUNDER_INDEX="${ANVIL_FUNDER_INDEX:-0}"
 
 if [[ -f "$OUT" ]]; then
   echo "[OK]   $OUT already exists (not overwritten)"
+  echo "       Delete and re-run to regenerate: rm $OUT && $0"
   exit 0
 fi
 
-# Anvil default mnemonic — account #1 (public, local-only)
-cat >"$OUT" <<'ENV'
+if ! command -v cast >/dev/null 2>&1; then
+  echo "[FAIL] cast not found — install Foundry first"
+  exit 1
+fi
+
+BOT_ADDRESS="$(cast wallet address --mnemonic "$MNEMONIC" --mnemonic-index "$BOT_INDEX")"
+BOT_PRIVATE_KEY="$(cast wallet private-key --mnemonic "$MNEMONIC" --mnemonic-index "$BOT_INDEX")"
+FUNDER_ADDRESS="$(cast wallet address --mnemonic "$MNEMONIC" --mnemonic-index "$FUNDER_INDEX")"
+
+cat >"$OUT" <<ENV
 # LOCAL SANDBOX ONLY — Anvil public test keys. Never use in production.
 RPC_URL=http://127.0.0.1:8545
 UPSTREAM_RPC=http://127.0.0.1:8545
 PROXY_PORT=8546
 CHAIN_ID=31337
 
-BOT_ADDRESS=0x70997970C51812dc3A010C7d01b50e0d17dc79C8
-BOT_PRIVATE_KEY=0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b774b828
-FUNDER_ADDRESS=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+BOT_ADDRESS=${BOT_ADDRESS}
+BOT_PRIVATE_KEY=${BOT_PRIVATE_KEY}
+FUNDER_ADDRESS=${FUNDER_ADDRESS}
 
 THRESHOLD_WEI=500000000000000000
 MIN_GAS_WEI=10000000000000000
@@ -36,4 +48,5 @@ GUARD_RPC_TIMEOUT_SEC=10
 ENV
 
 echo "[OK]   Created $OUT (gitignored)"
+echo "       BOT_ADDRESS=$BOT_ADDRESS"
 echo "       Template reference: $EXAMPLE"
