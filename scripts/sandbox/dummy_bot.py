@@ -115,9 +115,15 @@ def resolve_env_path() -> Path:
 
 
 def validate_secrets() -> list[str]:
-    missing = [k for k in ("BOT_ADDRESS", "BOT_PRIVATE_KEY") if not os.environ.get(k)]
+    dry = os.environ.get("DRY_RUN", "false").lower() in ("1", "true", "yes")
+    required = ["BOT_ADDRESS"]
+    if not dry:
+        required.append("BOT_PRIVATE_KEY")
+    missing = [k for k in required if not os.environ.get(k)]
     for key in ("BOT_ADDRESS", "BOT_PRIVATE_KEY", "FUNDER_ADDRESS"):
         val = os.environ.get(key, "")
+        if not val:
+            continue
         if "<" in val or "DO NOT USE" in val.upper():
             missing.append(f"{key} (placeholder — run ./scripts/sandbox/setup-anvil-env.sh)")
     return missing

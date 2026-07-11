@@ -136,6 +136,17 @@
           "script": "scripts/sandbox/redteam/run-all.sh",
           "output": "artifacts/sandbox/redteam-report.json",
           "constraints": ["local-anvil-only"]
+        },
+        "target-recon": {
+          "script": "scripts/sandbox/run-target-recon.sh",
+          "output": "artifacts/sandbox/target-recon-report.json",
+          "input": "artifacts/sandbox/target-profile.json",
+          "constraints": ["read-only", "no-remote-exploit"]
+        },
+        "target-fork-setup": {
+          "script": "scripts/sandbox/setup-real-target-fork.sh",
+          "output": "scripts/sandbox/anvil.env",
+          "constraints": ["local-fork-only"]
         }
       },
       "cli": "./bin/hexstrike-agent",
