@@ -1,0 +1,668 @@
+{
+  "meta": {
+    "timestamp": "2026-07-11T07:28:51.874979+00:00",
+    "policy": "read_only_p7",
+    "rpc": "http://51.222.42.220:8545",
+    "block_range": [
+      108941522,
+      109041522
+    ],
+    "hot_wallet": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",
+    "worker": "scripts/bsc-wallet-exit-scan-p7.py",
+    "invoked_by": "hexstrike_orchestrator wallet-exit-scan"
+  },
+  "outgoing_usdt": {
+    "transfer_count": 1768,
+    "unique_recipients": 1562,
+    "total_usdt_out": 907817.73,
+    "to_rhino_bridge_usdt": 0.0,
+    "to_top3_contracts_usdt": 46559.32,
+    "by_category_usdt": {
+      "top3_sweep_contract": 46559.32000000001,
+      "contract": 106709.90878399998
+    },
+    "top_recipients": [
+      {
+        "address": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "total_usdt": 22486.98,
+        "category": "top3_sweep_contract",
+        "label": "authority_eip7702"
+      },
+      {
+        "address": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+        "total_usdt": 12268.34,
+        "category": "top3_sweep_contract",
+        "label": "sweep_contract_2"
+      },
+      {
+        "address": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+        "total_usdt": 11804.0,
+        "category": "top3_sweep_contract",
+        "label": "sweep_contract_3"
+      },
+      {
+        "address": "0x3e0b65c9c31e9593e2b357be6eecd28bef6da03e",
+        "total_usdt": 9758.49,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0x3a8b628934f9db7999499905bbf767331266b5b5",
+        "total_usdt": 7462.49,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0xd0b5b1fa9122696bcab0cc5d5f4421e6d94a9e52",
+        "total_usdt": 6000.0,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0x2a3cba35c2b427850c2047b2d79164a6227ebe7b",
+        "total_usdt": 5972.97,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0x831c7f9ea511a161c037b6b682ade7d46695a08f",
+        "total_usdt": 5450.0,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0x6977262a9a9b2eaaf7c20903b45798b1676ea7fd",
+        "total_usdt": 4998.67,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0xd0ec42011863e55e58d76219e978df8cde4b2247",
+        "total_usdt": 4992.5,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0x405238ebce4a7adbd010202b080d5515f234601e",
+        "total_usdt": 4908.13,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0x85837e008e63598e730f27628289ff9c06709a7a",
+        "total_usdt": 4700.0,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0x9458dd88cff7fa0de398a6e1f132b4715f41600a",
+        "total_usdt": 4455.0,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0x59c9bc67afc1ef6e6d61b5da740080a742263833",
+        "total_usdt": 4400.0,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0x44c42dcdfbf682a9eb6c42298e20cfd9875d7a2d",
+        "total_usdt": 4373.83,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0x2f1f774e3d2259f1ba7ee76639829b66ff2741da",
+        "total_usdt": 4350.36,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0xb98e33a4815f438c59b13fbe843d804b49e4ee40",
+        "total_usdt": 4000.0,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0xb974a85550aed45631003d409a93de1897aaaf1f",
+        "total_usdt": 4000.0,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0x8f3b6742c29573daca7496d5d6ceb46c75562f49",
+        "total_usdt": 3980.0,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0xfd07efb308d7f82d13459ec3e2a26480575cba23",
+        "total_usdt": 3980.0,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0xcc431d64ffc1182956a469eed7b878d2993e54dd",
+        "total_usdt": 3977.0,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0xe76f6363d9ffb075cd490f0065d669b37ab59bd7",
+        "total_usdt": 3974.98,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0x3b78ed7201ab904b684342f9ce6e0604a929d148",
+        "total_usdt": 3900.0,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0x5995671e867129f916d2472ee5418ae71a0d20d6",
+        "total_usdt": 3575.08,
+        "category": "contract",
+        "label": null
+      },
+      {
+        "address": "0xa9eac63ec098dc954aab6d4b5cce098b46136287",
+        "total_usdt": 3500.41,
+        "category": "contract",
+        "label": null
+      }
+    ],
+    "cex_labeled_hits": [],
+    "direct_cex_deposit_from_hot": false
+  },
+  "approvals": {
+    "event_count": 49,
+    "unique_spenders": 2,
+    "events": [
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xd61fbac905db56cfbef56620daac616ee736d8d6ac177a899eee83c2c1b114d1",
+        "block": 108949554
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xc1594c7e74639f3eefafd30831ca005cb7eb640d8640ea06d9af019b53a283f2",
+        "block": 108950110
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x40725aa2c79892b46a8c2c8d397fe3ab04e5dc47a8b3d12b880ec105d56c1e11",
+        "block": 108954448
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xc872b23d61711699d5617333b4f6bfac514e20eea99c08dd5e5a3df5fa1bf719",
+        "block": 108954870
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x279b7a77bcb6217d55ed278226517d3946f1848f1a748f98c5a4599285497880",
+        "block": 108956424
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x4eb800f8714921b219ce1c6e45be96796a840bdde1186078872210c4dcaaa724",
+        "block": 108960489
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x1dad6e81077537e33535fbdd72da4cc6d3cc3af139b9a87f1d0754ac9c33dc6b",
+        "block": 108960977
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x3f2334c781d1f38019b2cfd54929550afed40a559a23a1ec7329e38dca3549c1",
+        "block": 108961090
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x54f34522bb91a2b0d34b89681296a9483e260cbdc5e447e6915d6a2ddef2bd78",
+        "block": 108962505
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xf18fa23c6e2ffa429be1ddb5ee69ae01793ec6982cac39500470f4f9ad0237a7",
+        "block": 108965903
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xfcc211bef22304ce9ef3f9f1da106c8929344face89483605d9eea23936d1c04",
+        "block": 108965954
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x0ce7a737a48e6ff0838b935011ca873225d6f98a2c3cfb2a113582068939d4c5",
+        "block": 108968110
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xbb6bff34f3aee0b2f74b2e82c22b37ac0b95ceb6061fcdc32416b1200270915c",
+        "block": 108968158
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x9a9b4137fa3c99e7878fbf816d18b0c2ff9c6faee482745bc0950a453009cf3a",
+        "block": 108969191
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x18dbee75f4d7045abcd610fe9cd9decee7d15971050a2aec32201aec9fe53460",
+        "block": 108969280
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xb44e4a420c111c6ed0bf631ad0a152909387232fcb7c763c8e6c582108d74af0",
+        "block": 108969964
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xde73fbe2e9da03a41ed934c684288ca4c02d247189921aa3d42c9a296b4696e2",
+        "block": 108970122
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x46836c62170b04574f2a3d532e11a9aa5fc97fe3d6242dbabafaed1c790f4ac8",
+        "block": 108970149
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x98f0ce9a263b3a6c0ea070a361c3bb2b191d91fc780916e39bc72670b670b2a2",
+        "block": 108970382
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x9f6f3f3f2788274365e6366671c6c8eea0e42064095d154b02f9a6621e76ed2b",
+        "block": 108970879
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x6f8298482424e1413092c4fc221fce0c10937c11fcad1e913134a07244a66eb2",
+        "block": 108971611
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xb93d51b35f5c520314826dcbecf63be2d2bc0b1e33f63b0e4900e7dea69c82e5",
+        "block": 108977979
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x981f5fc969cad781df8536bf9a90ad32de3f6321b6804806847b0975ffc5ee0a",
+        "block": 108978598
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x04127da040c2c4a017da340b539c712eca217ee8853f7fd53e2c3935e8ce9338",
+        "block": 108981344
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xf02ceb5f4fcdb48fb38d5f6666e190b4e0cf216dc8e6f0370dfcb4afb4c2758d",
+        "block": 108981506
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x3effdd03589dad58d15567d4022bc247b7ba8d99ac2d69bdd94b5cca9b205ae2",
+        "block": 108987618
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xd6e1dcb474ceda594403d2a47a2611cb3f64f298fea9452094b4c6020595b04e",
+        "block": 108992483
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xd52d6d377f6412f45aed91fb60d00d1818f5246b2c21ecce1a9b69012d0c32bf",
+        "block": 108992554
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x4fb87460e47e9a277837e8ea6921f9e0201eec783c26a2c1eaeb1e1742014891",
+        "block": 108995564
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x35aa2bf21818220eba476d1efbf90f9963fcfd80c8538ad7fcebe70539d7b62c",
+        "block": 108997627
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x27c92e50a65410229d4c924697db9932c445447a29920329c59b533ca48c89e7",
+        "block": 108997702
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x61cb3ccf215108b2df6d207bb6ac62e45f66f2f5adf5915a2ae650019e59333d",
+        "block": 108997884
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x5e8698ec7c9e78c8afc35163a201b4310af6286e368d09c1ab137254416a5902",
+        "block": 108998889
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x445c3f0008f2ce3381755fc5b3877509ebedb6fd928f798096bd78b012aa5e05",
+        "block": 108998946
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x00baadc98ff2fc7bf81bd4e65bd5a5e533ec565d655d1f7e23b3f8bc8a322349",
+        "block": 109000090
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x7826357fd21a069225423297429de04747a8ebf787a9671f46da3f0dc8920bd0",
+        "block": 109004093
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x63655f701d05be4085db14e609248083f433e98c11cbaab6a6a272ce687142fa",
+        "block": 109004173
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xb3b57bd9af424b946ad61bdd49f7ad9383320171f6f94e9eca4221bb985b6f5b",
+        "block": 109010419
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x5c78009017c9bbeac42e681ad53da0357d073698b8beb5420735cc7974d4cde3",
+        "block": 109010487
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x3e851473793a6d00d9870e42abac885eb9a21e0b449838ff0c5808d4bbc270b8",
+        "block": 109014154
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x4e49abc2e7fbe82b3e062bc9c0308a1fba6d02ae1009fd295ecf1d0464e738d9",
+        "block": 109016573
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xa186652a4388144d27f92abcecfe92f6e6918f55d3c89fb2f32e2e497d4c6048",
+        "block": 109019469
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xa8d07d0968253a33149e1fac069d120ca5bc5673bb34f7f19f0a44478cd34d6e",
+        "block": 109019523
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x01bbd8aebb8e8ed94cf72ecf8083b18667d31566e9b92e133f2825dd7aaa1e33",
+        "block": 109025644
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x6e1e61ba03cf45a7716c4d66d5a9af564981d3f0703b74ebd5dd9e0bc8db90f9",
+        "block": 109028498
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x3cc8425cb514f5a5392d2c27151d07b88323998736a69bee3f88c5b61753019a",
+        "block": 109028830
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x7baa12a9613d0804b0b455926617cafbbea8053f1698054618e04af92bd49bf8",
+        "block": 109031180
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0xb1ae84e687f1e50bd825ff822fc0f867ddecc3738d167ed951e1e0c017bd3799",
+        "block": 109031477
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "amount_usdt": 0.0,
+        "unlimited": false,
+        "tx_hash": "0x29649c4b838d53317bad4652b790d356f2d69dbdacdff657c67d54993be1d2fa",
+        "block": 109033629
+      }
+    ],
+    "top_spenders": [
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "max_approved_usdt": 0.0,
+        "unlimited": false
+      },
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "max_approved_usdt": 0.0,
+        "unlimited": false
+      }
+    ],
+    "current_allowance": [
+      {
+        "spender": "0x0791b65d9ab30d03425af32705bf219f58fd4894",
+        "current_allowance_usdt": 0.0
+      },
+      {
+        "spender": "0x55ed7fcd17b93fbcd5186cda01af6fed4ec78e08",
+        "current_allowance_usdt": 0.0
+      },
+      {
+        "spender": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        "current_allowance_usdt": 0.0
+      },
+      {
+        "spender": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+        "current_allowance_usdt": 0.0
+      },
+      {
+        "spender": "0xc107bebc94c03293e8eefc038bbb65b6306988c9",
+        "current_allowance_usdt": 0.0
+      },
+      {
+        "spender": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a",
+        "current_allowance_usdt": 0.0
+      }
+    ]
+  },
+  "rhino_api_recipients": {
+    "attempted": 14,
+    "resolved": 0,
+    "results": [
+      {
+        "tx_hash": "0x0f4f6b6cbc6090bebe0c12619f46ddeff71482b3cfe1419ea7fbc77c56fce6b7",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x1135f4aecddac2285b90fe0b07a5d823b0af3b79d9d00ac52c50f3429d645cfa",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x1441d8b9eddb5cda67a03b04b682e1a2645d2a868877a89da8cef168054c3598",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x2b9138d958bff384c3bb2ff337977d56cec32a97baf56e6dbf8b48740168e261",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x56662176e260639ca038e8f8d0d59a7dba7a6a58374456a0ec895663a455ce6e",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x757167d6df209ff97cf8df20c2ad5ca2a95080f25e673cf7a05b7346ff66eb3e",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x7f9cba2507bf7aea6b9ec1d7e9273a31120b384a8ea4c0caa4ee0f3bf597727c",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x9992b2e3325bfb5911573986e66adfbd5bc0f91efccc81ff99173e5efa9dc072",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0x9fdd3d50c6ddba83f906e523a6472b22904d80da1f291e554977253534f221f4",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0xa0e2407de31014d352d23708cfbe9d5436be18d0a9b972ca60cb5eca82e512de",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0xa7279140ccaefb092ea63690a1db6a5354acf3ccaf6368b7e80beb1bb5a93667",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0xc4c5b18bf3bcab377ebdb7890569405672b06ffcd797131ae1387776f89a91a3",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0xd3b1ce96fcab056abe5f408a38e4d5e17b3c7f45a9dfab9bd7808b9362e55596",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      },
+      {
+        "tx_hash": "0xe4ea1d5f36e89b176ddd98a661fd317eaa661b8c8e5399e1f13c23a25b193636",
+        "status": "skipped",
+        "reason": "RHINO_API_KEY or RHINO_JWT not set"
+      }
+    ]
+  },
+  "exit_rails_detected": {
+    "rhino_bridge_bsc": {
+      "confirmed": false,
+      "usdt": 0.0,
+      "path": "hot -> top3 contracts -> rhino (P1/P4 confirmed)"
+    },
+    "direct_cex": {
+      "confirmed": false,
+      "hits": []
+    },
+    "cross_chain": {
+      "chainOut_on_chain": false,
+      "api_resolved": 0,
+      "note": "Rhino JWT required for withdraw recipient"
+    }
+  },
+  "prior_recon_crosscheck": {
+    "direct_cex_drain_from_hot": false,
+    "pattern": "hot -> many EOAs/authorities -> further split; check depth1 for CEX"
+  },
+  "verdict": "P7 exit scan: 1768 USDT out txs, $907,818 total. Bridge Rhino $0. Direct CEX deposit from hot: NO. Approvals: 49 events, 2 spenders. Rhino API resolved 0/14. Withdrawal pattern: payroll/sweep -> bridge cross-chain, not direct CEX cash-out.",
+  "next_steps_readonly": [
+    "RHINO_API_KEY for exact bridge withdraw recipients",
+    "Depth-2 from top payroll EOAs (not hot) for delayed CEX hops",
+    "Legal/exchange channel for Binance deposit matching"
+  ]
+}
