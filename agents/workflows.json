@@ -43,16 +43,41 @@
         {"agent": "Agent-Report-06", "task": "generate-defensive-checklist"}
       ]
     },
-    "real-target-pipeline": {
-      "description": "Real BSC hot wallet: profile → fork → read-only recon (orchestrator)",
+    "multi-wallet-conclusions": {
+      "description": "All seed wallets: profile → fork → multi recon → conclusion report",
       "steps": [
         {"agent": "Agent-Battle-07", "task": "generate-target-profile"},
         {"agent": "Agent-Battle-07", "task": "target-fork-setup", "depends_on": "generate-target-profile"},
-        {"agent": "Agent-Battle-07", "task": "target-recon", "depends_on": "target-fork-setup"},
-        {"agent": "Agent-OSINT-03", "task": "entity-resolution", "optional": true},
-        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "optional": true, "depends_on": "target-recon"}
+        {"agent": "Agent-Battle-07", "task": "multi-wallet-recon", "depends_on": "target-fork-setup"},
+        {"agent": "Agent-Battle-07", "task": "generate-target-conclusion", "depends_on": "multi-wallet-recon"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "generate-target-conclusion"}
       ],
-      "note": "Read-only. Target: artifacts infra-targets hot_wallet. No mainnet exploit."
+      "note": "Read-only. Scans hot_wallet, authority, hub, operator, top counterparties."
+    },
+    "real-target-full": {
+      "description": "Multi-wallet recon + conclusions + optional local battle",
+      "steps": [
+        {"agent": "Agent-Battle-07", "task": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "target-fork-setup"},
+        {"agent": "Agent-Battle-07", "task": "multi-wallet-recon", "depends_on": "target-fork-setup"},
+        {"agent": "Agent-Battle-07", "task": "generate-target-conclusion", "depends_on": "multi-wallet-recon"},
+        {"agent": "Agent-Battle-07", "task": "battle-suite", "optional": true},
+        {"agent": "Agent-Battle-07", "task": "generate-target-conclusion", "depends_on": "battle-suite", "optional": true},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "generate-target-conclusion"}
+      ],
+      "note": "Battle step is local dummy Anvil only (optional)."
+    },
+    "real-target-pipeline": {
+      "description": "Legacy single-wallet pipeline (use multi-wallet-conclusions instead)",
+      "steps": [
+        {"agent": "Agent-Battle-07", "task": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "target-fork-setup", "depends_on": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "multi-wallet-recon", "depends_on": "target-fork-setup"},
+        {"agent": "Agent-Battle-07", "task": "generate-target-conclusion", "depends_on": "multi-wallet-recon"},
+        {"agent": "Agent-OSINT-03", "task": "entity-resolution", "optional": true},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "optional": true, "depends_on": "generate-target-conclusion"}
+      ],
+      "note": "Read-only. Upgraded to multi-wallet + conclusion."
     },
     "sandbox-battle": {
       "description": "Local Anvil red-team: 7 attacks + battle-report readiness score",

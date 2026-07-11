@@ -5,20 +5,44 @@ set -euo pipefail
 
 SANDBOX="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SANDBOX/../.." && pwd)"
+PROFILES="$ROOT/artifacts/sandbox/target-profiles.json"
 PROFILE="$ROOT/artifacts/sandbox/target-profile.json"
+
+if [[ ! -f "$PROFILES" ]]; then
+  python3 "$SANDBOX/generate-target-profile.py"
+fi
+
+HOT="$(python3 - <<PY
+import json
+from pathlib import Path
+for p in [Path("$PROFILES"), Path("$PROFILE")]:
+    if p.is_file():
+        d = json.loads(p.read_text())
+        if d.get("wallets"):
+            print(d["wallets"][0]["address"]); raise SystemExit
+        if d.get("primary_target"):
+            print(d["primary_target"]["address"]); raise SystemExit
+PY
+)"
+AUTH="$(python3 - <<PY
+import json
+from pathlib import Path
+p = Path("$PROFILES")
+if p.is_file():
+    for w in json.loads(p.read_text()).get("wallets", []):
+        if w.get("role") == "authority":
+            print(w["address"]); raise SystemExit
+p = Path("$PROFILE")
+if p.is_file():
+    print(json.loads(p.read_text()).get("related_targets", {}).get("authority", ""))
+PY
+)"
 OUT="$SANDBOX/anvil.env"
 FORK_RPC="${BSC_FORK_RPC:-https://bsc-dataseed.binance.org}"
 PORT="${ANVIL_PORT:-8545}"
 HOST="${ANVIL_HOST:-127.0.0.1}"
 PID_FILE="${TMPDIR:-/tmp}/hexstrike-anvil-fork.pid"
 LOG_FILE="${TMPDIR:-/tmp}/hexstrike-anvil-fork.log"
-
-if [[ ! -f "$PROFILE" ]]; then
-  python3 "$SANDBOX/generate-target-profile.py"
-fi
-
-HOT="$(python3 -c "import json; print(json.load(open('$PROFILE'))['primary_target']['address'])")"
-AUTH="$(python3 -c "import json; d=json.load(open('$PROFILE')); print(d['related_targets'].get('authority') or '')")"
 
 if ! command -v anvil >/dev/null 2>&1; then
   echo "[FAIL] anvil not found — install Foundry"

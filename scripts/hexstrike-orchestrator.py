@@ -128,6 +128,28 @@ def extract_highlights(path: Path, data: object) -> list[str]:
         if len(cves) > 3:
             lines.append(f"  … +{len(cves) - 3} more (see report)")
 
+    elif name == "target-recon-bundle.json":
+        summary = data.get("summary", {})
+        lines.append(summary.get("headline", f"{data.get('wallet_count', 0)} wallets"))
+        for w in (data.get("wallets") or [])[:5]:
+            v = w.get("verdict", {})
+            live = w.get("live", {})
+            lines.append(
+                f"{w.get('role')}: risk={v.get('risk_level')} bal={live.get('balance_eth')} ETH nonce={live.get('nonce')}"
+            )
+
+    elif name == "target-conclusion.json":
+        ov = data.get("overall", {})
+        lines.append(f"Verdict: {ov.get('headline', '?')}")
+        lines.append(f"Risk posture: {ov.get('risk_posture')} | Entity: {ov.get('entity_status')}")
+        for c in (ov.get("conclusions") or [])[:4]:
+            lines.append(c[:100])
+
+    elif name == "target-profiles.json":
+        lines.append(f"Wallets in catalog: {data.get('wallet_count', 0)}")
+        for w in (data.get("wallets") or [])[:6]:
+            lines.append(f"  {w.get('role')}: {w.get('address', '')[:12]}…")
+
     elif name == "target-recon-report.json":
         for chk in (data.get("checks") or []):
             lines.append(
@@ -263,6 +285,9 @@ def run_workflow(name: str, env: dict | None = None, print_all: bool = True) -> 
     run_id = uuid.uuid4().hex[:12]
     steps_out: list[dict] = []
     completed: set[str] = set()
+    step_env = dict(env or {})
+    step_env["ORCHESTRATOR_RUN_ID"] = run_id
+    step_env["ORCHESTRATOR_WORKFLOW"] = name
 
     print(f"▶ workflow={name} run_id={run_id} steps={len(wf.get('steps', []))}")
 
@@ -277,7 +302,7 @@ def run_workflow(name: str, env: dict | None = None, print_all: bool = True) -> 
             pass  # sequential order already enforces deps
 
         print(f"  [{i}/{len(wf['steps'])}] {agent} / {task}")
-        result = run_agent(agent, task, env)
+        result = run_agent(agent, task, step_env)
         steps_out.append(result)
         completed.add(task)
 
