@@ -324,6 +324,9 @@ def main() -> int:
     cfg = BotConfig.from_env()
     check_rpc(cfg)
 
+    mode = "DRY_RUN" if cfg.dry_run else "LIVE"
+    log.info("[CORE] Engine started (%s) watch=%s signer=%s funder=%s", mode, cfg.watch_address, cfg.bot_address, cfg.funder_address)
+
     log.info(
         "Watching %s (signer=%s) every %ss (threshold=%s ETH, dry_run=%s, hardening=%s, once=%s)",
         cfg.watch_address,
