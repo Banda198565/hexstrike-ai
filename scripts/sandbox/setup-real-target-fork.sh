@@ -83,3 +83,22 @@ echo "       nonce: $NONCE"
 echo "       DRY_RUN=true — no mainnet/main-fork broadcast without operator key"
 echo ""
 echo "Next: ./scripts/sandbox/run-target-recon.sh"
+
+STATUS="$ROOT/artifacts/sandbox/target-fork-status.json"
+mkdir -p "$(dirname "$STATUS")"
+python3 - <<PY
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+p = Path("$STATUS")
+p.write_text(json.dumps({
+    "generated_at": datetime.now(timezone.utc).isoformat(),
+    "mode": "fork_watch",
+    "bot_address": "$HOT",
+    "rpc": "$RPC",
+    "chain_id": 56,
+    "dry_run": True,
+    "env_file": "$OUT",
+}, indent=2) + "\n")
+print(f"[OK]   Status: {p}")
+PY

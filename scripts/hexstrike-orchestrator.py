@@ -128,6 +128,28 @@ def extract_highlights(path: Path, data: object) -> list[str]:
         if len(cves) > 3:
             lines.append(f"  … +{len(cves) - 3} more (see report)")
 
+    elif name == "target-recon-report.json":
+        for chk in (data.get("checks") or []):
+            lines.append(
+                f"{chk.get('source')}: balance={chk.get('balance_wei')} nonce={chk.get('nonce')} chain={chk.get('chain_id')}"
+            )
+        lines.append(f"target: {data.get('target')}")
+
+    elif name == "target-profile.json":
+        pt = data.get("primary_target", {})
+        lines.append(f"Hot wallet: {pt.get('address')} ({pt.get('chain')})")
+        gs = pt.get("graph_summary", {})
+        if gs.get("usdt_out_txs"):
+            lines.append(f"USDT out txs (period): {gs.get('usdt_out_txs')}")
+        rel = data.get("related_targets", {})
+        if rel.get("authority"):
+            lines.append(f"Authority: {rel.get('authority')}")
+
+    elif name == "battle-report.json":
+        s = data.get("summary", {})
+        lines.append(f"Readiness: {s.get('readiness_score')}/100")
+        lines.append(f"vuln={s.get('vuln_confirmed')} defended={s.get('defended')} inconclusive={s.get('inconclusive')}")
+
     elif name == "infra-targets.json":
         targets = data.get("infra_targets") or data.get("linked_ips") or []
         if isinstance(targets, list):

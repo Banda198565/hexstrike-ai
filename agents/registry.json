@@ -127,10 +127,14 @@
       "description": "Autonomous Go agent — 7-attack Anvil battle suite + readiness score",
       "tasks": {
         "battle-suite": {
-          "script": "cmd/agent/build.sh",
-          "runner_note": "build then: bin/hexstrike-agent battle",
+          "script": "scripts/sandbox/run-battle-suite.sh",
           "output": "artifacts/sandbox/battle-report.json",
           "constraints": ["local-anvil-only", "authorized-lab", "no-remote-exploit"]
+        },
+        "generate-target-profile": {
+          "script": "scripts/sandbox/generate-target-profile.py",
+          "output": "artifacts/sandbox/target-profile.json",
+          "constraints": ["read-only"]
         },
         "redteam-all": {
           "script": "scripts/sandbox/redteam/run-all.sh",
@@ -145,7 +149,7 @@
         },
         "target-fork-setup": {
           "script": "scripts/sandbox/setup-real-target-fork.sh",
-          "output": "scripts/sandbox/anvil.env",
+          "output": "artifacts/sandbox/target-fork-status.json",
           "constraints": ["local-fork-only"]
         }
       },

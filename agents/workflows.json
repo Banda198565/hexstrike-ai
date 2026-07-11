@@ -43,6 +43,17 @@
         {"agent": "Agent-Report-06", "task": "generate-defensive-checklist"}
       ]
     },
+    "real-target-pipeline": {
+      "description": "Real BSC hot wallet: profile → fork → read-only recon (orchestrator)",
+      "steps": [
+        {"agent": "Agent-Battle-07", "task": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "target-fork-setup", "depends_on": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "target-recon", "depends_on": "target-fork-setup"},
+        {"agent": "Agent-OSINT-03", "task": "entity-resolution", "optional": true},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "optional": true, "depends_on": "target-recon"}
+      ],
+      "note": "Read-only. Target: artifacts infra-targets hot_wallet. No mainnet exploit."
+    },
     "sandbox-battle": {
       "description": "Local Anvil red-team: 7 attacks + battle-report readiness score",
       "steps": [
