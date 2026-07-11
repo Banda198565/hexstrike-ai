@@ -84,19 +84,13 @@ func (e *OsintEngine) refreshWallet(ctx context.Context, target, targetType, cac
 }
 
 func (e *OsintEngine) refreshIP(ctx context.Context, target, targetType, cacheKey string) {
-	port, err := e.Network.ScanInfrastructure(ctx, target)
+	isSafe, reason, err := e.Network.AnalyzeIP(ctx, target)
 	if err != nil {
 		log.Printf("[OSINT-ENGINE] [%s] Target refresh failed: %s error: %v", strings.ToUpper(targetType), target, err)
 		return
 	}
 
-	var status string
-	if port > 0 {
-		status = fmt.Sprintf("open_port=%d vulnerable=true service=jenkins", port)
-	} else {
-		status = "open_port=0 vulnerable=false"
-	}
-
+	status := fmt.Sprintf("safe=%t reason=%s", isSafe, reason)
 	e.Cache.Set(cacheKey, status, cacheTTL)
 	log.Printf("[OSINT-ENGINE] [%s] Target refreshed: %s status: %s", strings.ToUpper(targetType), target, status)
 }
