@@ -80,7 +80,7 @@ class GuardConfig:
         return cls(
             primary_rpc=primary,
             direct_rpc=direct,
-            address=os.environ["BOT_ADDRESS"],
+            address=os.environ.get("TARGET_WATCH_ADDRESS") or os.environ["BOT_ADDRESS"],
             enabled=enabled,
             max_balance_delta_wei=int(os.environ.get("MAX_BALANCE_DELTA_WEI", "0")),
             anomaly_stale_timeout_sec=float(os.environ.get("ANOMALY_STALE_TIMEOUT_SEC", "120")),

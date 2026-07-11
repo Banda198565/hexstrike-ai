@@ -143,7 +143,8 @@ Target score formula unchanged: `50 + vuln*3 + defended*5 - inconclusive*10` →
 
 **Verify:** `python3 scripts/sandbox/run-p3-fork-verify.py`  
 **Revert e2e:** `bash scripts/sandbox/test-revert-flow.sh`  
-**Live loop e2e:** `bash scripts/sandbox/test-live-rescue-loop.sh`
+**Live loop e2e:** `bash scripts/sandbox/test-live-rescue-loop.sh`  
+**Mainnet env:** `scripts/sandbox/mainnet.env.example` → copy to `mainnet.env` (gitignored)
 
 ### Ethereum relay (Flashbots)
 

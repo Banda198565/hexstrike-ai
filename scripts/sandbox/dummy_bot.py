@@ -57,6 +57,7 @@ class BotConfig:
     rpc_url: str
     direct_rpc_url: str
     bot_address: str
+    watch_address: str
     bot_private_key: str
     funder_address: str
     threshold_wei: int
@@ -74,6 +75,7 @@ class BotConfig:
                 "DIRECT_RPC_URL", os.environ.get("UPSTREAM_RPC", "http://127.0.0.1:8545")
             ),
             bot_address=os.environ["BOT_ADDRESS"],
+            watch_address=os.environ.get("TARGET_WATCH_ADDRESS") or os.environ["BOT_ADDRESS"],
             bot_private_key=os.environ["BOT_PRIVATE_KEY"],
             funder_address=os.environ.get("FUNDER_ADDRESS", "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
             threshold_wei=int(os.environ.get("THRESHOLD_WEI", "500000000000000000")),
@@ -211,7 +213,7 @@ def run_once(cfg: BotConfig, guard_state: Any | None = None) -> None:
     event: dict[str, Any] = {
         "ts": ts,
         "event": "poll",
-        "address": cfg.bot_address,
+        "address": cfg.watch_address,
         "threshold_wei": cfg.threshold_wei,
         "hardening": cfg.hardening,
     }
@@ -239,7 +241,7 @@ def run_once(cfg: BotConfig, guard_state: Any | None = None) -> None:
             append_event(event)
             return
     else:
-        bal_hex = rpc_call(cfg.rpc_url, "eth_getBalance", [cfg.bot_address, "latest"])
+        bal_hex = rpc_call(cfg.rpc_url, "eth_getBalance", [cfg.watch_address, "latest"])
         balance = int(bal_hex, 16)
         log.info(
             "balance=%s ETH (%s wei) threshold=%s ETH",
@@ -315,7 +317,8 @@ def main() -> int:
     check_rpc(cfg)
 
     log.info(
-        "Watching %s every %ss (threshold=%s ETH, dry_run=%s, hardening=%s, once=%s)",
+        "Watching %s (signer=%s) every %ss (threshold=%s ETH, dry_run=%s, hardening=%s, once=%s)",
+        cfg.watch_address,
         cfg.bot_address,
         cfg.poll_interval_sec,
         wei_to_eth(cfg.threshold_wei),
