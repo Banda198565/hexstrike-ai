@@ -15,21 +15,24 @@ const cacheTTL = 10 * time.Minute
 
 // OsintEngine orchestrates OSINT collection across providers with TTL caching.
 type OsintEngine struct {
-	Cache   *cache.MemoryCache
-	Arkham  *providers.ArkhamProvider
-	Network *providers.NetworkProvider
+	Cache    *cache.MemoryCache
+	Arkham   *providers.ArkhamProvider
+	GetBlock *providers.GetBlockProvider
+	Network  *providers.NetworkProvider
 }
 
 // NewOsintEngine wires cache and providers into a ready-to-run engine.
 func NewOsintEngine(
 	memCache *cache.MemoryCache,
 	arkham *providers.ArkhamProvider,
+	getblock *providers.GetBlockProvider,
 	network *providers.NetworkProvider,
 ) *OsintEngine {
 	return &OsintEngine{
-		Cache:   memCache,
-		Arkham:  arkham,
-		Network: network,
+		Cache:    memCache,
+		Arkham:   arkham,
+		GetBlock: getblock,
+		Network:  network,
 	}
 }
 
@@ -72,15 +75,35 @@ func (e *OsintEngine) refreshTarget(ctx context.Context, target string, targetTy
 }
 
 func (e *OsintEngine) refreshWallet(ctx context.Context, target, targetType, cacheKey string) {
-	isSafe, reason, err := e.Arkham.AnalyzeAddress(ctx, target)
+	arkhamSafe, arkhamReason, err := e.Arkham.AnalyzeAddress(ctx, target)
 	if err != nil {
-		log.Printf("[OSINT-ENGINE] [%s] Target refresh failed: %s error: %v", strings.ToUpper(targetType), target, err)
+		log.Printf("[OSINT-ENGINE] [%s] Arkham refresh failed: %s error: %v", strings.ToUpper(targetType), target, err)
 		return
 	}
 
-	status := fmt.Sprintf("safe=%t reason=%s", isSafe, reason)
+	getblockSafe, getblockReason, err := e.GetBlock.AnalyzeAddress(ctx, target)
+	if err != nil {
+		log.Printf("[OSINT-ENGINE] [%s] GetBlock refresh failed: %s error: %v", strings.ToUpper(targetType), target, err)
+		return
+	}
+
+	isSafe := arkhamSafe && getblockSafe
+	status := fmt.Sprintf(
+		"safe=%t arkham=%s getblock=%s",
+		isSafe,
+		formatProviderVerdict(arkhamSafe, arkhamReason),
+		formatProviderVerdict(getblockSafe, getblockReason),
+	)
+
 	e.Cache.Set(cacheKey, status, cacheTTL)
 	log.Printf("[OSINT-ENGINE] [%s] Target refreshed: %s status: %s", strings.ToUpper(targetType), target, status)
+}
+
+func formatProviderVerdict(isSafe bool, reason string) string {
+	if isSafe {
+		return "clean(" + reason + ")"
+	}
+	return "unsafe(" + reason + ")"
 }
 
 func (e *OsintEngine) refreshIP(ctx context.Context, target, targetType, cacheKey string) {

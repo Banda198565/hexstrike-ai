@@ -30,10 +30,16 @@ func main() {
 		log.Println("[ВНИМАНИЕ] Переменная SHODAN_API_KEY не задана. Модуль Network запущен в режиме симуляции.")
 	}
 
+	getblockKey := os.Getenv("GETBLOCK_API_KEY")
+	if getblockKey == "" {
+		log.Println("[ВНИМАНИЕ] Переменная GETBLOCK_API_KEY не задана. Модуль GetBlock запущен в режиме симуляции.")
+	}
+
 	memCache := cache.NewMemoryCache()
 	engine := core.NewOsintEngine(
 		memCache,
 		providers.NewArkhamProvider(apiKey),
+		providers.NewGetBlockProvider(getblockKey),
 		providers.NewNetworkProvider(shodanKey),
 	)
 
