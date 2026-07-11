@@ -200,7 +200,7 @@ def ensure_ollama_model() -> None:
     )
     if proc.returncode != 0:
         print(proc.stderr or proc.stdout)
-        print(f"[WARN] Не удалось создать {OLLAMA_MODEL}, fallback deepseek-r1:1.5b")
+        print(f"[WARN] Не удалось создать {OLLAMA_MODEL}, fallback deepseek-r1:7b")
 
 
 def main() -> int:
@@ -209,7 +209,7 @@ def main() -> int:
     tags = json.loads(urllib.request.urlopen(f"{OLLAMA_HOST}/api/tags", timeout=5).read().decode())
     names = [m.get("name", "") for m in tags.get("models", [])]
     if not any(n.startswith(model) for n in names):
-        model = "deepseek-r1:1.5b"
+        model = "deepseek-r1:7b"
 
     messages: list[dict] = [{"role": "system", "content": build_system_prompt()}]
 

@@ -1,4 +1,4 @@
-FROM deepseek-r1:7b
+FROM deepseek-v2.5:7b
 PARAMETER num_predict 128
 PARAMETER num_thread 8
 PARAMETER temperature 0.3

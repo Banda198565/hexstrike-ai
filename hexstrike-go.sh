@@ -30,17 +30,17 @@ check_ollama() {
 }
 
 ensure_models() {
-  ylw "[pull] базовая модель (средняя): ${BASE_MODEL} ..."
-  ollama list 2>/dev/null | grep -q "${BASE_MODEL}" || ollama pull "${BASE_MODEL}"
+  ylw "[pull] чат-модель (средняя, без R1-зависаний): ${CHAT_MODEL} ..."
+  ollama list 2>/dev/null | grep -q "${CHAT_MODEL%%:*}" || ollama pull "${CHAT_MODEL}"
   cat > "$FASTFILE" << EOF
-FROM ${BASE_MODEL}
+FROM ${CHAT_MODEL}
 PARAMETER num_predict 128
 PARAMETER num_thread 8
 PARAMETER temperature 0.3
-SYSTEM "Ты HexStrike Orchestrator. Кратко по-русски. Агенты: OSINT-03, Web-04, Vuln-05, Report-06. Команды: /run defensive-disclosure, /run vps-full-readonly, /dispatch Agent-Vuln-05 passive-cve-check. Read-only, без эксплойтов."
+SYSTEM "Ты HexStrike Orchestrator. Отвечай сразу и кратко по-русски. Команды: /run defensive-disclosure, /dispatch Agent-Vuln-05 passive-cve-check"
 EOF
   ollama create "${MODEL}" -f "$FASTFILE" >/dev/null 2>&1 || ollama create "${MODEL}" -f "$FASTFILE"
-  grn "[OK]   ${MODEL} ← ${BASE_MODEL}"
+  grn "[OK]   чат: ${CHAT_MODEL} | wrapper: ${MODEL}"
 }
 
 preflight_agents() {
