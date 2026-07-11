@@ -13,15 +13,17 @@ from typing import Any
 
 DEFAULT_HOST = "http://127.0.0.1:11434"
 DEFAULT_MODEL = "deepseek-r1:1.5b"
-DEFAULT_NUM_THREAD = 16
-DEFAULT_NUM_PREDICT = 256
+DEFAULT_NUM_THREAD = 4
+DEFAULT_NUM_PREDICT = 128
+DEFAULT_NUM_CTX = 4096
 
 
 def ollama_request_options() -> dict[str, int]:
-    """Runtime options for deepseek-r1 — tune via OLLAMA_NUM_THREAD / OLLAMA_NUM_PREDICT."""
+    """Runtime options for deepseek-r1 — tune via env (16GB RAM: thread=4, predict=128)."""
     return {
         "num_thread": int(os.environ.get("OLLAMA_NUM_THREAD", DEFAULT_NUM_THREAD)),
         "num_predict": int(os.environ.get("OLLAMA_NUM_PREDICT", DEFAULT_NUM_PREDICT)),
+        "num_ctx": int(os.environ.get("OLLAMA_NUM_CTX", DEFAULT_NUM_CTX)),
     }
 
 
@@ -172,3 +174,65 @@ class LocalLlmProvider:
                 "ok": False,
                 "error": str(exc),
             }
+
+    def chat(
+        self,
+        user: str,
+        *,
+        system: str = "",
+        max_tokens: int | None = None,
+        timeout: float = 120.0,
+    ) -> dict[str, Any]:
+        """Single-turn chat — short prompts only (resource-safe on 16GB RAM)."""
+        if not detect_local_ollama(self.config.host):
+            return {"ok": False, "error": "ollama_unreachable", "content": ""}
+
+        predict = max_tokens or int(os.environ.get("OLLAMA_NUM_PREDICT", DEFAULT_NUM_PREDICT))
+        messages: list[dict[str, str]] = []
+        if system:
+            messages.append({"role": "system", "content": system[:4000]})
+        messages.append({"role": "user", "content": user[:6000]})
+
+        url = f"{self.config.base_url}/chat/completions"
+        body = json.dumps(
+            {
+                "model": self.config.model,
+                "messages": messages,
+                "stream": False,
+                "max_tokens": predict,
+                "options": ollama_request_options(),
+            }
+        ).encode()
+        req = urllib.request.Request(
+            url,
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        start = time.perf_counter()
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                payload = json.loads(resp.read().decode())
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            choice = (payload.get("choices") or [{}])[0]
+            msg = choice.get("message") or {}
+            content = (msg.get("content") or msg.get("reasoning") or "").strip()
+            # R1 models may burn tokens on reasoning — keep last non-empty lines
+            if msg.get("content") == "" and msg.get("reasoning"):
+                lines = [ln.strip() for ln in content.splitlines() if ln.strip()]
+                content = "\n".join(lines[-5:]) if lines else content[:500]
+            return {
+                "ok": True,
+                "content": content,
+                "model": self.config.model,
+                "latency_ms": round(elapsed_ms, 2),
+                "tokens_predict": predict,
+            }
+        except urllib.error.HTTPError as exc:
+            return {
+                "ok": False,
+                "error": exc.read(300).decode(errors="replace")[:200],
+                "content": "",
+            }
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            return {"ok": False, "error": str(exc), "content": ""}

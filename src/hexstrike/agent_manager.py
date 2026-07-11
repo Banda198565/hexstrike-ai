@@ -53,11 +53,13 @@ class AgentManager:
         manifest_path: Path = MANIFEST_PATH,
         mcp_registry: dict[str, Any] | None = None,
         module_registry: dict[str, Any] | None = None,
+        llm: Any | None = None,
     ) -> None:
         self.bus = bus
         self.manifest_path = manifest_path
         self.mcp_registry = mcp_registry or {}
         self.module_registry = module_registry or {}
+        self.llm = llm
         self.bindings: dict[str, AgentBinding] = {}
         self._manifest = self._load_manifest()
 
@@ -164,6 +166,30 @@ class AgentManager:
             source="AgentManager",
         )
         return handler(**kwargs)
+
+    def llm_brief(self, agent_id: str, task: str, context: dict[str, Any]) -> dict[str, Any]:
+        """Optional local LLM summary — skipped when Ollama unavailable."""
+        if self.llm is None:
+            return {"status": "skipped", "reason": "llm_not_configured"}
+        binding = self.bindings.get(agent_id)
+        if not binding:
+            binding = self.initialize_agent(agent_id)
+        compact = json.dumps(context, ensure_ascii=False, default=str)[:2500]
+        prompt = (
+            f"Task: {task}\n\nContext (JSON):\n{compact}\n\n"
+            "Reply in 3-5 short bullet points. Direct answer only — no chain-of-thought."
+        )
+        result = self.llm.chat(prompt, system=binding.system_prompt[:2000])
+        out = {
+            "status": "ok" if result.get("ok") else "error",
+            "agent_id": agent_id,
+            "model": result.get("model"),
+            "latency_ms": result.get("latency_ms"),
+            "brief": result.get("content", ""),
+            "error": result.get("error"),
+        }
+        self.bus.publish("agent.llm_brief", {"agent_id": agent_id, "ok": result.get("ok")}, source="AgentManager")
+        return out
 
     def status(self) -> dict[str, Any]:
         return {

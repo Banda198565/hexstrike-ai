@@ -118,6 +118,7 @@ class HexStrikeOrchestrator:
                 "skill.recon_osint": self.recon,
                 "skill.timing_analysis": self.timing,
             },
+            llm=self.llm,
         )
         self.agent_manager.initialize_all()
 
@@ -126,7 +127,7 @@ class HexStrikeOrchestrator:
     def _wire_bus_logging(self) -> None:
         def _log(event) -> None:
             if event.topic.startswith(("monitor.", "execution.", "mcp.execution.", "skill.")):
-                print(f"[bus] {event.topic} ← {event.source}")
+                print(f"[bus] {event.topic} ← {event.source}", file=sys.stderr)
 
         self.bus.subscribe("*", _log)
 
@@ -197,14 +198,14 @@ class HexStrikeOrchestrator:
     def run_vuln_scan(self) -> dict[str, Any]:
         return self.vuln_scanner.run_full_scan()
 
-    def run_analyze(self, address: str) -> dict[str, Any]:
+    def run_analyze(self, address: str, *, with_llm: bool = False) -> dict[str, Any]:
         """Instruction-driven forensics analysis (hot-wallet protocol)."""
         prompt = self.agent_manager.get_system_prompt("core.forensics")
         entity = self.forensics.resolve_entity(address)
         contract = self.forensics.analyze_contract(address)
         trace = self.chain_tracer.trace(address, depth=2)
         rag_hits = self.rag_mcp.search(f"address {address} rhino bridge hot wallet usdt")
-        return {
+        report: dict[str, Any] = {
             "address": address.lower(),
             "instruction_loaded": "forensics.md",
             "instruction_bytes": len(prompt),
@@ -213,6 +214,13 @@ class HexStrikeOrchestrator:
             "trace": trace,
             "rag_hits": rag_hits[:3],
         }
+        if with_llm:
+            report["llm_brief"] = self.agent_manager.llm_brief(
+                "core.forensics",
+                f"Summarize forensics for address {address}",
+                {"entity": entity, "trace_depth2": trace, "rag_hits": rag_hits[:2]},
+            )
+        return report
 
     def run_bridge_decode(self) -> dict[str, Any]:
         """P2: Rhino.fi bridge cross-chain decode via HexStrike pipeline (RPC + RAG + forensics)."""
@@ -705,6 +713,10 @@ def main() -> int:
 
     analyze_p = sub.add_parser("analyze", help="Forensics analysis on address (instruction-driven)")
     analyze_p.add_argument("address", help="Target address (0x...)")
+    analyze_p.add_argument("--llm", action="store_true", help="Append local DeepSeek brief via Ollama")
+
+    llm_p = sub.add_parser("llm-analyze", help="Forensics + local LLM brief (16GB-safe)")
+    llm_p.add_argument("address", help="Target address (0x...)")
 
     sub.add_parser("bridge-decode", help="P2 Rhino.fi cross-chain decode (forensics pipeline)")
     sub.add_parser("bridge-exit-trace", help="P3 cross-chain exit trace (calldata + VPS multichain)")
@@ -764,7 +776,10 @@ def main() -> int:
         print(json.dumps(orch.agent_manager.status(), indent=2))
         return 0
     if args.command == "analyze":
-        print(json.dumps(orch.run_analyze(args.address), indent=2))
+        print(json.dumps(orch.run_analyze(args.address, with_llm=args.llm), indent=2))
+        return 0
+    if args.command == "llm-analyze":
+        print(json.dumps(orch.run_analyze(args.address, with_llm=True), indent=2))
         return 0
     if args.command == "bridge-decode":
         print(json.dumps(orch.run_bridge_decode(), indent=2))

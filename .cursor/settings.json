@@ -1,6 +1,6 @@
 {
   "$schema": "https://cursor.com/schemas/settings.json",
-  "_comment": "System Integration Mode — localhost-first, OFFLINE_PRIMARY, fast 1.5b",
+  "_comment": "System Integration Mode — 16GB RAM profile, deepseek-r1:1.5b only",
   "systemIntegrationMode": "OFFLINE_PRIMARY",
   "AUTHORIZED_OPERATOR_MODE": false,
   "ollama": {
@@ -9,8 +9,9 @@
     "openai_compatible_base": "http://127.0.0.1:11434/v1",
     "api_key_placeholder": "ollama",
     "options": {
-      "num_thread": 16,
-      "num_predict": 256
+      "num_thread": 4,
+      "num_predict": 128,
+      "num_ctx": 4096
     }
   },
   "cursor": {
@@ -40,8 +41,9 @@
           "baseUrl": "http://127.0.0.1:11434/v1",
           "supportsChainOfThought": true,
           "options": {
-            "num_thread": 16,
-            "num_predict": 256
+            "num_thread": 4,
+            "num_predict": 128,
+            "num_ctx": 4096
           }
         }
       ],
@@ -68,8 +70,9 @@
     "LLM_PROVIDER": "ollama-local",
     "LLM_BASE_URL": "http://127.0.0.1:11434/v1",
     "LLM_MODEL": "deepseek-r1:1.5b",
-    "OLLAMA_NUM_THREAD": "16",
-    "OLLAMA_NUM_PREDICT": "256",
+    "OLLAMA_NUM_THREAD": "4",
+    "OLLAMA_NUM_PREDICT": "128",
+    "OLLAMA_NUM_CTX": "4096",
     "CURSOR_INTEGRATION_MODE": "OFFLINE_PRIMARY"
   }
 }
