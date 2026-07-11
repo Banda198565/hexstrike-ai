@@ -285,7 +285,8 @@ def run_workflow(name: str, env: dict | None = None, print_all: bool = True) -> 
     run_id = uuid.uuid4().hex[:12]
     steps_out: list[dict] = []
     completed: set[str] = set()
-    step_env = dict(env or {})
+    step_env = dict(wf.get("env", {}))
+    step_env.update(env or {})
     step_env["ORCHESTRATOR_RUN_ID"] = run_id
     step_env["ORCHESTRATOR_WORKFLOW"] = name
 

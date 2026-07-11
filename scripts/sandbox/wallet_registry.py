@@ -50,6 +50,53 @@ def _addr_ok(addr: str | None) -> bool:
     return a.startswith("0x") and len(a) == 42
 
 
+DEFAULT_FIELD_TARGETS = ROOT / "scripts" / "sandbox" / "field-targets-5.json"
+
+
+def _wallets_only_env() -> bool:
+    return os.environ.get("WALLETS_ONLY", "").lower() in ("1", "true", "yes")
+
+
+def _resolve_wallets_file() -> Path | None:
+    raw = os.environ.get("WALLETS_FILE", "").strip()
+    if not raw:
+        if os.environ.get("ORCHESTRATOR_WORKFLOW") == "field-targets-5":
+            return DEFAULT_FIELD_TARGETS
+        return None
+    p = Path(raw)
+    if not p.is_absolute():
+        p = ROOT / p
+    return p if p.is_file() else None
+
+
+def _parse_wallet_items(items: list[Any]) -> list[WalletTarget]:
+    out: list[WalletTarget] = []
+    for item in items:
+        if isinstance(item, str) and _addr_ok(item):
+            out.append(WalletTarget(role="custom", address=item, priority=50))
+        elif isinstance(item, dict) and _addr_ok(item.get("address")):
+            out.append(
+                WalletTarget(
+                    role=item.get("role", "custom"),
+                    address=item["address"],
+                    chain=item.get("chain", "BSC"),
+                    chain_id=int(item.get("chain_id", 56)),
+                    priority=int(item.get("priority", 50)),
+                    labels=item.get("labels", {}),
+                    context=item.get("context", {}),
+                )
+            )
+    return out
+
+
+def load_wallets_file(path: Path) -> tuple[list[WalletTarget], bool]:
+    """Return wallets from JSON file and whether catalog should be exclusive."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    items = data.get("wallets", data if isinstance(data, list) else [])
+    exclusive = bool(data.get("exclusive", False)) or _wallets_only_env()
+    return _parse_wallet_items(items), exclusive
+
+
 def extra_wallets_from_env() -> list[WalletTarget]:
     raw = os.environ.get("TARGET_WALLETS", "")
     out: list[WalletTarget] = []
@@ -58,32 +105,19 @@ def extra_wallets_from_env() -> list[WalletTarget]:
         if not _addr_ok(part):
             continue
         out.append(WalletTarget(role="custom", address=part, priority=50))
-    extra_file = os.environ.get("WALLETS_FILE")
-    if extra_file:
-        p = Path(extra_file)
-        if not p.is_absolute():
-            p = ROOT / p
-        if p.is_file():
-            data = json.loads(p.read_text(encoding="utf-8"))
-            for item in data.get("wallets", data if isinstance(data, list) else []):
-                if isinstance(item, str) and _addr_ok(item):
-                    out.append(WalletTarget(role="custom", address=item, priority=50))
-                elif isinstance(item, dict) and _addr_ok(item.get("address")):
-                    out.append(
-                        WalletTarget(
-                            role=item.get("role", "custom"),
-                            address=item["address"],
-                            chain=item.get("chain", "BSC"),
-                            chain_id=int(item.get("chain_id", 56)),
-                            priority=int(item.get("priority", 50)),
-                            labels=item.get("labels", {}),
-                            context=item.get("context", {}),
-                        )
-                    )
     return out
 
 
 def load_wallet_catalog() -> list[WalletTarget]:
+    wallets_file = _resolve_wallets_file()
+    file_wallets: list[WalletTarget] = []
+    exclusive = False
+    if wallets_file:
+        file_wallets, exclusive = load_wallets_file(wallets_file)
+        if exclusive and file_wallets:
+            file_wallets.sort(key=lambda w: (w.priority, w.role))
+            return file_wallets
+
     infra = _load("infra-targets.json")
     entity = _load("entity-id.json")
     graph = _load("hot-wallet-onchain-graph.json")
@@ -135,6 +169,13 @@ def load_wallet_catalog() -> list[WalletTarget]:
         if key not in seen:
             seen.add(key)
             wallets.append(w)
+
+    if wallets_file and file_wallets and not exclusive:
+        for w in file_wallets:
+            key = w.normalized_address()
+            if key not in seen:
+                seen.add(key)
+                wallets.append(w)
 
     wallets.sort(key=lambda w: (w.priority, w.role))
     return wallets
