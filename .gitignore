@@ -1,4 +1,6 @@
 hexstrike-env/
+scripts/sandbox/.venv/
+scripts/sandbox/anvil.env
 .env
 *.env.local
 
