@@ -33,7 +33,7 @@ func TestBumpFeeSuggestion(t *testing.T) {
 		GasTipCap: big.NewInt(2_000_000_000),
 		GasFeeCap: big.NewInt(62_000_000_000),
 	}
-	bumped := BumpFeeSuggestion(base, 15)
+	bumped := BumpFeeSuggestionStrict(base, 15)
 	wantTip := int64(2_300_000_000)
 	if bumped.GasTipCap.Int64() != wantTip {
 		t.Fatalf("bumped tip %s want %d", bumped.GasTipCap, wantTip)

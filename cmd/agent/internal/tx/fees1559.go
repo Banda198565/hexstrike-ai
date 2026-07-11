@@ -63,18 +63,60 @@ func CalculateAggressiveFees(baseFee, tip *big.Int, tipPercent int) *FeeSuggesti
 	return &FeeSuggestion{GasFeeCap: feeCap, GasTipCap: aggressiveTip}
 }
 
-// BumpFeeSuggestion scales both caps by (100+bumpPct)/100 for relay gas escalation.
-func BumpFeeSuggestion(base *FeeSuggestion, bumpPct int) *FeeSuggestion {
-	if base == nil {
-		return &FeeSuggestion{GasFeeCap: big.NewInt(0), GasTipCap: big.NewInt(0)}
+// MinReplacementBumpPct is the minimum fee increase BSC nodes expect for tx replacement.
+const MinReplacementBumpPct = 10
+
+// BumpFeeSuggestionStrict scales prev fees by (100+bumpPct)/100, rounding up so caps strictly increase.
+// bumpPct below MinReplacementBumpPct is clamped (BSC replacement rule).
+func BumpFeeSuggestionStrict(prev *FeeSuggestion, bumpPct int) *FeeSuggestion {
+	if prev == nil {
+		return &FeeSuggestion{GasFeeCap: big.NewInt(1), GasTipCap: big.NewInt(1)}
+	}
+	if bumpPct < MinReplacementBumpPct {
+		bumpPct = MinReplacementBumpPct
 	}
 	mul := big.NewInt(int64(100 + bumpPct))
 	scale := func(v *big.Int) *big.Int {
-		if v == nil {
-			return big.NewInt(0)
+		if v == nil || v.Sign() <= 0 {
+			return big.NewInt(1)
 		}
 		out := new(big.Int).Mul(v, mul)
-		return out.Div(out, big.NewInt(100))
+		out.Div(out, big.NewInt(100))
+		min := new(big.Int).Add(v, big.NewInt(1))
+		if out.Cmp(min) <= 0 {
+			return min
+		}
+		return out
 	}
-	return &FeeSuggestion{GasFeeCap: scale(base.GasFeeCap), GasTipCap: scale(base.GasTipCap)}
+	return &FeeSuggestion{GasFeeCap: scale(prev.GasFeeCap), GasTipCap: scale(prev.GasTipCap)}
+}
+
+// EnsureReplacementFees returns candidate fees that are strictly greater than prev on both caps.
+func EnsureReplacementFees(prev, candidate *FeeSuggestion) *FeeSuggestion {
+	if prev == nil || candidate == nil {
+		return candidate
+	}
+	bumpOne := func(v *big.Int) *big.Int {
+		if v == nil {
+			return big.NewInt(1)
+		}
+		return new(big.Int).Add(v, big.NewInt(1))
+	}
+	out := &FeeSuggestion{
+		GasFeeCap: new(big.Int).Set(candidate.GasFeeCap),
+		GasTipCap: new(big.Int).Set(candidate.GasTipCap),
+	}
+	if out.GasFeeCap.Cmp(prev.GasFeeCap) <= 0 {
+		out.GasFeeCap = bumpOne(prev.GasFeeCap)
+	}
+	if out.GasTipCap.Cmp(prev.GasTipCap) <= 0 {
+		out.GasTipCap = bumpOne(prev.GasTipCap)
+	}
+	return out
+}
+
+// BumpFeeSuggestion scales both caps by (100+bumpPct)/100 for relay gas escalation.
+// Deprecated: use BumpFeeSuggestionStrict for mempool replacements.
+func BumpFeeSuggestion(base *FeeSuggestion, bumpPct int) *FeeSuggestion {
+	return BumpFeeSuggestionStrict(base, bumpPct)
 }

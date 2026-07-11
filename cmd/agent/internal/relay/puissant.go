@@ -63,7 +63,7 @@ func DefaultPuissantRelay() *PuissantRelay {
 	return &PuissantRelay{
 		Endpoint:            "https://puissant-builder.48.club/",
 		MaxWaitBlocks:       3,
-		GasBumpSteps:        []int{0, 15, 25},
+		GasBumpSteps:        []int{0, 15, 25}, // each non-zero step: +N% over previous attempt fees
 		AllowPublicFallback: true,
 		Bundle:              NewBundleClient(),
 		Public:              NewPublicRPC(),

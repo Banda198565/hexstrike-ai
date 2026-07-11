@@ -102,7 +102,7 @@ func TestLiveRescueLoopAnvilE2E(t *testing.T) {
 		t.Fatal("expected EIP-1559 fee suggestion")
 	}
 
-	rawTx, txHashLocal, err := SignRescueTx(ctx, client, botKey, chainID, common.HexToAddress(bot), funderAddr, rescueValue, plan.Fees)
+	rawTx, txHashLocal, rescueNonce, err := SignRescueTx(ctx, client, botKey, chainID, common.HexToAddress(bot), funderAddr, rescueValue, plan.Fees)
 	if err != nil {
 		t.Fatalf("sign rescue tx: %v", err)
 	}
@@ -113,12 +113,12 @@ func TestLiveRescueLoopAnvilE2E(t *testing.T) {
 	relayClient.PollInterval = 10 * time.Millisecond
 	relayClient.Bundle = failBundleClient{}
 	relayClient.Public = &relay.PublicRPC{URL: pubURL, HTTPClient: &http.Client{Timeout: 10 * time.Second}}
-	baseFees := plan.Fees
+	lastFees := plan.Fees
 	relayClient.FeeCalc = func(_ context.Context, bumpPct int) (*txpkg.FeeSuggestion, error) {
 		if bumpPct == 0 {
-			return baseFees, nil
+			return lastFees, nil
 		}
-		return txpkg.BumpFeeSuggestion(baseFees, bumpPct), nil
+		return txpkg.BumpFeeSuggestionStrict(lastFees, bumpPct), nil
 	}
 	from := common.HexToAddress(bot)
 
@@ -126,7 +126,12 @@ func TestLiveRescueLoopAnvilE2E(t *testing.T) {
 		RawTx:   rawTx,
 		ChainID: chainID.Int64(),
 		Resign: func(ctx context.Context, bumpPct int, fees *txpkg.FeeSuggestion) ([]byte, error) {
-			return ResignRescueTx(ctx, client, botKey, chainID, from, funderAddr, rescueValue, baseFees, bumpPct, fees)
+			raw, outFees, err := ResignRescueTx(ctx, client, botKey, chainID, from, funderAddr, rescueValue, rescueNonce, lastFees, bumpPct, fees)
+			if err != nil {
+				return nil, err
+			}
+			lastFees = outFees
+			return raw, nil
 		},
 	})
 	if err != nil {
