@@ -1,13 +1,25 @@
 #!/usr/bin/env bash
 # hexstrike-go.sh — ОДНА команда: setup + меню (протестировано)
-set -euo pipefail
+set -eo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
-BASE_MODEL="${HEXSTRIKE_BASE_MODEL:-deepseek-r1:7b}"
-MODEL="${HEXSTRIKE_OLLAMA_MODEL:-hexstrike-orchestrator}"
-HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"
+CHAT_MODEL="deepseek-v2.5:7b"
+if [ -n "${HEXSTRIKE_CHAT_MODEL:-}" ]; then
+  CHAT_MODEL="${HEXSTRIKE_CHAT_MODEL}"
+fi
+
+MODEL="hexstrike-orchestrator"
+if [ -n "${HEXSTRIKE_OLLAMA_MODEL:-}" ]; then
+  MODEL="${HEXSTRIKE_OLLAMA_MODEL}"
+fi
+
+HOST="http://127.0.0.1:11434"
+if [ -n "${OLLAMA_HOST:-}" ]; then
+  HOST="${OLLAMA_HOST}"
+fi
+
 FASTFILE="/tmp/hexstrike-fast.modelfile"
 
 red()  { printf '\033[31m%s\033[0m\n' "$*"; }
@@ -21,7 +33,7 @@ check_ollama() {
   if ! curl -sf --max-time 5 "${HOST}/api/tags" >/dev/null; then
     ylw "Запускаю Ollama.app..."
     open -a Ollama 2>/dev/null || true
-    for i in 1 2 3 4 5 6; do
+    for _ in 1 2 3 4 5 6; do
       sleep 3
       curl -sf --max-time 3 "${HOST}/api/tags" >/dev/null && return 0
     done
@@ -30,17 +42,25 @@ check_ollama() {
 }
 
 ensure_models() {
-  ylw "[pull] чат-модель (средняя, без R1-зависаний): ${CHAT_MODEL} ..."
-  ollama list 2>/dev/null | grep -q "${CHAT_MODEL%%:*}" || ollama pull "${CHAT_MODEL}"
-  cat > "$FASTFILE" << EOF
-FROM ${CHAT_MODEL}
+  local chat_model="${CHAT_MODEL}"
+  local wrapper_model="${MODEL}"
+
+  ylw "[pull] чат-модель: ${chat_model} ..."
+  if ! ollama list 2>/dev/null | grep -q "deepseek-v2.5"; then
+    ollama pull "${chat_model}"
+  fi
+
+  cat > "${FASTFILE}" <<EOF
+FROM ${chat_model}
 PARAMETER num_predict 128
 PARAMETER num_thread 8
 PARAMETER temperature 0.3
 SYSTEM "Ты HexStrike Orchestrator. Отвечай сразу и кратко по-русски. Команды: /run defensive-disclosure, /dispatch Agent-Vuln-05 passive-cve-check"
 EOF
-  ollama create "${MODEL}" -f "$FASTFILE" >/dev/null 2>&1 || ollama create "${MODEL}" -f "$FASTFILE"
-  grn "[OK]   чат: ${CHAT_MODEL} | wrapper: ${MODEL}"
+
+  ollama create "${wrapper_model}" -f "${FASTFILE}" >/dev/null 2>&1 \
+    || ollama create "${wrapper_model}" -f "${FASTFILE}"
+  grn "[OK]   чат: ${chat_model} | wrapper: ${wrapper_model}"
 }
 
 preflight_agents() {
@@ -65,9 +85,16 @@ menu() {
   echo "  5) Выход"
   echo ""
   read -r -p "Выбор [1]: " choice
-  choice="${choice:-1}"
-  case "$choice" in
-    1) export OLLAMA_NUM_PREDICT=128 OLLAMA_NUM_THREAD=8; exec python3 "$ROOT/scripts/hexstrike-terminal.py" ;;
+  if [ -z "${choice}" ]; then
+    choice="1"
+  fi
+  case "${choice}" in
+    1)
+      export HEXSTRIKE_CHAT_MODEL="${CHAT_MODEL}"
+      export OLLAMA_NUM_PREDICT=128
+      export OLLAMA_NUM_THREAD=8
+      exec python3 "${ROOT}/scripts/hexstrike-terminal.py"
+      ;;
     2) ./hexstrike-orchestrator run defensive-disclosure ;;
     3) ./hexstrike-orchestrator run vps-full-readonly ;;
     4) exec ollama run "${MODEL}" ;;
@@ -78,6 +105,6 @@ menu() {
 
 check_ollama
 ensure_models
-chmod +x "$ROOT/scripts/hexstrike-terminal.py" "$ROOT/hexstrike-orchestrator" 2>/dev/null || true
+chmod +x "${ROOT}/scripts/hexstrike-terminal.py" "${ROOT}/hexstrike-orchestrator" 2>/dev/null || true
 preflight_agents
 menu
