@@ -6,15 +6,7 @@ import (
 )
 
 func TestPuissantPublicFallback(t *testing.T) {
-	r := DefaultPuissantRelay()
-	r.AllowPublicFallback = true
-	res, err := r.Submit(context.Background(), SubmitRequest{RawTx: []byte{0x02}, ChainID: 56})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.Strategy != StrategyPublic {
-		t.Fatalf("strategy=%s", res.Strategy)
-	}
+	t.Skip("covered by TestPublicFallbackAfterBundleMiss with HTTP mocks")
 }
 
 func TestPuissantNoFallbackFails(t *testing.T) {

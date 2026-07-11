@@ -118,11 +118,36 @@ Target score formula unchanged: `50 + vuln*3 + defended*5 - inconclusive*10` →
 4. ✅ `internal/tx/fees1559.go` + pure math tests
 5. ✅ `internal/orchestrator/engine.go` — PrepareRescue pipeline (limits → gate → allowlist → dedup → fees)
 6. Wire `PrepareRescue` into live signing path (Python parity / Go rescue signer)
-7. P3: `internal/relay/` Puissant + Flashbots
+7. ✅ P3: `internal/relay/` Puissant HTTP + public fallback + receipt watcher + Ollama prewarm
 
 ---
 
-## Sign-off
+## Mainnet blind zones (inspector audit #2) — addressed
+
+| # | Gap | Fix | Status |
+|---|-----|-----|--------|
+| 1 | Ollama 27s cold start blocks hot path | `LLM_ASYNC_ONLY=1` (default), `enqueue_llm_task()`, Go `async.LLMWorkQueue` | ✅ |
+| 2 | Entity cache no TTL | `ValidUntil` + `ENTITY_CACHE_TTL_MINUTES` (default **15m**) | ✅ |
+| 3 | Puissant no fallback | `internal/relay/` — live `eth_sendBundle`, explore poll, public `eth_sendRawTransaction` fallback | ✅ P3 wired |
+| 4 | Revert does not clear dedup | `monitor.Watcher` + `HandleReceipt` + `Engine.ReleaseDedup` | ✅ |
+
+### P3 production wiring (2026-07-11)
+
+| Component | Path | Behavior |
+|-----------|------|----------|
+| Puissant HTTP | `internal/relay/client.go` | `eth_sendBundle` → `PUISSANT_BUILDER_URL` |
+| Bundle status | `QueryBundleStatus` | `PUISSANT_EXPLORE_URL` poll until confirmed or timeout |
+| Public fallback | `internal/relay/public.go` | `eth_sendRawTransaction` via `RELAY_PUBLIC_RPC` |
+| Receipt watcher | `internal/monitor/watcher.go` | `eth_getTransactionReceipt` poll → `HandleReceipt` / `ReleaseDedup` |
+| Ollama prewarm | `internal/async/prewarm.go` + `bootstrap.go` | Background `/api/tags` on `battle` start |
+
+Verify: `python3 scripts/sandbox/run-p3-fork-verify.py`
+
+### Direct answers
+
+1. **Dedup on revert?** **Yes** — `Engine.HandleReceipt(dedupKey, success=false)` calls `ReleaseDedup`; retry allowed (`TestHandleReceiptRevertReleasesDedup`).
+2. **Arkham TTL?** **15 minutes** safe entries (`ENTITY_CACHE_TTL_MINUTES`); blocked entries re-checked every **10 minutes** (still fail-closed until API clears).
+
 
 | Question | Engineering answer |
 |----------|-------------------|

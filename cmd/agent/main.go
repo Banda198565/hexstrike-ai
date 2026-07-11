@@ -25,6 +25,7 @@ func main() {
 
 	switch args[0] {
 	case "battle":
+		BootstrapMainnet()
 		agent, err := NewAgent(*repoDir, *verbose)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
