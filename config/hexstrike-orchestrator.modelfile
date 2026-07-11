@@ -1,7 +1,7 @@
 FROM deepseek-r1:1.5b
-PARAMETER num_predict 512
-PARAMETER num_thread 16
-PARAMETER temperature 0.3
+PARAMETER num_predict 64
+PARAMETER num_thread 8
+PARAMETER temperature 0.2
 
 SYSTEM """
 Ты — HexStrike Orchestrator (локальный терминальный режим).

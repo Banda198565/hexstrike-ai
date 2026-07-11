@@ -56,17 +56,38 @@ def ollama_chat(messages: list[dict], model: str = OLLAMA_MODEL) -> str:
         {
             "model": model,
             "messages": messages,
-            "stream": False,
+            "stream": True,
             "options": {
-                "num_thread": int(os.environ.get("OLLAMA_NUM_THREAD", "16")),
-                "num_predict": int(os.environ.get("OLLAMA_NUM_PREDICT", "512")),
+                "num_thread": int(os.environ.get("OLLAMA_NUM_THREAD", "8")),
+                "num_predict": int(os.environ.get("OLLAMA_NUM_PREDICT", "64")),
             },
         }
     ).encode()
     req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=300) as resp:
-        data = json.loads(resp.read().decode())
-    return data["choices"][0]["message"]["content"].strip()
+    print("…думаю (DeepSeek-R1 на iMac = 20–60 сек, жди)", flush=True)
+    parts: list[str] = []
+    try:
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            for raw in resp:
+                line = raw.decode(errors="replace").strip()
+                if not line.startswith("data:"):
+                    continue
+                chunk = line[5:].strip()
+                if chunk == "[DONE]":
+                    break
+                try:
+                    data = json.loads(chunk)
+                except json.JSONDecodeError:
+                    continue
+                delta = data.get("choices", [{}])[0].get("delta", {})
+                text = delta.get("content") or ""
+                if text:
+                    print(text, end="", flush=True)
+                    parts.append(text)
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"Ollama недоступен: {exc}") from exc
+    print()
+    return "".join(parts).strip()
 
 
 def run_orchestrator(args: list[str]) -> tuple[int, str]:
@@ -233,7 +254,7 @@ def main() -> int:
             continue
 
         messages.append({"role": "assistant", "content": reply})
-        print(f"\n{reply}\n")
+        print()
 
         if m_run:
             wf = m_run.group(1)
