@@ -1,5 +1,12 @@
 hexstrike-env/
 .env
+*.env.local
+
+# Go OSINT agent
+*.exe
+/osint-agent
+artifacts/
+tmp/
 __pycache__/
 scripts/__pycache__/
 *.pyc
