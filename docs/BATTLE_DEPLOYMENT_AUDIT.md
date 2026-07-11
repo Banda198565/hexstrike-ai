@@ -141,7 +141,16 @@ Target score formula unchanged: `50 + vuln*3 + defended*5 - inconclusive*10` →
 | Receipt watcher | `internal/monitor/watcher.go` | `eth_getTransactionReceipt` poll → `HandleReceipt` / `ReleaseDedup` |
 | Ollama prewarm | `internal/async/prewarm.go` + `bootstrap.go` | Background `/api/tags` on `battle` start |
 
-Verify: `python3 scripts/sandbox/run-p3-fork-verify.py`
+**Verify:** `python3 scripts/sandbox/run-p3-fork-verify.py`  
+**Revert e2e:** `bash scripts/sandbox/test-revert-flow.sh`
+
+### Ethereum relay (Flashbots)
+
+| Component | Path | Behavior |
+|-----------|------|----------|
+| Flashbots client | `internal/relay/flashbots.go` | `eth_sendBundle` + `X-Flashbots-Signature` (reputation key) |
+
+Env: `FLASHBOTS_RELAY_URL`, `FLASHBOTS_SIGNING_KEY`
 
 ### Direct answers
 
