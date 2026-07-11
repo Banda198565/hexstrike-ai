@@ -25,11 +25,22 @@ func main() {
 		log.Println("[ВНИМАНИЕ] Переменная ARKHAM_API_KEY не задана. Модуль Arkham запущен в режиме симуляции.")
 	}
 
+	shodanKey := os.Getenv("SHODAN_API_KEY")
+	if shodanKey == "" {
+		log.Println("[ВНИМАНИЕ] Переменная SHODAN_API_KEY не задана. Модуль Network запущен в режиме симуляции.")
+	}
+
+	getblockKey := os.Getenv("GETBLOCK_API_KEY")
+	if getblockKey == "" {
+		log.Println("[ВНИМАНИЕ] Переменная GETBLOCK_API_KEY не задана. Модуль GetBlock запущен в режиме симуляции.")
+	}
+
 	memCache := cache.NewMemoryCache()
 	engine := core.NewOsintEngine(
 		memCache,
 		providers.NewArkhamProvider(apiKey),
-		providers.NewNetworkProvider(),
+		providers.NewGetBlockProvider(getblockKey),
+		providers.NewNetworkProvider(shodanKey),
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
