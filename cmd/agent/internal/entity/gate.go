@@ -18,7 +18,8 @@ type EntityMetadata struct {
 	Name        string    `json:"name"`
 	IsSafe      bool      `json:"is_safe"`
 	Tags        []string  `json:"tags"`
-	LastChecked time.Time `json:"-"`
+	LastChecked time.Time `json:"last_checked,omitempty"`
+	ValidUntil  time.Time `json:"valid_until,omitempty"`
 }
 
 // EntityGate combines 0ms sync.Map cache with optional Arkham/OSINT HTTP scoring.
@@ -28,6 +29,7 @@ type EntityGate struct {
 	apiKey        string
 	bootstrapPath string
 	failClosed    bool
+	cacheTTL      time.Duration
 }
 
 // GateOption configures EntityGate behavior.
@@ -38,12 +40,18 @@ func WithFailClosed(on bool) GateOption {
 	return func(eg *EntityGate) { eg.failClosed = on }
 }
 
+// WithCacheTTL sets safe-address TTL (default 15m, env ENTITY_CACHE_TTL_MINUTES).
+func WithCacheTTL(d time.Duration) GateOption {
+	return func(eg *EntityGate) { eg.cacheTTL = d }
+}
+
 // NewEntityGate creates a gate. bootstrapPath may be entity-gate-bootstrap.json or entity-id.json.
 func NewEntityGate(apiKey, bootstrapPath string, opts ...GateOption) *EntityGate {
 	eg := &EntityGate{
 		client:        &http.Client{Timeout: 2 * time.Second},
 		apiKey:        apiKey,
 		bootstrapPath: bootstrapPath,
+		cacheTTL:      ResolveCacheTTL(),
 	}
 	for _, o := range opts {
 		o(eg)
@@ -79,6 +87,7 @@ func (eg *EntityGate) Prewarm() error {
 					continue
 				}
 				meta.LastChecked = time.Now().UTC()
+				meta = stampMeta(meta, eg.cacheTTL)
 				eg.cache.Store(normalizeAddr(addr), meta)
 			}
 			return nil
@@ -92,24 +101,22 @@ func (eg *EntityGate) ingestEntityID(raw []byte) error {
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		return err
 	}
-	now := time.Now().UTC()
 	if target, _ := doc["target"].(string); target != "" {
 		meta := EntityMetadata{
 			Name:        "hot_wallet_target",
 			IsSafe:      true,
 			Tags:        []string{"monitored", "high_activity"},
-			LastChecked: now,
 		}
-		eg.cache.Store(normalizeAddr(target), meta)
+		eg.cache.Store(normalizeAddr(target), stampMeta(meta, eg.cacheTTL))
 	}
 	if er, ok := doc["entity_resolution"].(map[string]any); ok {
 		if tags, _ := er["blocklist_tags"].([]any); len(tags) > 0 {
 			for _, t := range tags {
 				if s, ok := t.(string); ok && strings.EqualFold(s, "COMPROMISED") {
 					if target, _ := doc["target"].(string); target != "" {
-						eg.cache.Store(normalizeAddr(target), EntityMetadata{
-							Name: "COMPROMISED", IsSafe: false, Tags: []string{"COMPROMISED"}, LastChecked: now,
-						})
+						eg.cache.Store(normalizeAddr(target), stampMeta(EntityMetadata{
+							Name: "COMPROMISED", IsSafe: false, Tags: []string{"COMPROMISED"},
+						}, eg.cacheTTL))
 					}
 				}
 			}
@@ -118,21 +125,28 @@ func (eg *EntityGate) ingestEntityID(raw []byte) error {
 	return nil
 }
 
-// VerifyAddress checks cache first, then optional Arkham/OSINT API.
-// Blocked cache entries always deny, even if address was previously allowlisted.
+// VerifyAddress checks cache first (with TTL), then optional Arkham/OSINT API.
 func (eg *EntityGate) VerifyAddress(ctx context.Context, address string) (bool, error) {
 	key := normalizeAddr(address)
 	if val, ok := eg.cache.Load(key); ok {
 		meta := val.(EntityMetadata)
-		if !meta.IsSafe {
-			return false, fmt.Errorf("ENTITY_GATE: address %s blocked by local policy (%s)", address, meta.Name)
+		if !metaExpired(meta) {
+			return eg.evaluateMeta(address, meta)
 		}
-		for _, tag := range meta.Tags {
-			if strings.EqualFold(tag, "BLOCKED") || strings.EqualFold(tag, "COMPROMISED") {
-				return false, fmt.Errorf("ENTITY_GATE: address %s tagged %s", address, tag)
+		// TTL expired — refresh if API key present
+		if eg.apiKey != "" {
+			refreshed, err := eg.fetchFromAPI(ctx, address)
+			if err != nil {
+				if eg.failClosed {
+					return false, fmt.Errorf("ENTITY_GATE: TTL refresh failed for %s: %w", address, err)
+				}
+				return eg.evaluateMeta(address, meta)
 			}
+			refreshed = stampMeta(refreshed, eg.cacheTTL)
+			eg.cache.Store(key, refreshed)
+			return eg.evaluateMeta(address, refreshed)
 		}
-		return true, nil
+		return eg.evaluateMeta(address, meta)
 	}
 	if eg.apiKey == "" {
 		return true, nil
@@ -144,10 +158,19 @@ func (eg *EntityGate) VerifyAddress(ctx context.Context, address string) (bool, 
 		}
 		return true, nil
 	}
-	meta.LastChecked = time.Now().UTC()
+	meta = stampMeta(meta, eg.cacheTTL)
 	eg.cache.Store(key, meta)
+	return eg.evaluateMeta(address, meta)
+}
+
+func (eg *EntityGate) evaluateMeta(address string, meta EntityMetadata) (bool, error) {
 	if !meta.IsSafe {
-		return false, fmt.Errorf("ENTITY_GATE: API rejected address %s (%s)", address, meta.Name)
+		return false, fmt.Errorf("ENTITY_GATE: address %s blocked by local policy (%s)", address, meta.Name)
+	}
+	for _, tag := range meta.Tags {
+		if strings.EqualFold(tag, "BLOCKED") || strings.EqualFold(tag, "COMPROMISED") {
+			return false, fmt.Errorf("ENTITY_GATE: address %s tagged %s", address, tag)
+		}
 	}
 	return true, nil
 }
@@ -168,17 +191,17 @@ func (eg *EntityGate) BlockAddress(address, reason string, tags ...string) {
 		reason = "blocked"
 	}
 	t := append([]string{"BLOCKED"}, tags...)
-	eg.cache.Store(normalizeAddr(address), EntityMetadata{
-		Name: reason, IsSafe: false, Tags: t, LastChecked: time.Now().UTC(),
-	})
+	eg.cache.Store(normalizeAddr(address), stampMeta(EntityMetadata{
+		Name: reason, IsSafe: false, Tags: t,
+	}, eg.cacheTTL))
 }
 
 // AllowAddress adds an explicit allow entry (funder allowlist).
 func (eg *EntityGate) AllowAddress(address, name string, tags ...string) {
 	t := append([]string{"ALLOWLIST"}, tags...)
-	eg.cache.Store(normalizeAddr(address), EntityMetadata{
-		Name: name, IsSafe: true, Tags: t, LastChecked: time.Now().UTC(),
-	})
+	eg.cache.Store(normalizeAddr(address), stampMeta(EntityMetadata{
+		Name: name, IsSafe: true, Tags: t,
+	}, eg.cacheTTL))
 }
 
 func (eg *EntityGate) fetchFromAPI(ctx context.Context, address string) (EntityMetadata, error) {

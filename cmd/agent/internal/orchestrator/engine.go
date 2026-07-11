@@ -156,6 +156,20 @@ func (e *Engine) PrepareRescue(ctx context.Context, req RescueRequest) (*RescueP
 	}, nil
 }
 
+// ReleaseDedup clears a dedup key after on-chain revert (monitor.HandleReceipt).
+func (e *Engine) ReleaseDedup(dedupKey string) {
+	e.dedup.Delete(dedupKey)
+}
+
+// HandleReceipt processes tx receipt; releases dedup on failure/revert.
+func (e *Engine) HandleReceipt(dedupKey string, success bool, txHash string) error {
+	if success {
+		return nil
+	}
+	e.ReleaseDedup(dedupKey)
+	return fmt.Errorf("ENGINE: tx %s failed — dedup released for retry", txHash)
+}
+
 // BlockFunder marks an address compromised (runtime policy update).
 func (e *Engine) BlockFunder(address, reason string) {
 	e.gate.BlockAddress(address, reason, "COMPROMISED")

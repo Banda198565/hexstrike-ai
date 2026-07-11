@@ -94,6 +94,34 @@ func TestPrepareRescueHighValueEscalation(t *testing.T) {
 	}
 }
 
+func TestHandleReceiptRevertReleasesDedup(t *testing.T) {
+	eng, err := NewEngine(Config{
+		AllowedFunders: []string{"0x730ea0231808f42a20f8921ba7fbc788226768f5"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	req := RescueRequest{
+		BotAddress:    "0x4943",
+		FunderAddress: "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+		BalanceWei:    big.NewInt(300_000_000_000_000_000),
+		RescueValue:   big.NewInt(1_000_000_000_000_000),
+		DryRun:        true,
+	}
+	plan, err := eng.PrepareRescue(ctx, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := eng.HandleReceipt(plan.DedupKey, false, "0xfail"); err == nil {
+		t.Fatal("expected error")
+	}
+	// second attempt must succeed after dedup release
+	if _, err := eng.PrepareRescue(ctx, req); err != nil {
+		t.Fatalf("retry after revert: %v", err)
+	}
+}
+
 func TestPrepareRescueBlockedEntity(t *testing.T) {
 	eng, err := NewEngine(Config{
 		BootstrapPath: bootstrapFixture(t),

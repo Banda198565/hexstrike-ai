@@ -17,7 +17,17 @@ DEFAULT_NUM_THREAD = 16
 DEFAULT_NUM_PREDICT = 256
 
 
-def ollama_request_options() -> dict[str, int]:
+def rescue_path_blocks_llm() -> bool:
+    """When true, LLM must not run synchronously on PrepareRescue / signing hot path."""
+    return os.environ.get("LLM_ASYNC_ONLY", "1").lower() in ("1", "true", "yes")
+
+
+def enqueue_llm_task(fn) -> None:
+    """Fire-and-forget LLM work (bytecode deobfuscation, extended OSINT)."""
+    import threading
+
+    threading.Thread(target=fn, daemon=True, name="hexstrike-llm-async").start()
+
     """Runtime options for deepseek-r1 — tune via OLLAMA_NUM_THREAD / OLLAMA_NUM_PREDICT."""
     return {
         "num_thread": int(os.environ.get("OLLAMA_NUM_THREAD", DEFAULT_NUM_THREAD)),
