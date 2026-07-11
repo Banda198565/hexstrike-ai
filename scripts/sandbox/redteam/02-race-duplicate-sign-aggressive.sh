@@ -16,7 +16,6 @@ require_tools
 LOOPS=${AGGRESSIVE_LOOPS:-50}          # outer iterations
 PARALLEL=${AGGRESSIVE_PARALLEL:-20}    # concurrent set-balance calls per phase
 PAUSE_BETWEEN_PHASES=${AGGRESSIVE_PHASE_PAUSE:-0.05} # seconds between low/high bursts
-RPC_CALL="cast rpc anvil_setBalance"
 
 EVENTS="$ROOT/artifacts/sandbox/dummy-bot-events.jsonl"
 before="$(snapshot_events)"
@@ -28,33 +27,28 @@ echo "Loops: $LOOPS, Parallel per phase: $PARALLEL"
 echo "Starting bot (fast poll) ..."
 start_bot_background "HARDENING_ENABLED=false POLL_INTERVAL_SEC=1"
 
-# helper to hex a decimal value
-hex() { python3 - <<PY
-import sys
-print(hex(int(sys.stdin.read().strip())))
-PY
-}
-
-LOW_HEX=$(printf "%s" "$LOW_BAL" | hex)
-HIGH_HEX=$(printf "%s" "$HIGH_BAL" | hex)
+LOW_HEX=$(python3 -c "print(hex(int('$LOW_BAL')))")
+HIGH_HEX=$(python3 -c "print(hex(int('$HIGH_BAL')))")
 
 # Run many rapid low->high bursts in parallel to maximize race windows
 for ((i=1;i<=LOOPS;i++)); do
+  iter_pids=()
   echo "[iter $i/$LOOPS] spawning low-bursts ..."
   for ((p=1;p<=PARALLEL;p++)); do
-    $RPC_CALL "$BOT" "$LOW_HEX" --rpc-url "$RPC" &
+    cast rpc anvil_setBalance "$BOT" "$LOW_HEX" --rpc-url "$RPC" >/dev/null &
+    iter_pids+=($!)
   done
   sleep "$PAUSE_BETWEEN_PHASES"
   echo "[iter $i/$LOOPS] spawning high-bursts ..."
   for ((p=1;p<=PARALLEL;p++)); do
-    $RPC_CALL "$BOT" "$HIGH_HEX" --rpc-url "$RPC" &
+    cast rpc anvil_setBalance "$BOT" "$HIGH_HEX" --rpc-url "$RPC" >/dev/null &
+    iter_pids+=($!)
   done
-  # small jitter between iterations to avoid lockstep scheduling
+  for pid in "${iter_pids[@]}"; do
+    wait "$pid" 2>/dev/null || true
+  done
   sleep 0.02
 done
-
-# wait for background RPC calls to finish
-wait || true
 
 # give bot a short grace period to process triggers
 sleep 3
