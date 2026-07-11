@@ -261,7 +261,7 @@ def run_once(cfg: BotConfig, guard_state: Any | None = None) -> None:
     if cfg.hardening:
         from balance_guard import GuardConfig, pre_sign_verify
 
-        guard_cfg = GuardConfig(cfg.rpc_url, cfg.direct_rpc_url, cfg.bot_address, True)
+        guard_cfg = GuardConfig.from_env()
         allowed, verify_detail = pre_sign_verify(guard_cfg, cfg.threshold_wei)
         event["pre_sign_verify"] = verify_detail
         if not allowed:
