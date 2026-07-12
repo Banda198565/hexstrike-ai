@@ -11,12 +11,13 @@ reset_bot_balance
 before="$(snapshot_events)"
 
 # Start bot with fast poll
-start_bot_background "HARDENING_ENABLED=false"
+start_bot_background "HARDENING_ENABLED=false POLL_INTERVAL_SEC=1"
 
-# Drop below threshold then immediately zero (simulates drain winning race)
+# Drop below threshold, brief window for bot poll, then zero balance
 "$SANDBOX/set-balance.sh" "$BOT" "$LOW_BAL" >/dev/null
+sleep 2
 cast rpc anvil_setBalance "$BOT" "0x0" --rpc-url "$RPC" >/dev/null
-sleep 6
+sleep 4
 
 signed="$(count_signed_since "$before")"
 bal="$(cast balance "$BOT" --rpc-url "$RPC")"
@@ -26,7 +27,7 @@ reset_bot_balance
 if [[ "$signed" -ge 1 ]] && [[ "$bal" == "0" ]]; then
   log_result "03-front-run-drain" "VULN_CONFIRMED" "bot signed but balance already 0 — gas/TOCTOU risk"
 elif [[ "$signed" -eq 0 ]]; then
-  log_result "03-front-run-drain" "BLOCKED" "bot did not sign (blocked_no_gas or no trigger)"
+  log_result "03-front-run-drain" "DEFENDED" "bot did not sign (blocked_no_gas or no trigger)"
 else
   log_result "03-front-run-drain" "INCONCLUSIVE" "signed=$signed balance=$bal"
 fi

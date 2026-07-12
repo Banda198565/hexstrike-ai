@@ -378,6 +378,13 @@ def main() -> int:
     stress_p.add_argument("--target", default="0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a")
     stress_p.add_argument("--ip", default="51.250.97.223")
     stress_p.add_argument("--monitor-duration", type=int, default=45)
+    stress_p.add_argument(
+        "--mode",
+        choices=("legacy", "defense", "attack", "both"),
+        default="legacy",
+        help="legacy=KPI agents; defense/attack/both=battle stress sessions (inspector TZ)",
+    )
+    stress_p.add_argument("--runs", type=int, default=5, help="Runs per session (defense/attack)")
 
     trace_p = sub.add_parser("trace-infra", help="Deep infrastructure OSINT trace (read-only)")
     trace_p.add_argument("--target-ip", required=True)
@@ -436,6 +443,16 @@ def main() -> int:
         print(json.dumps(result, indent=2))
         return 0
     if args.command == "stress-test":
+        if args.mode in ("defense", "attack", "both"):
+            cmd = [
+                sys.executable,
+                str(ROOT / "scripts" / "battle_stress_sessions.py"),
+                "--mode", args.mode,
+                "--runs", str(args.runs),
+                "--ip", args.ip,
+                "--monitor-duration", str(args.monitor_duration),
+            ]
+            return subprocess.call(cmd, cwd=str(ROOT))
         cmd = [
             sys.executable,
             str(ROOT / "scripts" / "stress_test.py"),

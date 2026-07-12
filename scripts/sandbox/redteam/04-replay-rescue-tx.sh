@@ -30,7 +30,10 @@ if [[ -z "${tx_hash:-}" ]]; then
 fi
 
 # Fetch raw tx and try send twice
-raw="$(cast tx "$tx_hash" --rpc-url "$RPC" --json 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('raw',''))" 2>/dev/null || true)"
+raw="$(cast rpc eth_getRawTransactionByHash "$tx_hash" --rpc-url "$RPC" 2>/dev/null | tr -d '"')"
+if [[ -z "$raw" || "$raw" == "null" ]]; then
+  raw="$(cast tx "$tx_hash" --rpc-url "$RPC" --json 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('raw',''))" 2>/dev/null || true)"
+fi
 if [[ -z "$raw" || "$raw" == "null" ]]; then
   # Anvil: re-broadcast same hash
   if cast rpc eth_sendRawTransaction "$(cast tx "$tx_hash" --rpc-url "$RPC" 2>/dev/null | head -1)" --rpc-url "$RPC" 2>&1 | grep -qi "already known\|nonce"; then

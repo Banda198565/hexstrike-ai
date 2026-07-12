@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Agent-Report-06: consolidate VPS/full-run artifacts into master report."""
+"""Agent-Report-06: consolidate artifacts + sandbox conclusions into master report."""
 from __future__ import annotations
 
 import json
@@ -21,6 +21,13 @@ ARTIFACTS = [
     "recon-master-report.json",
 ]
 
+SANDBOX_ARTIFACTS = [
+    "sandbox/target-profiles.json",
+    "sandbox/target-recon-bundle.json",
+    "sandbox/target-conclusion.json",
+    "sandbox/battle-report.json",
+]
+
 
 def load(name: str) -> dict | str | None:
     path = ART / name
@@ -32,30 +39,51 @@ def load(name: str) -> dict | str | None:
         return json.load(f)
 
 
-def highlights(data: dict) -> list[str]:
+def load_orchestrator_run() -> dict | None:
+    run_id = os.environ.get("ORCHESTRATOR_RUN_ID")
+    orch = ART / "orchestrator"
+    if run_id:
+        p = orch / f"{run_id}.json"
+        if p.is_file():
+            return json.loads(p.read_text(encoding="utf-8"))
+    latest = orch / "latest.json"
+    if latest.is_file():
+        return json.loads(latest.read_text(encoding="utf-8"))
+    return None
+
+
+def highlights(data: dict, sandbox: dict) -> list[str]:
     lines: list[str] = []
-    mc = data.get("multichain-cluster.json") or {}
-    if isinstance(mc, dict):
-        nw = mc.get("net_worth_usd") or mc.get("summary", {}).get("net_worth_usd")
-        if nw:
-            lines.append(f"Net worth: ${nw:,.0f}" if isinstance(nw, (int, float)) else f"Net worth: {nw}")
+
+    conc = sandbox.get("sandbox/target-conclusion.json")
+    if isinstance(conc, dict):
+        ov = conc.get("overall", {})
+        lines.append(f"Conclusion: {ov.get('headline', '?')}")
+        lines.append(f"Risk: {ov.get('risk_posture')} | Entity: {ov.get('entity_status')} ({ov.get('entity_confidence')})")
+        for c in (ov.get("conclusions") or [])[:2]:
+            lines.append(c[:120])
+
+    bundle = sandbox.get("sandbox/target-recon-bundle.json")
+    if isinstance(bundle, dict) and not conc:
+        lines.append(bundle.get("summary", {}).get("headline", f"Wallets: {bundle.get('wallet_count')}"))
+
+    battle = sandbox.get("sandbox/battle-report.json")
+    if isinstance(battle, dict):
+        s = battle.get("summary", {})
+        lines.append(f"Battle readiness: {s.get('readiness_score')}/100")
+
     ent = data.get("entity-id.json") or {}
-    if isinstance(ent, dict):
-        e = ent.get("entity_resolution") or ent.get("entity") or ent.get("resolution", {})
+    if isinstance(ent, dict) and not conc:
+        e = ent.get("entity_resolution") or {}
         if isinstance(e, dict):
-            name = e.get("status") or e.get("name", "UNIDENTIFIED")
-            conf = e.get("confidence", "?")
-            lines.append(f"Entity: {name} (confidence: {conf})")
+            lines.append(f"Entity: {e.get('status', 'UNIDENTIFIED')} (confidence: {e.get('confidence', '?')})")
+
     jenkins = data.get("jenkins-cve-report.json") or {}
     if isinstance(jenkins, dict):
         cves = jenkins.get("cves_march_2023_advisory") or []
-        ver = jenkins.get("target") or jenkins.get("observed_instance", {}).get("fingerprint", {}).get("X-Jenkins")
-        lines.append(f"Jenkins {ver}: {len(cves)} CVEs (passive)")
-    web = data.get("web-recon.json") or {}
-    if isinstance(web, dict):
-        probes = web.get("probes") or web.get("results") or []
-        ok = sum(1 for p in probes if isinstance(p, dict) and p.get("ok"))
-        lines.append(f"Web probes: {ok}/{len(probes)} responded" if probes else "Web probes: see web-recon.json")
+        ver = jenkins.get("target") or "Jenkins"
+        lines.append(f"{ver}: {len(cves)} CVEs (passive)")
+
     return lines
 
 
@@ -65,11 +93,15 @@ def main() -> int:
     for name in ARTIFACTS:
         bundled[name] = load(name)
 
-    latest = None
-    latest_path = ART / "orchestrator" / "latest.json"
-    if latest_path.exists():
-        with open(latest_path) as f:
-            latest = json.load(f)
+    sandbox_bundled: dict = {}
+    for name in SANDBOX_ARTIFACTS:
+        sandbox_bundled[name] = load(name)
+
+    orchestrator_run = load_orchestrator_run()
+    conclusion_md = None
+    md_path = ART / "sandbox" / "target-conclusion.md"
+    if md_path.is_file():
+        conclusion_md = md_path.read_text(encoding="utf-8")[:4000]
 
     report = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -77,11 +109,16 @@ def main() -> int:
         "task": "generate-vps-master-report",
         "host": os.uname().nodename if hasattr(os, "uname") else "unknown",
         "mode": "read-only_passive",
-        "orchestrator_latest": latest,
-        "highlights": highlights(bundled),
+        "orchestrator_run_id": os.environ.get("ORCHESTRATOR_RUN_ID") or (orchestrator_run or {}).get("run_id"),
+        "orchestrator_workflow": os.environ.get("ORCHESTRATOR_WORKFLOW") or (orchestrator_run or {}).get("workflow"),
+        "orchestrator_success": (orchestrator_run or {}).get("success"),
+        "highlights": highlights(bundled, sandbox_bundled),
         "artifacts_present": [k for k, v in bundled.items() if v is not None],
         "artifacts_missing": [k for k, v in bundled.items() if v is None],
+        "sandbox_present": [k for k, v in sandbox_bundled.items() if v is not None],
+        "conclusion_markdown_preview": conclusion_md,
         "artifacts": {k: v for k, v in bundled.items() if v is not None and not k.endswith(".md")},
+        "sandbox": {k: v for k, v in sandbox_bundled.items() if v is not None},
         "disclosure_pack": "artifacts/disclosure-pack/",
     }
 
@@ -93,6 +130,8 @@ def main() -> int:
     print("Highlights:")
     for h in report["highlights"]:
         print(f"  • {h}")
+    if conclusion_md:
+        print(f"Conclusion MD: {md_path}")
     return 0
 
 

@@ -52,11 +52,21 @@ def load_env_file(path: Path) -> None:
         os.environ.setdefault(key.strip(), val.strip())
 
 
+def resolve_bot_private_key() -> str:
+    """Only the operator/bot key — never the Target watch address."""
+    for key in ("BOT_PRIVATE_KEY", "AGENT_PRIVATE_KEY"):
+        val = os.environ.get(key, "").strip()
+        if val and "<" not in val:
+            return val
+    return os.environ.get("BOT_PRIVATE_KEY", "")
+
+
 @dataclass(frozen=True)
 class BotConfig:
     rpc_url: str
     direct_rpc_url: str
     bot_address: str
+    watch_address: str
     bot_private_key: str
     funder_address: str
     threshold_wei: int
@@ -74,7 +84,8 @@ class BotConfig:
                 "DIRECT_RPC_URL", os.environ.get("UPSTREAM_RPC", "http://127.0.0.1:8545")
             ),
             bot_address=os.environ["BOT_ADDRESS"],
-            bot_private_key=os.environ["BOT_PRIVATE_KEY"],
+            watch_address=os.environ.get("TARGET_WATCH_ADDRESS") or os.environ["BOT_ADDRESS"],
+            bot_private_key=resolve_bot_private_key(),
             funder_address=os.environ.get("FUNDER_ADDRESS", "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
             threshold_wei=int(os.environ.get("THRESHOLD_WEI", "500000000000000000")),
             min_gas_wei=int(os.environ.get("MIN_GAS_WEI", "10000000000000000")),
@@ -115,11 +126,16 @@ def resolve_env_path() -> Path:
 
 
 def validate_secrets() -> list[str]:
-    missing = [k for k in ("BOT_ADDRESS", "BOT_PRIVATE_KEY") if not os.environ.get(k)]
-    for key in ("BOT_ADDRESS", "BOT_PRIVATE_KEY", "FUNDER_ADDRESS"):
+    dry = os.environ.get("DRY_RUN", "false").lower() in ("1", "true", "yes")
+    missing = [k for k in ("BOT_ADDRESS",) if not os.environ.get(k)]
+    if not dry and not resolve_bot_private_key():
+        missing.append("BOT_PRIVATE_KEY or AGENT_PRIVATE_KEY (operator only — NOT Target)")
+    for key in ("BOT_ADDRESS", "BOT_PRIVATE_KEY", "AGENT_PRIVATE_KEY", "FUNDER_ADDRESS"):
         val = os.environ.get(key, "")
+        if not val:
+            continue
         if "<" in val or "DO NOT USE" in val.upper():
-            missing.append(f"{key} (placeholder — run ./scripts/sandbox/setup-anvil-env.sh)")
+            missing.append(f"{key} (placeholder)")
     return missing
 
 
@@ -205,7 +221,7 @@ def run_once(cfg: BotConfig, guard_state: Any | None = None) -> None:
     event: dict[str, Any] = {
         "ts": ts,
         "event": "poll",
-        "address": cfg.bot_address,
+        "address": cfg.watch_address,
         "threshold_wei": cfg.threshold_wei,
         "hardening": cfg.hardening,
     }
@@ -233,7 +249,7 @@ def run_once(cfg: BotConfig, guard_state: Any | None = None) -> None:
             append_event(event)
             return
     else:
-        bal_hex = rpc_call(cfg.rpc_url, "eth_getBalance", [cfg.bot_address, "latest"])
+        bal_hex = rpc_call(cfg.rpc_url, "eth_getBalance", [cfg.watch_address, "latest"])
         balance = int(bal_hex, 16)
         log.info(
             "balance=%s ETH (%s wei) threshold=%s ETH",
@@ -308,8 +324,12 @@ def main() -> int:
     cfg = BotConfig.from_env()
     check_rpc(cfg)
 
+    mode = "DRY_RUN" if cfg.dry_run else "LIVE"
+    log.info("[CORE] Engine started (%s) watch=%s signer=%s funder=%s", mode, cfg.watch_address, cfg.bot_address, cfg.funder_address)
+
     log.info(
-        "Watching %s every %ss (threshold=%s ETH, dry_run=%s, hardening=%s, once=%s)",
+        "Watching %s (signer=%s) every %ss (threshold=%s ETH, dry_run=%s, hardening=%s, once=%s)",
+        cfg.watch_address,
         cfg.bot_address,
         cfg.poll_interval_sec,
         wei_to_eth(cfg.threshold_wei),

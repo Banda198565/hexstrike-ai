@@ -27,7 +27,8 @@
         "Agent-Infra-01",
         "Agent-Contract-02",
         "Agent-Vuln-05",
-        "Agent-Report-06"
+        "Agent-Report-06",
+        "Agent-Battle-07"
       ]
     },
     "Agent-OSINT-03": {
@@ -120,6 +121,50 @@
           "constraints": ["no-exploit", "read-only"]
         }
       }
+    },
+    "Agent-Battle-07": {
+      "role": "sandbox-redteam",
+      "description": "Autonomous Go agent — 7-attack Anvil battle suite + readiness score",
+      "tasks": {
+        "battle-suite": {
+          "script": "scripts/sandbox/run-battle-suite.sh",
+          "output": "artifacts/sandbox/battle-report.json",
+          "constraints": ["local-anvil-only", "authorized-lab", "no-remote-exploit"]
+        },
+        "generate-target-profile": {
+          "script": "scripts/sandbox/generate-target-profile.py",
+          "output": "artifacts/sandbox/target-profiles.json",
+          "constraints": ["read-only"]
+        },
+        "multi-wallet-recon": {
+          "script": "scripts/sandbox/run-multi-wallet-recon.py",
+          "output": "artifacts/sandbox/target-recon-bundle.json",
+          "constraints": ["read-only", "no-remote-exploit"]
+        },
+        "generate-target-conclusion": {
+          "script": "scripts/sandbox/generate-target-conclusion.py",
+          "output": "artifacts/sandbox/target-conclusion.json",
+          "constraints": ["read-only"]
+        },
+        "redteam-all": {
+          "script": "scripts/sandbox/redteam/run-all.sh",
+          "output": "artifacts/sandbox/redteam-report.json",
+          "constraints": ["local-anvil-only"]
+        },
+        "target-recon": {
+          "script": "scripts/sandbox/run-target-recon.sh",
+          "output": "artifacts/sandbox/target-recon-bundle.json",
+          "input": "artifacts/sandbox/target-profiles.json",
+          "constraints": ["read-only", "no-remote-exploit"]
+        },
+        "target-fork-setup": {
+          "script": "scripts/sandbox/setup-real-target-fork.sh",
+          "output": "artifacts/sandbox/target-fork-status.json",
+          "constraints": ["local-fork-only"]
+        }
+      },
+      "cli": "./bin/hexstrike-agent",
+      "depends_on": ["foundry", "python3"]
     },
     "Agent-Report-06": {
       "role": "reporting",

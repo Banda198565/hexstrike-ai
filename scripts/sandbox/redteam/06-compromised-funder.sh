@@ -23,6 +23,8 @@ reset_bot_balance
 
 if [[ "$signed" -ge 1 ]] && [[ "$attacker_after" -gt "$attacker_before" ]]; then
   log_result "06-compromised-funder" "VULN_CONFIRMED" "rescue value sent to attacker $ATTACKER — no allowlist"
+elif [[ "$signed" -ge 1 ]]; then
+  log_result "06-compromised-funder" "VULN_CONFIRMED" "bot signed $signed tx(s) with compromised FUNDER_ADDRESS=$ATTACKER"
 else
   log_result "06-compromised-funder" "INCONCLUSIVE" "signed=$signed attacker_delta=$((attacker_after - attacker_before))"
 fi

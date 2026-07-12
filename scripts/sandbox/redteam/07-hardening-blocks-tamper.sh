@@ -7,7 +7,10 @@ SANDBOX="$(cd "$REDTEAM/.." && pwd)"
 source "$REDTEAM/_common.sh"
 
 echo "=== REDTEAM 07: hardening vs tampered RPC (unit sim) ==="
-if python3 "$SANDBOX/test_attack_blocked.py" 2>&1 | grep -qiE "attack failed|NOT sign|BLOCKED"; then
+# Run unit test with clean RPC env (anvil.env sets primary=direct and breaks the sim)
+if env -u RPC_URL -u DIRECT_RPC_URL -u UPSTREAM_RPC \
+  RPC_URL=http://127.0.0.1:8546 DIRECT_RPC_URL=http://127.0.0.1:8545 \
+  python3 "$SANDBOX/test_attack_blocked.py" 2>&1 | grep -qiE "attack failed|NOT sign|BLOCKED"; then
   log_result "07-hardening-blocks-tamper" "DEFENDED" "rpc_mismatch blocked signing"
 else
   log_result "07-hardening-blocks-tamper" "VULN_CONFIRMED" "hardening did not block tamper sim"

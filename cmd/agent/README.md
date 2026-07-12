@@ -29,7 +29,22 @@ cd cmd/agent
 bash install-agent.sh global
 ```
 
-## 🚀 Usage
+## 🛡️ Rescue Engine (P1/P2)
+
+`internal/orchestrator/engine.go` runs **before any rescue sign**:
+
+1. `guard.RouteGuard` — balance / rescue value / escalation
+2. `entity.EntityGate` — sync.Map bootstrap + Arkham (`ARKHAM_API_KEY`)
+3. Funder allowlist — blocks attack #06 (compromised FUNDER)
+4. Dedup registry — blocks attack #02/#04
+5. `tx.FeeCalculator` — EIP-1559 +20% tip (when not `DryRun`)
+
+```bash
+cd cmd/agent && go test ./...
+```
+
+Env: `ARKHAM_API_KEY`, `ARKHAM_API_BASE` (optional), `ALLOWED_FUNDERS` (comma-separated, wired at engine init).
+
 
 ### Run Full Battle Suite
 
