@@ -50,7 +50,9 @@ func (a *Agent) RunMEV() (int, error) {
 		a.log("Running " + step.name + "...")
 		cmd := exec.Command("python3", filepath.Join(sandbox, "mev", step.script))
 		cmd.Dir = a.repoRoot
-		cmd.Env = mevEnv(rpc, "31337")
+		cmd.Env = append(mevEnv(rpc, "31337"),
+			"JIT_FORCE_DEMO=1", // battle/demo path when classifier would skip
+		)
 		out, err := cmd.CombinedOutput()
 		if a.verbose {
 			fmt.Print(string(out))

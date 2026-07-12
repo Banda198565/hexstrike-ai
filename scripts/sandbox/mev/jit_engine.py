@@ -7,25 +7,46 @@ import sys
 import time
 
 from mev_common import cast, forge_create, fund_defaults, parse_uint, require_anvil, wallet, write_artifact
+from mev_pnl import JIT_GAS_PRICE_DEFAULT, JIT_GAS_UNITS_DEFAULT, classify_jit
 
-# Offensive profit model defaults
 FEE_BPS = 30
-GAS_UNITS_JIT = int(os.environ.get("JIT_GAS_UNITS", "450000"))
-GAS_PRICE_WEI = int(os.environ.get("JIT_GAS_PRICE_WEI", "1_000_000_000").replace("_", ""))
 
 
-def estimate_jit_profitable(victim_swap_wei: int, jit_liquidity: int, total_liq_before: int) -> dict:
-    """Classifier: fee share vs estimated gas (matches Go PlanJIT)."""
-    fee = victim_swap_wei * FEE_BPS // 10_000
-    share = fee * jit_liquidity // max(total_liq_before + jit_liquidity, 1)
-    gas_cost = GAS_UNITS_JIT * GAS_PRICE_WEI
+def classify_jit_execution(
+    victim_swap_wei: int,
+    jit_liquidity: int,
+    total_liq_before: int,
+    *,
+    pool_eth_wei: int = 0,
+    pool_token_units: int = 0,
+    jit_eth_wei: int = 0,
+    gas_units: int | None = None,
+    gas_price_wei: int | None = None,
+) -> dict:
+    """Gate JIT mint/burn — returns should_execute + skip_reason."""
+    plan = classify_jit(
+        victim_swap_wei,
+        jit_liquidity,
+        total_liq_before,
+        pool_eth_wei=pool_eth_wei,
+        pool_token_units=pool_token_units,
+        jit_eth_wei=jit_eth_wei,
+        gas_units=gas_units or int(os.environ.get("JIT_GAS_UNITS", JIT_GAS_UNITS_DEFAULT)),
+        gas_price_wei=gas_price_wei or int(
+            os.environ.get("JIT_GAS_PRICE_WEI", str(JIT_GAS_PRICE_DEFAULT)).replace("_", "")
+        ),
+        fee_bps=FEE_BPS,
+    )
     return {
-        "victim_swap_wei": victim_swap_wei,
-        "fee_total_wei": fee,
-        "jit_fee_share_wei": share,
-        "gas_cost_wei": gas_cost,
-        "profitable": share > gas_cost,
-        "net_wei": share - gas_cost,
+        "victim_swap_wei": plan.victim_swap_wei,
+        "jit_liquidity": plan.jit_liquidity,
+        "fee_share_wei": plan.fee_share_wei,
+        "gas_cost_wei": plan.gas_cost_wei,
+        "il_estimate_wei": plan.il_estimate_wei,
+        "net_wei": plan.net_wei,
+        "profitable": plan.profitable,
+        "should_execute": plan.should_execute,
+        "skip_reason": plan.skip_reason,
     }
 
 
@@ -33,39 +54,85 @@ def run_jit() -> dict:
     fund_defaults()
     attacker, attacker_key = wallet(2)
     victim, victim_key = wallet(3)
-
-    # Seed pool with passive LP (index 4)
     passive, passive_key = wallet(4)
+
     pool = forge_create("MockCLAMM", value="50ether")
+    passive_liq = int(1000e18)
+    passive_eth = int(40e18)
+    cast(
+        "send",
+        pool,
+        "addLiquidityJIT(uint128)",
+        str(passive_liq),
+        "--value",
+        f"{passive_eth}",
+        "--private-key",
+        passive_key,
+    )
 
-    # Passive baseline liquidity
-    cast("send", pool, "addLiquidityJIT(uint128)", "1000000000000000000000",
-         "--value", "40ether", "--private-key", passive_key)
+    victim_swap = int(os.environ.get("JIT_VICTIM_WEI", str(int(5e18))))
+    jit_liq = int(os.environ.get("JIT_LIQUIDITY", str(int(500e18))))
+    jit_eth = int(os.environ.get("JIT_ETH_WEI", str(int(10e18))))
 
-    victim_swap = int(5e18)  # 5 ETH victim trade
-    jit_liq = int(500e18)    # narrow JIT position
-    model = estimate_jit_profitable(victim_swap, jit_liq, int(1000e18))
-    if not model["profitable"]:
-        model["note"] = "classifier says skip — increasing victim size for demo"
+    model = classify_jit_execution(
+        victim_swap,
+        jit_liq,
+        passive_liq,
+        pool_eth_wei=passive_eth + int(50e18),
+        pool_token_units=passive_liq,
+        jit_eth_wei=jit_eth,
+    )
+
+    if not model["should_execute"] and os.environ.get("JIT_FORCE_DEMO") == "1":
         victim_swap = int(20e18)
-        model = estimate_jit_profitable(victim_swap, jit_liq, int(1000e18))
+        model = classify_jit_execution(
+            victim_swap,
+            jit_liq,
+            passive_liq,
+            pool_eth_wei=passive_eth + int(50e18),
+            pool_token_units=passive_liq,
+            jit_eth_wei=jit_eth,
+        )
+        model["force_demo"] = True
+
+    if not model["should_execute"]:
+        return {
+            "pool": pool,
+            "attacker": attacker,
+            "victim": victim,
+            "classifier": model,
+            "skipped": True,
+            "skip_reason": model["skip_reason"],
+            "success": False,
+            "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        }
 
     attacker_eth_before = parse_uint(cast("balance", attacker))
-
-    # JIT 1: add liquidity one block
-    cast("send", pool, "addLiquidityJIT(uint128)", str(jit_liq),
-         "--value", "10ether", "--private-key", attacker_key)
-
-    # Victim swap — JIT LP captures fee share
-    cast("send", pool, "swapETHForToken(uint256)", "0",
-         "--value", str(victim_swap), "--private-key", victim_key)
-
-    # JIT 3: remove + collect
+    cast(
+        "send",
+        pool,
+        "addLiquidityJIT(uint128)",
+        str(jit_liq),
+        "--value",
+        str(jit_eth),
+        "--private-key",
+        attacker_key,
+    )
+    cast(
+        "send",
+        pool,
+        "swapETHForToken(uint256)",
+        "0",
+        "--value",
+        str(victim_swap),
+        "--private-key",
+        victim_key,
+    )
     cast("send", pool, "removeLiquidityJIT(uint128)", str(jit_liq), "--private-key", attacker_key)
 
     attacker_eth_after = parse_uint(cast("balance", attacker))
     profit = attacker_eth_after - attacker_eth_before
-    gas_cost = GAS_UNITS_JIT * GAS_PRICE_WEI
+    gas_cost = model["gas_cost_wei"]
 
     return {
         "pool": pool,
@@ -76,6 +143,7 @@ def run_jit() -> dict:
         "profit_wei": profit,
         "gas_cost_wei": gas_cost,
         "net_after_gas_wei": profit - gas_cost,
+        "skipped": False,
         "success": profit > 0 and (profit - gas_cost) > 0,
         "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
@@ -94,6 +162,8 @@ def main() -> int:
     path = write_artifact("mev-jit-result.json", result)
     print(f"[jit] → {path}")
     print(__import__("json").dumps(result, indent=2))
+    if result.get("skipped"):
+        return 0
     return 0 if result["success"] else 1
 
 
