@@ -11,6 +11,26 @@ ROOT = Path(__file__).resolve().parents[2]
 ART = ROOT / "artifacts"
 OUT = ART / "vps-master-report.json"
 
+FORENSICS_IOC_ARTIFACTS = [
+    "trx-drainer-tool-iocs.json",
+    "evm-drainer-iocs.json",
+    "apeterminal-main-iocs.json",
+    "solana-drainer-tool-iocs.json",
+    "vanilla-drainer-iocs.json",
+    "permit-farming-eip2612-iocs.json",
+    "create2-drainer-iocs.json",
+]
+
+FORENSICS_REPORTS = [
+    "forensics/trx-drainer-report.json",
+    "forensics/evm-drainer-report.json",
+    "forensics/apeterminal-drainer-report.json",
+    "forensics/solana-drainer-report.json",
+    "forensics/vanilla-drainer-report.json",
+    "forensics/permit-farming-report.json",
+    "forensics/create2-drainer-report.json",
+]
+
 ARTIFACTS = [
     "infra-targets.json",
     "multichain-cluster.json",
@@ -84,13 +104,17 @@ def highlights(data: dict, sandbox: dict) -> list[str]:
         ver = jenkins.get("target") or "Jenkins"
         lines.append(f"{ver}: {len(cves)} CVEs (passive)")
 
+    ioc_count = sum(1 for n in FORENSICS_IOC_ARTIFACTS if data.get(n))
+    if ioc_count:
+        lines.append(f"Forensics IOC modules: {ioc_count}/{len(FORENSICS_IOC_ARTIFACTS)} present")
+
     return lines
 
 
 def main() -> int:
     out_path = Path(os.environ.get("OUTPUT", OUT))
     bundled: dict = {}
-    for name in ARTIFACTS:
+    for name in ARTIFACTS + FORENSICS_IOC_ARTIFACTS + FORENSICS_REPORTS:
         bundled[name] = load(name)
 
     sandbox_bundled: dict = {}

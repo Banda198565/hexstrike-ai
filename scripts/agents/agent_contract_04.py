@@ -1,44 +1,47 @@
 #!/usr/bin/env python3
-"""Agent-Contract-04 — CREATE2 / EIP-1167 factory pipeline static analysis (read-only)."""
+"""Agent-Contract-04 — full CREATE2 / EIP-1167 factory pipeline analysis."""
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
-from forensics_common import ROOT, emit, output_path, utc_now, write_json
+from forensics_common import emit, output_path, repo_path, scan_tree, utc_now, write_json
 
 SCHEMA = "hexstrike.create2-drainer.v1"
-CREATE2_MARKERS = ("create2", "CREATE2", "0xf5", "EIP-1167", "clone", "minimal proxy")
 
 
 def main() -> int:
-    scan_roots = os.environ.get(
-        "CREATE2_SCAN_ROOTS",
-        f"{ROOT / 'artifacts' / 'intel' / 'apeterminal-main'}:{ROOT / 'artifacts' / 'intel' / 'evm-drainer'}:{ROOT / 'artifacts'}",
-    ).split(":")
+    scan_roots_env = __import__("os").environ.get("CREATE2_SCAN_ROOTS")
+    if scan_roots_env:
+        roots = [Path(p.strip()) for p in scan_roots_env.split(":")]
+    else:
+        roots = [
+            repo_path("APETERMINAL_REPO", "artifacts/intel/apeterminal-main"),
+            repo_path("EVM_DRAINER_REPO", "artifacts/intel/evm-drainer"),
+        ]
+
     flagged: list[str] = []
     claim_contracts: set[str] = set()
 
-    for root_s in scan_roots:
-        root = Path(root_s.strip())
+    for root in roots:
         if not root.is_dir():
             continue
-        for path in root.rglob("*"):
-            if not path.is_file() or path.suffix not in {".js", ".ts", ".tsx", ".jsx", ".sol", ".json"}:
-                continue
-            if any(p in path.parts for p in {".git", "node_modules", "dist", ".next"}):
-                continue
+        scan = scan_tree(root)
+        for rel, hits in (scan.get("flagged_files") or {}).items():
+            if "create2" in hits:
+                flagged.append(str(root / rel))
+        for path_str in flagged[-20:]:
             try:
-                text = path.read_text(encoding="utf-8", errors="ignore")
+                text = Path(path_str).read_text(encoding="utf-8", errors="ignore")
+                if "claim" in text.lower():
+                    for token in text.split():
+                        if token.startswith("0x") and len(token) == 42:
+                            claim_contracts.add(token.lower())
             except OSError:
-                continue
-            if any(m in text for m in CREATE2_MARKERS):
-                flagged.append(str(path))
-            if "claim" in text.lower() and "contract" in text.lower():
-                for token in text.split():
-                    if token.startswith("0x") and len(token) == 42:
-                        claim_contracts.add(token.lower())
+                pass
+        for addr in scan.get("addresses", []):
+            if "claim" in str(scan.get("flagged_files", {})).lower():
+                claim_contracts.add(addr.lower())
 
     out = output_path("create2-drainer-iocs.json")
     report = {
@@ -48,9 +51,12 @@ def main() -> int:
             "name": "CREATE2 Drainer Evasion",
             "classification": "deterministic_contract_deployment_abuse",
             "standards": ["EIP-1014", "EIP-1167"],
+            "attack_name": "create2_factory_rotation",
         },
         "eip1014_reference": {
+            "eip": "https://eips.ethereum.org/EIPS/eip-1014",
             "opcode": "0xf5",
+            "address_formula": "keccak256(0xff ++ deployer ++ salt ++ keccak256(init_code))[12:]",
             "drainer_ttp": [
                 "Deploy fresh claim/drain contract per phishing domain",
                 "Evade static blocklists that target fixed addresses",

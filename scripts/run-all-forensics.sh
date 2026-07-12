@@ -13,6 +13,10 @@ mkdir -p "$ROOT/artifacts/recon" "$ROOT/artifacts/intel"
 if [[ -d "$ROOT/docs/recon" ]]; then
   cp -n "$ROOT/docs/recon/"* "$ROOT/artifacts/recon/" 2>/dev/null || cp "$ROOT/docs/recon/"* "$ROOT/artifacts/recon/" 2>/dev/null || true
 fi
+if [[ -d "$ROOT/docs/recon/vanilla-drainer-intel" ]]; then
+  mkdir -p "$ROOT/artifacts/recon/vanilla-drainer-intel"
+  cp -a "$ROOT/docs/recon/vanilla-drainer-intel/." "$ROOT/artifacts/recon/vanilla-drainer-intel/" 2>/dev/null || true
+fi
 if [[ -d "$ROOT/docs/intel" ]]; then
   cp -a "$ROOT/docs/intel/." "$ROOT/artifacts/intel/" 2>/dev/null || true
 fi

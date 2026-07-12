@@ -4,7 +4,7 @@
   "defaults": {
     "server": "http://127.0.0.1:8888",
     "artifacts_dir": "artifacts",
-    "mode": "authorized_lab"
+    "mode": "forensics"
   },
   "agents": {
     "Agent-Orchestrator": {
@@ -206,7 +206,7 @@
         "static-ioc-extract": {
           "script": "scripts/agents/agent_malware_08.py",
           "output": "artifacts/trx-drainer-tool-iocs.json",
-          "constraints": ["read-only", "static-analysis"]
+          "constraints": ["forensics", "defensive-analysis"]
         }
       }
     },
@@ -217,7 +217,7 @@
         "static-ioc-extract": {
           "script": "scripts/agents/agent_malware_09.py",
           "output": "artifacts/evm-drainer-iocs.json",
-          "constraints": ["read-only", "static-analysis"]
+          "constraints": ["forensics", "defensive-analysis"]
         }
       }
     },
@@ -228,7 +228,7 @@
         "static-ioc-extract": {
           "script": "scripts/agents/agent_malware_10.py",
           "output": "artifacts/apeterminal-main-iocs.json",
-          "constraints": ["read-only", "static-analysis"]
+          "constraints": ["forensics", "defensive-analysis"]
         }
       }
     },
@@ -239,7 +239,7 @@
         "static-ioc-extract": {
           "script": "scripts/agents/agent_malware_11.py",
           "output": "artifacts/solana-drainer-tool-iocs.json",
-          "constraints": ["read-only", "static-analysis"]
+          "constraints": ["forensics", "defensive-analysis"]
         }
       }
     },
@@ -250,7 +250,7 @@
         "osint-ioc-extract": {
           "script": "scripts/agents/agent_malware_12.py",
           "output": "artifacts/vanilla-drainer-iocs.json",
-          "constraints": ["read-only", "osint-only"]
+          "constraints": ["forensics", "osint", "defensive-analysis"]
         }
       }
     },
@@ -261,7 +261,7 @@
         "permit-farming-analyze": {
           "script": "scripts/agents/agent_contract_03.py",
           "output": "artifacts/permit-farming-eip2612-iocs.json",
-          "constraints": ["read-only", "static-analysis"]
+          "constraints": ["forensics", "defensive-analysis"]
         }
       }
     },
@@ -272,7 +272,7 @@
         "create2-analyze": {
           "script": "scripts/agents/agent_contract_04.py",
           "output": "artifacts/create2-drainer-iocs.json",
-          "constraints": ["read-only", "static-analysis"]
+          "constraints": ["forensics", "defensive-analysis"]
         }
       }
     }
