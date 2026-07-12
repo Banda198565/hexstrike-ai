@@ -6,7 +6,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 # shellcheck source=/dev/null
-source "$ROOT/scripts/forensics-env-mac.sh"
+if [[ -d /opt/drainer-intel ]] || [[ "${HEXSTRIKE_VPS:-}" == "1" ]]; then
+  source "$ROOT/scripts/forensics-env-vps.sh"
+else
+  source "$ROOT/scripts/forensics-env-mac.sh"
+fi
 
 export PATH="${HOME}/.foundry/bin:${PATH}"
 mkdir -p "$ROOT/artifacts/recon" "$ROOT/artifacts/intel" "$ROOT/artifacts/forensics"
