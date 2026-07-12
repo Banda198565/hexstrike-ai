@@ -6,6 +6,7 @@ contract MockAMM {
     uint256 public reserveETH;
     uint256 public reserveToken;
     mapping(address => uint256) public balanceOf;
+    address public sandboxRouter;
 
     event Swap(address indexed trader, bool ethToToken, uint256 amountIn, uint256 amountOut);
 
@@ -22,6 +23,26 @@ contract MockAMM {
         require(msg.value > 0 && tokenAmount > 0, "amounts");
         reserveETH += msg.value;
         reserveToken += tokenAmount;
+    }
+
+    function setSandboxRouter(address router) external {
+        sandboxRouter = router;
+    }
+
+    /// @dev Sandbox-only cross-pool token bridge for backrun sim
+    function sandboxMintBalance(address to, uint256 amount) external {
+        require(msg.sender == sandboxRouter, "router");
+        balanceOf[to] += amount;
+    }
+
+    function sandboxBurnBalance(address from, uint256 amount) external {
+        require(msg.sender == sandboxRouter, "router");
+        require(balanceOf[from] >= amount, "bal");
+        balanceOf[from] -= amount;
+    }
+
+    function quoteETHForTokens(uint256 ethIn) external view returns (uint256) {
+        return _amountOut(ethIn, reserveETH, reserveToken);
     }
 
     function swapETHForTokens(uint256 minOut) external payable returns (uint256 out) {

@@ -1,10 +1,11 @@
 # HexStrike Battle Agent
 
-Autonomous Go agent for orchestrating and analyzing HexStrike sandbox offensive security tests.
+Autonomous Go agent for orchestrating HexStrike **offensive** sandbox tests (red-team + MEV).
 
 ## 🎯 Features
 
-- **Autonomous Execution**: Runs all 7 red-team attacks without user interaction
+- **Autonomous Execution**: Runs all 9 red-team attacks (incl. MEV 08/09) without user interaction
+- **MEV Offensive Pipeline**: `hexstrike-agent mev` — mempool scan + sandwich sim on Anvil
 - **Live Analysis**: Parses test results in real-time
 - **Battle Report Generation**: Creates detailed JSON reports with vulnerabilities
 - **Readiness Scoring**: Calculates 0-100 sandbox readiness score

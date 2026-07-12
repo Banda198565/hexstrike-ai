@@ -1,34 +1,62 @@
-# HexStrike MEV Offensive Module (Sandbox)
+# HexStrike MEV Offensive Stack (Sandbox)
 
-**Scope:** Anvil / local fork only. Offensive simulation aligned with 2026 MEV taxonomy ([Mintarex MEV guide](https://mintarex.com/en/blog/mev-maximum-extractable-value-explained-avoid)).
+Full offensive MEV triad + BSC fork sim. **No mainnet transaction submission.**
 
-## Attack patterns implemented
+Reference: [MEV Explained 2026](https://mintarex.com/en/blog/mev-maximum-extractable-value-explained-avoid)
 
-| Pattern | Red-team | Engine |
-|---------|----------|--------|
-| **Sandwich** | `08-mev-sandwich-sim` | `scripts/sandbox/mev/sandwich_engine.py` + `MockAMM.sol` |
-| **Front-run (gas race)** | `09-mev-frontrun-gas-race` | higher gas → earlier block index |
-| **Mempool classify** | — | `cmd/agent/internal/mev/` + `mempool_scanner.py` |
+## Attack matrix
 
-**Backlog (sandbox):** JIT liquidity on concentrated-liquidity mock pool.
+| ID | Pattern | Contract / Engine |
+|----|---------|-------------------|
+| 08 | Sandwich | `MockAMM.sol` + `sandwich_engine.py` |
+| 09 | Front-run gas race | `anvil_setAutomine` ordering |
+| 10 | JIT liquidity | `MockCLAMM.sol` + `jit_engine.py` |
+| 11 | Back-run arb | `MockRouter.sol` + `backrun_engine.py` |
+| fork | BSC real pools | `setup-bsc-fork.sh` + `fork_offensive.py` |
 
-## BSC note
+## Go classifiers (`internal/mev`)
 
-Article: BNB Chain uses **builder-validator MEV** (48Club Puissant). HexStrike already has `PuissantRelay` for bundle submission — offensive module uses that path in **simulation**, not mainnet victim targeting.
+- `ClassifySwap` / `IsSandwichCandidate` — mempool swap detection
+- `PlanSandwich` — CPAMM sandwich PnL estimate
+- `PlanFrontRunGas` — gas premium model
+- `PlanJIT` — **fee vs gas** classifier (when JIT is profitable)
+- `PlanBackrun` — cross-pool spread model
 
 ## Commands
 
 ```bash
-cd cmd/agent && go test ./internal/mev/ -v
-./bin/hexstrike-agent mev -v          # mempool scan + sandwich on Anvil
-./bin/hexstrike-agent battle -v       # full suite incl. 08/09
+# Full Anvil stack: sandwich + JIT + backrun
+hexstrike-agent mev -v
+hexstrike-agent mev full -v
+
+# BSC fork — real Pancake WBNB/USDT reserves, sim-only PnL
+hexstrike-agent mev fork -v
+# or:
+./scripts/sandbox/run-bsc-fork-mev.sh
+
+# Battle suite (all 11 attacks)
+hexstrike-agent battle -v
 ```
 
 ## Artifacts
 
-- `artifacts/sandbox/mev-mempool-scan.json`
-- `artifacts/sandbox/mev-sandwich-result.json`
+| File | Content |
+|------|---------|
+| `mev-sandwich-result.json` | Attacker profit wei |
+| `mev-jit-result.json` | JIT fee share vs gas |
+| `mev-backrun-result.json` | Cross-pool arb profit |
+| `mev-bsc-fork-result.json` | Real reserve sandwich sim |
 
-## Chain guard
+## Chain guards
 
-All MEV scripts refuse `chain_id != 31337`.
+- Anvil engines: `chain_id == 31337`
+- Fork engine: `chain_id == 56`
+- `MEV_SANDBOX_ONLY=1` required
+
+## MEV triad complete
+
+```
+sandwich → frontrun → backrun → JIT
+     ↓
+BSC fork (real data, sim only)
+```

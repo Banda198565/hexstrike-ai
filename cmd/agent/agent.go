@@ -26,6 +26,8 @@ const (
 	AttackHardening     AttackID = "07-hardening-blocks-tamper"
 	AttackMEVSandwich   AttackID = "08-mev-sandwich-sim"
 	AttackMEVFrontrun   AttackID = "09-mev-frontrun-gas-race"
+	AttackMEVJIT        AttackID = "10-mev-jit-liquidity"
+	AttackMEVBackrun    AttackID = "11-mev-backrun-arb"
 )
 
 // Outcome categorizes attack results.
@@ -85,6 +87,8 @@ var DefaultAttacks = []AttackID{
 	AttackHardening,
 	AttackMEVSandwich,
 	AttackMEVFrontrun,
+	AttackMEVJIT,
+	AttackMEVBackrun,
 }
 
 var resultLine = regexp.MustCompile(`\[RESULT\]\s+(\S+)\s+→\s+(\S+)`)
@@ -153,7 +157,7 @@ func (a *Agent) RunBattle() (int, error) {
 	a.log("    ✓ Environment ready")
 
 	a.rule()
-	a.log("Launching battle test suite (9 attacks)...")
+	a.log("Launching battle test suite (11 attacks)...")
 	a.rule()
 
 	runs := a.runAllTests()

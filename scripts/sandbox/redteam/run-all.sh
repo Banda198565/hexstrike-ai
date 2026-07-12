@@ -18,7 +18,8 @@ mkdir -p /workspace/artifacts/sandbox
 
 for s in 01-baseline-trigger 02-race-duplicate-sign 03-front-run-drain \
          04-replay-rescue-tx 05-toctou-nonce-bump 06-compromised-funder \
-         07-hardening-blocks-tamper 08-mev-sandwich-sim 09-mev-frontrun-gas-race; do
+         07-hardening-blocks-tamper 08-mev-sandwich-sim 09-mev-frontrun-gas-race \
+         10-mev-jit-liquidity 11-mev-backrun-arb; do
   echo ""
   "$SANDBOX/start-anvil.sh" >/dev/null 2>&1 || true
   "$REDTEAM/${s}.sh" || true

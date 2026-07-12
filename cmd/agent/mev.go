@@ -7,9 +7,17 @@ import (
 	"path/filepath"
 )
 
-// RunMEV executes offensive MEV sandbox pipeline (Anvil only).
+func mevEnv(rpc string, chains string) []string {
+	return append(os.Environ(),
+		"MEV_RPC_URL="+rpc,
+		"MEV_SANDBOX_ONLY=1",
+		"MEV_ALLOWED_CHAINS="+chains,
+	)
+}
+
+// RunMEV executes full offensive MEV stack on Anvil (sandwich → JIT → backrun).
 func (a *Agent) RunMEV() (int, error) {
-	a.printBanner("⚔ HexStrike MEV Offensive — Sandbox Only")
+	a.printBanner("⚔ HexStrike MEV Offensive — Full Stack (Anvil)")
 
 	prereqs := a.verifyPrerequisites()
 	if !a.allPrereqsOK(prereqs) {
@@ -17,7 +25,6 @@ func (a *Agent) RunMEV() (int, error) {
 	}
 
 	sandbox := filepath.Join(a.repoRoot, "scripts", "sandbox")
-
 	if err := a.setupEnvironment(); err != nil {
 		return 1, err
 	}
@@ -28,22 +35,22 @@ func (a *Agent) RunMEV() (int, error) {
 		return 1, fmt.Errorf("start-anvil: %w\n%s", err, string(out))
 	}
 
+	rpc := "http://127.0.0.1:8545"
 	steps := []struct {
 		name string
-		cmd  []string
+		script string
 	}{
-		{"mempool scan", []string{"python3", filepath.Join(sandbox, "mev", "mempool_scanner.py")}},
-		{"sandwich engine", []string{"python3", filepath.Join(sandbox, "mev", "sandwich_engine.py")}},
+		{"mempool scan", "mempool_scanner.py"},
+		{"sandwich", "sandwich_engine.py"},
+		{"JIT liquidity", "jit_engine.py"},
+		{"backrun arb", "backrun_engine.py"},
 	}
 
 	for _, step := range steps {
-		a.log(fmt.Sprintf("Running %s...", step.name))
-		cmd := exec.Command(step.cmd[0], step.cmd[1:]...)
+		a.log("Running " + step.name + "...")
+		cmd := exec.Command("python3", filepath.Join(sandbox, "mev", step.script))
 		cmd.Dir = a.repoRoot
-		cmd.Env = append(os.Environ(),
-			"MEV_RPC_URL=http://127.0.0.1:8545",
-			"MEV_SANDBOX_ONLY=1",
-		)
+		cmd.Env = mevEnv(rpc, "31337")
 		out, err := cmd.CombinedOutput()
 		if a.verbose {
 			fmt.Print(string(out))
@@ -53,8 +60,43 @@ func (a *Agent) RunMEV() (int, error) {
 		}
 	}
 
-	a.log("MEV sandbox pipeline complete")
+	a.log("MEV full stack complete (sandwich + JIT + backrun)")
 	fmt.Println("  artifacts/sandbox/mev-mempool-scan.json")
 	fmt.Println("  artifacts/sandbox/mev-sandwich-result.json")
+	fmt.Println("  artifacts/sandbox/mev-jit-result.json")
+	fmt.Println("  artifacts/sandbox/mev-backrun-result.json")
+	return 0, nil
+}
+
+// RunMEVFork runs BSC fork offensive simulation (real pools, no tx submit).
+func (a *Agent) RunMEVFork() (int, error) {
+	a.printBanner("⚔ HexStrike MEV Offensive — BSC Fork Sim")
+
+	prereqs := a.verifyPrerequisites()
+	if !a.allPrereqsOK(prereqs) {
+		return 1, fmt.Errorf("missing prerequisites")
+	}
+
+	sandbox := filepath.Join(a.repoRoot, "scripts", "sandbox")
+	forkSetup := exec.Command("bash", filepath.Join(sandbox, "setup-bsc-fork.sh"))
+	forkSetup.Dir = a.repoRoot
+	if out, err := forkSetup.CombinedOutput(); err != nil {
+		return 1, fmt.Errorf("bsc fork setup: %w\n%s", err, string(out))
+	}
+
+	rpc := "http://127.0.0.1:8545"
+	cmd := exec.Command("python3", filepath.Join(sandbox, "mev", "fork_offensive.py"))
+	cmd.Dir = a.repoRoot
+	cmd.Env = mevEnv(rpc, "56")
+	out, err := cmd.CombinedOutput()
+	if a.verbose {
+		fmt.Print(string(out))
+	}
+	if err != nil {
+		return 1, fmt.Errorf("fork offensive: %w\n%s", err, string(out))
+	}
+
+	a.log("BSC fork MEV sim complete")
+	fmt.Println("  artifacts/sandbox/mev-bsc-fork-result.json")
 	return 0, nil
 }
