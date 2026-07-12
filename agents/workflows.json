@@ -195,6 +195,25 @@
         {"agent": "Agent-Report-06", "task": "generate-session-report", "depends_on": "generate-vps-master-report", "optional": true}
       ],
       "note": "Прогон 3 (7 forensics): bash scripts/run-three-progons.sh или run-all-forensics.sh"
+    },
+    "hot-wallet-ops": {
+      "description": "Primary hot wallet 0x4943… — entity + fork recon + conclusion (read-only)",
+      "mode": "forensics",
+      "env": {
+        "TARGET_WALLET": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+        "WALLETS_FILE": "scripts/sandbox/hot-wallet-target.json",
+        "WALLETS_ONLY": "1"
+      },
+      "steps": [
+        {"agent": "Agent-OSINT-03", "task": "blockscan-cluster"},
+        {"agent": "Agent-OSINT-03", "task": "entity-resolution", "depends_on": "blockscan-cluster"},
+        {"agent": "Agent-Web-04", "task": "stealth-recon", "depends_on": "entity-resolution"},
+        {"agent": "Agent-Battle-07", "task": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "target-fork-setup", "depends_on": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "multi-wallet-recon", "depends_on": "target-fork-setup"},
+        {"agent": "Agent-Battle-07", "task": "generate-target-conclusion", "depends_on": "multi-wallet-recon"}
+      ],
+      "note": "Run: bash scripts/run-hot-wallet-ops.sh — includes dossier + mempool sample"
     }
   }
 }
