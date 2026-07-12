@@ -83,16 +83,18 @@ print("IR trigger cases: OK")
 PY
 ok "is_hot_wallet_outflow() — from-only EOA + contract calls"
 
-# 5. Sample live monitor run
+# 5. Sample live monitor run (--duration exits cleanly; no GNU timeout needed for macOS)
 echo ""
 echo "--- Live sample (${SAMPLE_SEC}s) ---"
 export TARGET_WALLET RPC_URL MONITOR_HEARTBEAT_POLLS="$HEARTBEAT_POLLS"
 export MONITOR_BLOCK_SCAN_POLLS=5
-timeout "$((SAMPLE_SEC + 15))" python3 -u scripts/autonomous_monitor.py \
+python3 -u scripts/autonomous_monitor.py \
   --duration "$SAMPLE_SEC" \
   > "$LOG_FILE" 2>&1 || true
 
-if grep -qi '\[heartbeat\]' "$LOG_FILE"; then
+if [[ ! -s "$LOG_FILE" ]]; then
+  bad "Sample log empty — run: python3 -u scripts/autonomous_monitor.py --duration 15"
+elif grep -qi '\[heartbeat\]' "$LOG_FILE"; then
   ok "Heartbeat lines in sample log"
   grep -i '\[heartbeat\]' "$LOG_FILE" | tail -1
 else
@@ -101,6 +103,9 @@ fi
 
 if grep -qi '\[heartbeat\].*pending_txs=' "$LOG_FILE"; then
   ok "Mempool polling active (pending_txs in heartbeat)"
+elif grep -qi '\[monitor\] RPC primary' "$LOG_FILE"; then
+  note "Monitor started but no heartbeat — git pull master (728e059+) for heartbeat support"
+  bad "No mempool polling activity in sample log"
 else
   bad "No mempool polling activity in sample log"
 fi
