@@ -57,7 +57,17 @@ Runner: `./bin/hexstrike-agent battle -v` → `artifacts/sandbox/battle-report.j
 ## CI
 
 - **Battle:** `.github/workflows/agent-battle.yml` on push/PR
-- **Field recon cron:** `.github/workflows/field-recon-cron.yml` every 6h
+- **Field recon cron:** `.github/workflows/field-recon-cron.yml` every **30 min** (incremental + parallel)
+
+## ⚡ Fast commands
+
+| Command | What |
+|---------|------|
+| `bash scripts/run-hexstrike-fast.sh` | Full P1–P7 parallel pipeline |
+| `python3 scripts/hexstrike-orchestrator.py run field-recon-parallel` | P1+P2+P3 parallel |
+| `python3 scripts/hexstrike-orchestrator.py run pentest-parallel` | P4 async |
+| `python3 scripts/hexstrike-orchestrator.py run operator-rescue-parallel` | P5 parallel |
+| `python3 scripts/docs/attack_map_diff.py` | Auto-diff attack map vs registry |
 
 ## Constraints
 

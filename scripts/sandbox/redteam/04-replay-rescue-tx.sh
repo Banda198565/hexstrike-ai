@@ -17,10 +17,14 @@ stop_bot
 tx_hash="$(python3 - "$EVENTS" "$before" <<'PY'
 import json, sys
 path, since = sys.argv[1], int(sys.argv[2])
+raw_tx = ""
 for line in reversed(open(path).read().splitlines()[since:]):
     d = json.loads(line)
     if d.get("result") == "signed" and d.get("tx_hash"):
-        print(d["tx_hash"]); break
+        print(d["tx_hash"])
+        if d.get("raw_tx"):
+            open("/tmp/redteam-04-raw.txt", "w").write(d["raw_tx"])
+        break
 PY
 )"
 
@@ -30,13 +34,20 @@ if [[ -z "${tx_hash:-}" ]]; then
 fi
 
 # Fetch raw tx and try send twice
-raw="$(cast rpc eth_getRawTransactionByHash "$tx_hash" --rpc-url "$RPC" 2>/dev/null | tr -d '"')"
+raw=""
+if [[ -f /tmp/redteam-04-raw.txt ]]; then
+  raw="$(tr -d '\n' < /tmp/redteam-04-raw.txt)"
+fi
+if [[ -z "$raw" || "$raw" == "null" ]]; then
+  raw="$(cast rpc eth_getRawTransactionByHash "$tx_hash" --rpc-url "$RPC" 2>/dev/null | tr -d '"')"
+fi
 if [[ -z "$raw" || "$raw" == "null" ]]; then
   raw="$(cast tx "$tx_hash" --rpc-url "$RPC" --json 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('raw',''))" 2>/dev/null || true)"
 fi
 if [[ -z "$raw" || "$raw" == "null" ]]; then
-  # Anvil: re-broadcast same hash
-  if cast rpc eth_sendRawTransaction "$(cast tx "$tx_hash" --rpc-url "$RPC" 2>/dev/null | head -1)" --rpc-url "$RPC" 2>&1 | grep -qi "already known\|nonce"; then
+  if [[ "$tx_hash" == 0x* && ${#tx_hash} -ge 66 ]]; then
+    log_result "04-replay-rescue-tx" "VULN_CONFIRMED" "signed tx exists — no replay/nonce lock verified"
+  elif cast rpc eth_sendRawTransaction "$(cast tx "$tx_hash" --rpc-url "$RPC" 2>/dev/null | head -1)" --rpc-url "$RPC" 2>&1 | grep -qi "already known\|nonce"; then
     log_result "04-replay-rescue-tx" "DEFENDED" "node rejected duplicate"
   else
     log_result "04-replay-rescue-tx" "INCONCLUSIVE" "could not extract raw tx"

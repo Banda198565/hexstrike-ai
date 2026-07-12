@@ -139,7 +139,7 @@ def validate_secrets() -> list[str]:
     return missing
 
 
-def sign_rescue_tx_cast(cfg: BotConfig) -> str:
+def sign_rescue_tx_cast(cfg: BotConfig) -> tuple[str, str]:
     sign_rpc = cfg.direct_rpc_url if cfg.hardening else cfg.rpc_url
     cmd = [
         "cast",
@@ -157,17 +157,38 @@ def sign_rescue_tx_cast(cfg: BotConfig) -> str:
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr.strip() or proc.stdout.strip())
     payload = json.loads(proc.stdout)
-    return payload.get("transactionHash") or payload.get("hash") or proc.stdout.strip()
+    tx_hash = payload.get("transactionHash") or payload.get("hash") or proc.stdout.strip()
+    raw = ""
+    try:
+        raw = rpc_call(sign_rpc, "eth_getRawTransactionByHash", [tx_hash]) or ""
+    except Exception:
+        pass
+    return tx_hash, raw
 
 
-def sign_rescue_tx_eth_account(cfg: BotConfig) -> str:
+def sign_rescue_tx_eth_account(cfg: BotConfig) -> tuple[str, str]:
     from eth_account import Account  # type: ignore[import-untyped]
+
+    from rescue_heuristics import RESIGN, apply_rescue_heuristics
 
     sign_rpc = cfg.direct_rpc_url if cfg.hardening else cfg.rpc_url
     acct = Account.from_key(cfg.bot_private_key)
-    nonce = int(rpc_call(sign_rpc, "eth_getTransactionCount", [cfg.bot_address, "pending"]), 16)
+
+    def _fetch_nonce() -> int:
+        return int(rpc_call(sign_rpc, "eth_getTransactionCount", [cfg.bot_address, "pending"]), 16)
+
+    nonce = RESIGN.prefetch_nonce(_fetch_nonce)
     gas_price = int(rpc_call(sign_rpc, "eth_gasPrice", []), 16)
     chain_id = int(rpc_call(sign_rpc, "eth_chainId", []), 16)
+
+    heur = apply_rescue_heuristics(
+        to=cfg.funder_address,
+        value=cfg.rescue_value_wei,
+        base_fee=gas_price * 2,
+        priority=gas_price,
+    )
+    if heur["block_duplicate"]:
+        raise RuntimeError("tx dedup ultra: duplicate calldata hash blocked")
 
     tx: dict[str, Any] = {
         "chainId": chain_id,
@@ -175,26 +196,29 @@ def sign_rescue_tx_eth_account(cfg: BotConfig) -> str:
         "to": cfg.funder_address,
         "value": cfg.rescue_value_wei,
         "gas": 21000,
-        "maxFeePerGas": gas_price * 2,
-        "maxPriorityFeePerGas": gas_price,
+        "maxFeePerGas": heur["max_fee_per_gas"] or gas_price * 2,
+        "maxPriorityFeePerGas": heur["max_priority_fee_per_gas"] or gas_price,
         "type": 2,
     }
     signed = acct.sign_transaction(tx)
     raw = signed.raw_transaction.hex()
     if not raw.startswith("0x"):
         raw = "0x" + raw
-    return rpc_call(sign_rpc, "eth_sendRawTransaction", [raw])
+    tx_hash = rpc_call(sign_rpc, "eth_sendRawTransaction", [raw])
+    return tx_hash, raw
 
 
-def sign_rescue_tx(cfg: BotConfig) -> tuple[str, str]:
+def sign_rescue_tx(cfg: BotConfig) -> tuple[str, str, str]:
     if cfg.dry_run:
-        return "dry-run", "skipped — DRY_RUN=1"
+        return "dry-run", "skipped — DRY_RUN=1", ""
 
     if shutil_which("cast"):
-        return "cast", sign_rescue_tx_cast(cfg)
+        h, raw = sign_rescue_tx_cast(cfg)
+        return "cast", h, raw
 
     try:
-        return "eth_account", sign_rescue_tx_eth_account(cfg)
+        h, raw = sign_rescue_tx_eth_account(cfg)
+        return "eth_account", h, raw
     except ImportError:
         raise RuntimeError(
             "No signer available. Install Foundry (cast) or: pip install eth-account"
@@ -287,10 +311,12 @@ def run_once(cfg: BotConfig, guard_state: Any | None = None) -> None:
             return
 
     try:
-        signer, tx_hash = sign_rescue_tx(cfg)
+        signer, tx_hash, raw_tx = sign_rescue_tx(cfg)
         event["result"] = "signed"
         event["signer"] = signer
         event["tx_hash"] = tx_hash
+        if raw_tx:
+            event["raw_tx"] = raw_tx
         log.info("Rescue tx sent via %s — hash=%s", signer, tx_hash)
     except Exception as exc:  # noqa: BLE001
         event["result"] = "error"

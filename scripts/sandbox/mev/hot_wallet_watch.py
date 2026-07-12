@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 ART = ROOT / "artifacts" / "sandbox"
 ALERTS = ART / "hot-wallet-alerts.jsonl"
+STATE = ART / "hot-wallet-watch-state.json"
 
 DEFAULT_WATCH = [
     "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
@@ -45,6 +46,57 @@ def _rpc(url: str, method: str, params: list) -> any:
 
 def pad_addr(a: str) -> str:
     return a.lower().replace("0x", "").zfill(64)
+
+
+def classify_hit(hit: dict) -> str:
+    t = hit.get("type", "")
+    if t == "usdt_out":
+        amt = hit.get("amount_usdt", 0)
+        if amt >= 10000:
+            return "large_usdt_out"
+        if amt >= 1000:
+            return "medium_usdt_out"
+        return "small_usdt_out"
+    if t == "native_pending":
+        val = hit.get("value_wei", 0)
+        if val >= 10**17:
+            return "large_native_pending"
+        return "native_pending"
+    return "unknown"
+
+
+def load_state() -> set[str]:
+    if not STATE.is_file():
+        return set()
+    try:
+        data = json.loads(STATE.read_text(encoding="utf-8"))
+        return set(data.get("seen", []))
+    except Exception:
+        return set()
+
+
+def save_state(seen: set[str]) -> None:
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    STATE.write_text(
+        json.dumps({"seen": sorted(seen)[-500:], "ts": datetime.now(timezone.utc).isoformat()}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def filter_delta(hits: list[dict], *, delta_only: bool) -> list[dict]:
+    if not delta_only:
+        return hits
+    seen = load_state()
+    new_hits: list[dict] = []
+    for h in hits:
+        key = h.get("tx") or h.get("hash") or json.dumps(h, sort_keys=True)
+        if key in seen:
+            continue
+        seen.add(key)
+        h["classifier"] = classify_hit(h)
+        new_hits.append(h)
+    save_state(seen)
+    return new_hits
 
 
 def watch_addresses() -> list[str]:
@@ -134,11 +186,17 @@ def run_watch(*, once: bool = False) -> dict:
         except Exception:
             continue
 
+    delta_only = os.environ.get("HOT_WATCH_DELTA", "0") == "1"
+    for h in all_alerts:
+        h["classifier"] = classify_hit(h)
+    all_alerts = filter_delta(all_alerts, delta_only=delta_only)
+
     payload = {
         "ts": datetime.now(timezone.utc).isoformat(),
         "rpc": used_rpc,
         "watch": watch_addresses(),
         "block_depth": blocks,
+        "delta_only": delta_only,
         "alert_count": len(all_alerts),
         "alerts": all_alerts,
     }

@@ -19,6 +19,7 @@ import subprocess
 import sys
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -274,6 +275,86 @@ def finalize_run(record: dict, print_all: bool = True) -> Path:
     return out
 
 
+    return {
+        "agent": agent,
+        "task": task,
+        "started_at": started,
+        "finished_at": utc_now(),
+        "exit_code": proc.returncode,
+        "stdout": proc.stdout.strip()[-2000:],
+        "stderr": proc.stderr.strip()[-2000:],
+        "success": proc.returncode == 0,
+    }
+
+
+def _step_name(step: dict) -> str:
+    return step.get("name") or step.get("task") or step.get("id", "step")
+
+
+def _flatten_steps(steps: list) -> list[dict]:
+    """Expand parallel blocks into a linear list for counting."""
+    flat: list[dict] = []
+    for step in steps:
+        if "parallel" in step:
+            flat.extend(step["parallel"])
+        else:
+            flat.append(step)
+    return flat
+
+
+def _deps_satisfied(step: dict, completed: set[str]) -> bool:
+    dep = step.get("depends_on")
+    if not dep:
+        return True
+    if isinstance(dep, str):
+        return dep in completed
+    return all(d in completed for d in dep)
+
+
+def _run_step_wave(
+    wave: list[dict],
+    step_env: dict,
+    *,
+    parallel: bool,
+    wave_label: str,
+) -> tuple[list[dict], bool]:
+    results: list[dict] = []
+    failed = False
+
+    if parallel and len(wave) > 1:
+        print(f"  [parallel] {wave_label} ({len(wave)} tasks)")
+        with ThreadPoolExecutor(max_workers=min(len(wave), 8)) as pool:
+            futures = {}
+            for step in wave:
+                agent = step["agent"]
+                task = step["task"]
+                name = _step_name(step)
+                futures[pool.submit(run_agent, agent, task, step_env)] = (name, step)
+
+            for fut in as_completed(futures):
+                name, step = futures[fut]
+                result = fut.result()
+                result["step_name"] = name
+                results.append(result)
+                status = "OK" if result["success"] else "FAIL"
+                print(f"    [{status}] {step['agent']} / {step['task']}")
+                if not result["success"] and not step.get("optional", False):
+                    failed = True
+    else:
+        for step in wave:
+            agent = step["agent"]
+            task = step["task"]
+            name = _step_name(step)
+            print(f"  [seq] {agent} / {task}")
+            result = run_agent(agent, task, step_env)
+            result["step_name"] = name
+            results.append(result)
+            if not result["success"] and not step.get("optional", False):
+                failed = True
+
+    return results, failed
+
+
 def run_workflow(name: str, env: dict | None = None, print_all: bool = True) -> int:
     wf_data = load_json(WORKFLOWS)
     workflows = wf_data.get("workflows", {})
@@ -290,24 +371,49 @@ def run_workflow(name: str, env: dict | None = None, print_all: bool = True) -> 
     step_env["ORCHESTRATOR_RUN_ID"] = run_id
     step_env["ORCHESTRATOR_WORKFLOW"] = name
 
-    print(f"▶ workflow={name} run_id={run_id} steps={len(wf.get('steps', []))}")
+    raw_steps = wf.get("steps", [])
+    flat = _flatten_steps(raw_steps)
+    print(f"▶ workflow={name} run_id={run_id} steps={len(flat)} blocks={len(raw_steps)}")
 
-    for i, step in enumerate(wf.get("steps", []), 1):
-        agent = step["agent"]
-        task = step["task"]
-        dep = step.get("depends_on")
-        optional = step.get("optional", False)
+    for block_idx, block in enumerate(raw_steps, 1):
+        if "parallel" in block:
+            wave = [s for s in block["parallel"] if _deps_satisfied(s, completed)]
+            if not wave:
+                continue
+            wave_results, failed = _run_step_wave(
+                wave, step_env, parallel=True, wave_label=f"block-{block_idx}"
+            )
+            steps_out.extend(wave_results)
+            for step, result in zip(wave, wave_results):
+                if result["success"] or step.get("optional"):
+                    completed.add(_step_name(step))
+            if failed:
+                record = {
+                    "run_id": run_id,
+                    "type": "workflow",
+                    "workflow": name,
+                    "started_at": steps_out[0]["started_at"] if steps_out else utc_now(),
+                    "finished_at": utc_now(),
+                    "success": False,
+                    "failed_step": next(r for r in wave_results if not r["success"]),
+                    "steps": steps_out,
+                }
+                log_path = log_run(record)
+                finalize_run(record, print_all=print_all)
+                print(json.dumps({"success": False, "run_id": run_id, "log": str(log_path)}, indent=2))
+                return 1
+            continue
 
-        if dep and dep not in completed:
-            # depends_on matches prior task name
-            pass  # sequential order already enforces deps
-
-        print(f"  [{i}/{len(wf['steps'])}] {agent} / {task}")
-        result = run_agent(agent, task, step_env)
-        steps_out.append(result)
-        completed.add(task)
-
-        if not result["success"] and not optional:
+        step = block
+        if not _deps_satisfied(step, completed):
+            print(f"  [skip] {_step_name(step)} — deps not met")
+            continue
+        wave_results, failed = _run_step_wave([step], step_env, parallel=False, wave_label="seq")
+        steps_out.extend(wave_results)
+        result = wave_results[0]
+        if result["success"] or step.get("optional", False):
+            completed.add(_step_name(step))
+        if failed:
             record = {
                 "run_id": run_id,
                 "type": "workflow",
@@ -332,6 +438,7 @@ def run_workflow(name: str, env: dict | None = None, print_all: bool = True) -> 
         "finished_at": utc_now(),
         "success": True,
         "steps": steps_out,
+        "parallel_blocks": sum(1 for s in raw_steps if "parallel" in s),
     }
     log_path = log_run(record)
     findings_path = finalize_run(record, print_all=print_all)
@@ -341,6 +448,7 @@ def run_workflow(name: str, env: dict | None = None, print_all: bool = True) -> 
         "log": str(log_path),
         "findings": str(findings_path),
         "steps": len(steps_out),
+        "parallel_blocks": record.get("parallel_blocks", 0),
     }, indent=2))
     return 0
 
@@ -390,8 +498,10 @@ def watch_queue(poll_sec: float = 2.0) -> int:
 def list_workflows() -> None:
     wf = load_json(WORKFLOWS).get("workflows", {})
     for name, spec in wf.items():
-        n = len(spec.get("steps", []))
-        print(f"{name:24} ({n} steps) — {spec.get('description', '')}")
+        n = len(_flatten_steps(spec.get("steps", [])))
+        blocks = sum(1 for s in spec.get("steps", []) if "parallel" in s)
+        tag = f" ⚡{blocks}p" if blocks else ""
+        print(f"{name:28} ({n} steps{tag}) — {spec.get('description', '')}")
 
 
 VPS_RUN_ALL = ["vps-full-readonly"]

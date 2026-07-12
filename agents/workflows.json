@@ -150,6 +150,78 @@
         {"agent": "Agent-MEV-Offensive", "task": "operator-rescue-puissant"}
       ],
       "note": "Operator-owned wallets only. Default DRY_RUN=true."
+    },
+    "field-recon-parallel": {
+      "description": "⚡ P1+P2+P3 parallel — 3x faster recon bundle",
+      "env": {
+        "WALLETS_FILE": "scripts/sandbox/field-targets-full.json",
+        "MEV_SANDBOX_ONLY": "1",
+        "FIELD_RECON_INCREMENTAL": "1",
+        "FIELD_RECON_PARALLEL": "4"
+      },
+      "steps": [
+        {"parallel": [
+          {"agent": "Agent-MEV-Offensive", "task": "field-recon-full", "name": "p1"},
+          {"agent": "Agent-MEV-Offensive", "task": "hot-wallet-watch", "name": "p2"},
+          {"agent": "Agent-Signing-Bot-Hunt", "task": "signing-bot-hunt", "name": "p3"}
+        ]}
+      ],
+      "note": "Parallel recon + hot watch + signing hunt. No serial deps."
+    },
+    "pentest-parallel": {
+      "description": "⚡ P4 async — Jenkins + Geth + signing hunt in parallel",
+      "env": {
+        "SANDBOX_MODE": "1",
+        "DRY_RUN": "true",
+        "PENTEST_FAST": "1"
+      },
+      "steps": [
+        {"parallel": [
+          {"agent": "Agent-Pentest-Jenkins", "task": "jenkins-enum", "name": "jenkins"},
+          {"agent": "Agent-Pentest-RPC", "task": "geth-enum", "name": "geth"},
+          {"agent": "Agent-Signing-Bot-Hunt", "task": "signing-bot-hunt", "name": "signing"}
+        ]}
+      ]
+    },
+    "operator-rescue-parallel": {
+      "description": "⚡ P5 rescue pre-sim + Puissant dry-run parallel",
+      "env": {
+        "DRY_RUN": "true",
+        "RESCUE_PREFETCH": "1",
+        "BOT_ADDRESS": "0x85dB346BE1d9d5D8ec4F57acf0067FbE53a6E846"
+      },
+      "steps": [
+        {"parallel": [
+          {"agent": "Agent-MEV-Offensive", "task": "operator-rescue-puissant", "name": "puissant"},
+          {"agent": "Agent-Report-06", "task": "operator-balance-check", "name": "balance", "optional": true}
+        ]}
+      ]
+    },
+    "hexstrike-7pack-fast": {
+      "description": "⚡ Full P1–P7 fast pipeline — parallel blocks, incremental recon",
+      "env": {
+        "WALLETS_FILE": "scripts/sandbox/field-targets-full.json",
+        "MEV_SANDBOX_ONLY": "1",
+        "FIELD_RECON_INCREMENTAL": "1",
+        "SANDBOX_MODE": "1",
+        "DRY_RUN": "true",
+        "PENTEST_FAST": "1",
+        "HOT_WATCH_DELTA": "1"
+      },
+      "steps": [
+        {"parallel": [
+          {"agent": "Agent-MEV-Offensive", "task": "field-recon-full", "name": "p1"},
+          {"agent": "Agent-MEV-Offensive", "task": "hot-wallet-watch", "name": "p2"},
+          {"agent": "Agent-Signing-Bot-Hunt", "task": "signing-bot-hunt", "name": "p3"}
+        ]},
+        {"parallel": [
+          {"agent": "Agent-Pentest-Jenkins", "task": "jenkins-enum", "name": "jenkins"},
+          {"agent": "Agent-Pentest-RPC", "task": "geth-enum", "name": "geth"}
+        ]},
+        {"agent": "Agent-MEV-Offensive", "task": "operator-rescue-puissant", "name": "p5", "depends_on": ["p1"]},
+        {"agent": "Agent-Battle-07", "task": "battle-suite", "name": "p6", "optional": true}
+      ],
+      "note": "One command full stack. Battle optional (local Anvil)."
     }
   }
 }
