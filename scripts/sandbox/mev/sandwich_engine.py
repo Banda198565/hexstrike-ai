@@ -11,6 +11,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 SANDBOX = ROOT / "scripts" / "sandbox"
+sys.path.insert(0, str(SANDBOX / "mev"))
+from mev_common import fund_defaults  # noqa: E402
 RPC = os.environ.get("MEV_RPC_URL", "http://127.0.0.1:8545")
 MNEMONIC = os.environ.get(
     "ANVIL_MNEMONIC", "test test test test test test test test test test test junk"
@@ -25,6 +27,14 @@ def _cast(*args: str, rpc: bool = True) -> str:
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr.strip() or proc.stdout.strip())
     return proc.stdout.strip()
+
+
+def _send(*args: str) -> str:
+    """cast send with sane gas limit (BSC fork gas estimation often fails)."""
+    extra = []
+    if "--gas-limit" not in args:
+        extra = ["--gas-limit", os.environ.get("MEV_GAS_LIMIT", "800000")]
+    return _cast("send", *args, *extra)
 
 
 def wallet(index: int) -> tuple[str, str]:
@@ -90,8 +100,7 @@ def run_sandwich(amm: str, victim_eth: str = "1ether", frontrun_eth: str = "30et
     victim_before = int(_cast("balance", victim))
 
     # Frontrun buy (high gas)
-    _cast(
-        "send",
+    _send(
         amm,
         "swapETHForTokens(uint256)",
         "0",
@@ -100,12 +109,11 @@ def run_sandwich(amm: str, victim_eth: str = "1ether", frontrun_eth: str = "30et
         "--private-key",
         attacker_key,
         "--gas-price",
-        "2gwei",
+        "3gwei",
     )
 
     # Victim swap (lower gas — simulated mempool ordering)
-    _cast(
-        "send",
+    _send(
         amm,
         "swapETHForTokens(uint256)",
         "0",
@@ -114,15 +122,14 @@ def run_sandwich(amm: str, victim_eth: str = "1ether", frontrun_eth: str = "30et
         "--private-key",
         victim_key,
         "--gas-price",
-        "1gwei",
+        "2gwei",
     )
 
     # Backrun sell all attacker tokens
     bal = _cast("call", amm, "balanceOf(address)(uint256)", attacker)
     token_in = int(bal.split("[")[0].strip())
     if token_in > 0:
-        _cast(
-            "send",
+        _send(
             amm,
             "swapTokensForETH(uint256,uint256)",
             str(token_in),
@@ -130,7 +137,7 @@ def run_sandwich(amm: str, victim_eth: str = "1ether", frontrun_eth: str = "30et
             "--private-key",
             attacker_key,
             "--gas-price",
-            "1gwei",
+            "2gwei",
         )
 
     attacker_after = int(_cast("balance", attacker))
@@ -153,12 +160,14 @@ def main() -> int:
         print("[FAIL] MEV engine is sandbox-only", file=sys.stderr)
         return 1
 
+    allowed = [c.strip() for c in os.environ.get("MEV_ALLOWED_CHAINS", "31337").split(",") if c.strip()]
     chain = _cast("chain-id")
-    if chain != "31337":
-        print(f"[FAIL] refuse non-Anvil chain_id={chain}", file=sys.stderr)
+    if chain not in allowed:
+        print(f"[FAIL] chain_id={chain} not in allowed {allowed}", file=sys.stderr)
         return 1
 
     print("[mev] deploying MockAMM...")
+    fund_defaults()
     amm = deploy_mock_amm()
     print(f"[mev] amm={amm}")
     result = run_sandwich(amm)

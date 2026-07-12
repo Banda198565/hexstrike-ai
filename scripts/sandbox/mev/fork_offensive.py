@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BSC fork offensive MEV — real pools/prices, simulation only (no mainnet submit)."""
+"""BSC fork offensive MEV — real pools/prices, mempool-driven sim (no mainnet submit)."""
 from __future__ import annotations
 
 import json
@@ -7,10 +7,10 @@ import os
 import subprocess
 import sys
 import time
-import urllib.error
-import urllib.request
 from pathlib import Path
+from typing import Any
 
+from fork_mempool import PANCAKE_ROUTER, flush_mempool, scan_mempool
 from mev_pnl import sandwich_pnl_from_reserves
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -18,10 +18,9 @@ ROOT = Path(__file__).resolve().parents[3]
 PANCAKE_PAIR = os.environ.get(
     "BSC_PAIR", "0x16b9a82891338f9ba80e2d6970fdda79d1eb0dae"
 )
-WBNB = "0xbb4CdB9CBd36B01bD1cBaEBF2e08d91793bc095c"
+WBNB = "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"
 USDT = "0x55d398326f99059fF775485246999027B3197955"
-ROUTER = "0x10ED43C718714eb63d5aB7E8d58b0B6B0a0b54852"
-RPC_TIMEOUT_SEC = float(os.environ.get("FORK_RPC_TIMEOUT_SEC", "10"))
+RPC_TIMEOUT_SEC = float(os.environ.get("FORK_RPC_TIMEOUT_SEC", "30"))
 
 
 def rpc_url() -> str:
@@ -59,6 +58,8 @@ def simulate_offensive(
     victim_bnb_wei: int,
     frontrun_bnb_wei: int,
     network_fee_wei: int,
+    *,
+    victim_tx: str | None = None,
 ) -> dict:
     sim = sandwich_pnl_from_reserves(
         reserve_eth,
@@ -69,6 +70,7 @@ def simulate_offensive(
     )
     return {
         "pair": PANCAKE_PAIR,
+        "victim_tx": victim_tx,
         "reserves_eth": sim.reserves_eth,
         "reserves_token": sim.reserves_token,
         "victim_bnb_wei": sim.victim_bnb_wei,
@@ -82,12 +84,61 @@ def simulate_offensive(
     }
 
 
+def load_mempool_candidates() -> list[dict[str, Any]]:
+    art = ROOT / "artifacts" / "sandbox"
+    for name in ("mev-bsc-mempool-scan.json", "mev-mempool-scan.json"):
+        path = art / name
+        if path.is_file():
+            data = json.loads(path.read_text(encoding="utf-8"))
+            return [c for c in data.get("candidates", []) if not c.get("error") and c.get("value_wei", 0) > 0]
+    if os.environ.get("FORK_SCAN_MEMPOOL") == "1":
+        scanned = scan_mempool(rpc_url(), chain_id=56)
+        return [c for c in scanned.get("candidates", []) if not c.get("error") and c.get("value_wei", 0) > 0]
+    return []
+
+
+def analyze_mempool_opportunities(
+    reserve_eth: int,
+    reserve_token: int,
+    candidates: list[dict[str, Any]],
+    network_fee_wei: int,
+) -> dict[str, Any]:
+    """Run sandwich PnL for each mempool victim; pick best net profit."""
+    frontrun_ratio = float(os.environ.get("FORK_FRONTRUN_RATIO", "0.2"))
+    min_frontrun = int(float(os.environ.get("FORK_FRONTRUN_BNB", "0.5")) * 1e18)
+
+    analyses: list[dict] = []
+    for cand in candidates:
+        victim_wei = int(cand.get("value_wei", 0))
+        frontrun = max(min_frontrun, int(victim_wei * frontrun_ratio))
+        sim = simulate_offensive(
+            reserve_eth,
+            reserve_token,
+            victim_wei,
+            frontrun,
+            network_fee_wei,
+            victim_tx=cand.get("hash"),
+        )
+        analyses.append({"mempool": cand, "sandwich_sim": sim})
+
+    best = None
+    for row in analyses:
+        sim = row["sandwich_sim"]
+        if sim["should_execute"] and (best is None or sim["net_profit_wei"] > best["sandwich_sim"]["net_profit_wei"]):
+            best = row
+
+    return {
+        "candidate_count": len(candidates),
+        "analyses": analyses,
+        "best_opportunity": best,
+    }
+
+
 def main() -> int:
     victim = int(float(os.environ.get("FORK_VICTIM_BNB", "5")) * 1e18)
     frontrun = int(float(os.environ.get("FORK_FRONTRUN_BNB", "1")) * 1e18)
     network_fee = int(os.environ.get("FORK_NETWORK_FEE_WEI", str(210_000 * 3_000_000_000)))
 
-    # Synthetic zero-spread test (no RPC)
     if os.environ.get("FORK_SYNTHETIC_ZERO_SPREAD") == "1":
         r = int(1e21)
         sim = simulate_offensive(r, r, victim, frontrun, network_fee_wei=network_fee * 100)
@@ -125,27 +176,47 @@ def main() -> int:
         print(json.dumps(payload, indent=2))
         return 0
 
-    sim = simulate_offensive(r0, r1, victim, frontrun, network_fee)
+    mempool = load_mempool_candidates()
+    mempool_report = None
+    sandwich_sim = None
+
+    if mempool:
+        print(f"[fork] mempool-driven analysis ({len(mempool)} candidates)...")
+        mempool_report = analyze_mempool_opportunities(r0, r1, mempool, network_fee)
+        best = mempool_report.get("best_opportunity")
+        if best:
+            sandwich_sim = best["sandwich_sim"]
+        elif mempool_report["analyses"]:
+            sandwich_sim = mempool_report["analyses"][0]["sandwich_sim"]
+    else:
+        print("[fork] no mempool victims — static reserve sim")
+        sandwich_sim = simulate_offensive(r0, r1, victim, frontrun, network_fee)
 
     payload = {
         "chain_id": 56,
         "rpc": rpc_url(),
-        "router": ROUTER,
+        "router": PANCAKE_ROUTER,
         "wbnb": WBNB,
         "usdt": USDT,
         "pair": PANCAKE_PAIR,
         "reserves_raw": [r0, r1],
-        "sandwich_sim": sim,
-        "skipped": not sim["should_execute"],
+        "sandwich_sim": sandwich_sim,
+        "mempool": mempool_report,
+        "mempool_candidate_count": len(mempool),
+        "skipped": not sandwich_sim["should_execute"],
         "builder_path": "puissant-builder.48.club (BSC)",
-        "mode": "simulation_only",
+        "mode": "mempool_simulation_only" if mempool else "simulation_only",
         "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
 
     out = ROOT / "artifacts" / "sandbox" / "mev-bsc-fork-result.json"
     out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(payload, indent=2))
-    return 0 if sim["should_execute"] else 0  # skip is success exit for fork sim
+
+    if os.environ.get("FORK_FLUSH_MEMPOOL") == "1":
+        flush_mempool()
+
+    return 0
 
 
 if __name__ == "__main__":

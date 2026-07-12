@@ -11,4 +11,6 @@ export MEV_RPC_URL="http://127.0.0.1:${BSC_FORK_PORT:-8545}"
 export MEV_SANDBOX_ONLY=1
 export MEV_ALLOWED_CHAINS="56"
 
-python3 "$SANDBOX/mev/fork_offensive.py"
+FORK_SEED_MEMPOOL=1 FORK_SEED_COUNT=2 python3 "$SANDBOX/mev/mempool_scanner.py"
+python3 "$SANDBOX/mev/mempool_scanner.py"
+FORK_SCAN_MEMPOOL=1 FORK_FLUSH_MEMPOOL=1 python3 "$SANDBOX/mev/fork_offensive.py"

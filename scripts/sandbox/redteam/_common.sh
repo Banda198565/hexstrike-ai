@@ -8,6 +8,7 @@ ROOT="$(cd "$SANDBOX/../.." && pwd)"
 # Pin local Anvil — mainnet RPC_URL in cloud .env must not leak here
 RPC="http://127.0.0.1:${ANVIL_PORT:-8545}"
 MNEMONIC="${ANVIL_MNEMONIC:-test test test test test test test test test test test junk}"
+REDTEAM_CHAIN_ID="${REDTEAM_CHAIN_ID:-31337}"
 EVENTS="$ROOT/artifacts/sandbox/dummy-bot-events.jsonl"
 ALERTS="$ROOT/artifacts/sandbox/anomaly-alerts.jsonl"
 REPORT="$ROOT/artifacts/sandbox/redteam-report.json"

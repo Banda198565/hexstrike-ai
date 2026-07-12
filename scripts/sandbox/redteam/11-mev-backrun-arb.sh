@@ -9,12 +9,12 @@ require_tools
 echo "=== REDTEAM 11: MEV backrun arbitrage ==="
 
 CHAIN="$(cast chain-id --rpc-url "$RPC")"
-if [[ "$CHAIN" != "31337" ]]; then
-  log_result "11-mev-backrun-arb" "INCONCLUSIVE" "refuse non-Anvil chain_id=$CHAIN"
+if [[ "$CHAIN" != "$REDTEAM_CHAIN_ID" ]]; then
+  log_result "11-mev-backrun-arb" "INCONCLUSIVE" "refuse chain_id=$CHAIN want=$REDTEAM_CHAIN_ID"
   exit 0
 fi
 
-export MEV_RPC_URL="$RPC" MEV_SANDBOX_ONLY=1
+export MEV_RPC_URL="$RPC" MEV_SANDBOX_ONLY=1 MEV_ALLOWED_CHAINS="${MEV_ALLOWED_CHAINS:-$REDTEAM_CHAIN_ID}"
 
 if python3 "$SANDBOX/mev/backrun_engine.py" > /tmp/mev-11.log 2>&1; then
   profit="$(python3 -c "import json;print(json.load(open('$ROOT/artifacts/sandbox/mev-backrun-result.json'))['profit_wei'])")"

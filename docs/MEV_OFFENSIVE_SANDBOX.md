@@ -29,10 +29,13 @@ Reference: [MEV Explained 2026](https://mintarex.com/en/blog/mev-maximum-extract
 hexstrike-agent mev -v
 hexstrike-agent mev full -v
 
-# BSC fork — real Pancake WBNB/USDT reserves, sim-only PnL
+# BSC fork — real Pancake WBNB/USDT reserves, mempool-driven sim-only PnL
 hexstrike-agent mev fork -v
 # or:
 ./scripts/sandbox/run-bsc-fork-mev.sh
+
+# Variant D — full BSC fork stress (mempool + real pools + 08–11 on fork)
+./scripts/sandbox/run-bsc-fork-stress.sh
 
 # Battle suite (all 11 attacks)
 hexstrike-agent battle -v
@@ -46,6 +49,8 @@ hexstrike-agent battle -v
 | `mev-jit-result.json` | JIT fee share vs gas |
 | `mev-backrun-result.json` | Cross-pool arb profit |
 | `mev-bsc-fork-result.json` | Real reserve sandwich sim |
+| `mev-bsc-mempool-scan.json` | Pending Pancake swaps on fork |
+| `mev-bsc-fork-stress-report.json` | Variant D pass/fail matrix |
 
 ## Chain guards
 
@@ -75,6 +80,24 @@ MEV_STRESS_SKIP_UNIT=1 bash scripts/sandbox/run-mev-stress.sh
 | JIT skip gate | Classifier blocks mint/burn without `JIT_FORCE_DEMO` |
 | Redteam 08–11 | Gas race ordering + engine re-runs on same Anvil session |
 | `mev-stress-report.json` | Unified pass/fail matrix |
+
+### Variant D — BSC fork mempool (realistic offensive profile)
+
+```bash
+./scripts/sandbox/run-bsc-fork-stress.sh
+```
+
+| Step | What happens |
+|------|----------------|
+| `setup-bsc-fork.sh` | Anvil fork of BSC mainnet (`chain_id=56`) |
+| `fork_mempool_seed` | Queue pending Pancake BNB→USDT swaps |
+| `mempool_scanner.py` | `txpool_content` + router filter |
+| `fork_offensive.py` | Real WBNB/USDT reserves + per-victim PnL |
+| Mock engines | `MockAMM` / `MockCLAMM` / `MockRouter` on fork |
+| Redteam 09–11 | Same attacks with `REDTEAM_CHAIN_ID=56` (08 = real-pool `fork_offensive`) |
+
+Still **simulation only** — no mainnet bundle submission.
+
 
 
 ```

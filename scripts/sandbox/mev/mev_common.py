@@ -35,6 +35,8 @@ def cast(*args: str, rpc: bool = True) -> str:
     cmd = ["cast", *args]
     if rpc:
         cmd.extend(["--rpc-url", rpc_url()])
+    if args and args[0] == "send" and "--gas-limit" not in args:
+        cmd.extend(["--gas-limit", os.environ.get("MEV_GAS_LIMIT", "800000")])
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr.strip() or proc.stdout.strip())

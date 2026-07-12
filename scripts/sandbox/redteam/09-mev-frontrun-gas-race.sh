@@ -9,8 +9,8 @@ require_tools
 echo "=== REDTEAM 09: MEV frontrun gas race ==="
 
 CHAIN="$(cast chain-id --rpc-url "$RPC")"
-if [[ "$CHAIN" != "31337" ]]; then
-  log_result "09-mev-frontrun-gas-race" "INCONCLUSIVE" "refuse non-Anvil chain_id=$CHAIN"
+if [[ "$CHAIN" != "$REDTEAM_CHAIN_ID" ]]; then
+  log_result "09-mev-frontrun-gas-race" "INCONCLUSIVE" "refuse chain_id=$CHAIN want=$REDTEAM_CHAIN_ID"
   exit 0
 fi
 

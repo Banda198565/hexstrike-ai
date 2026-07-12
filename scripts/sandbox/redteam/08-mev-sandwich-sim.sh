@@ -9,13 +9,14 @@ require_tools
 echo "=== REDTEAM 08: MEV sandwich simulation (MockAMM) ==="
 
 CHAIN="$(cast chain-id --rpc-url "$RPC")"
-if [[ "$CHAIN" != "31337" ]]; then
-  log_result "08-mev-sandwich-sim" "INCONCLUSIVE" "refuse non-Anvil chain_id=$CHAIN"
+if [[ "$CHAIN" != "$REDTEAM_CHAIN_ID" ]]; then
+  log_result "08-mev-sandwich-sim" "INCONCLUSIVE" "refuse chain_id=$CHAIN want=$REDTEAM_CHAIN_ID"
   exit 0
 fi
 
 export MEV_RPC_URL="$RPC"
 export MEV_SANDBOX_ONLY=1
+export MEV_ALLOWED_CHAINS="${MEV_ALLOWED_CHAINS:-$REDTEAM_CHAIN_ID}"
 
 if ! python3 "$SANDBOX/mev/sandwich_engine.py" > /tmp/mev-08.log 2>&1; then
   log_result "08-mev-sandwich-sim" "INCONCLUSIVE" "sandwich_engine failed — see /tmp/mev-08.log"

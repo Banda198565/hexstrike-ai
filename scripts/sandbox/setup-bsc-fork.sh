@@ -16,10 +16,13 @@ fi
 
 # Stop pure Anvil if running on same port
 "$ROOT/scripts/sandbox/stop-anvil.sh" 2>/dev/null || true
+"$ROOT/scripts/sandbox/stop-bsc-fork.sh" 2>/dev/null || true
 if [[ -f "$PID_FILE" ]]; then
   kill "$(cat "$PID_FILE")" 2>/dev/null || true
   rm -f "$PID_FILE"
 fi
+pkill -f "anvil.*--port ${PORT}" 2>/dev/null || true
+sleep 2
 
 echo "[start] BSC fork on http://${HOST}:${PORT} upstream=$UPSTREAM"
 FORK_ARGS=(--host "$HOST" --port "$PORT" --chain-id 56 --fork-url "$UPSTREAM")
