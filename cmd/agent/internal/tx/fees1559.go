@@ -115,6 +115,29 @@ func EnsureReplacementFees(prev, candidate *FeeSuggestion) *FeeSuggestion {
 	return out
 }
 
+// MaxFeeSuggestion returns per-cap max of two fee envelopes.
+func MaxFeeSuggestion(a, b *FeeSuggestion) *FeeSuggestion {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	maxCap := func(x, y *big.Int) *big.Int {
+		if x == nil || x.Sign() <= 0 {
+			return new(big.Int).Set(y)
+		}
+		if y == nil || y.Sign() <= 0 {
+			return new(big.Int).Set(x)
+		}
+		if x.Cmp(y) >= 0 {
+			return new(big.Int).Set(x)
+		}
+		return new(big.Int).Set(y)
+	}
+	return &FeeSuggestion{GasFeeCap: maxCap(a.GasFeeCap, b.GasFeeCap), GasTipCap: maxCap(a.GasTipCap, b.GasTipCap)}
+}
+
 // BumpFeeSuggestion scales both caps by (100+bumpPct)/100 for relay gas escalation.
 // Deprecated: use BumpFeeSuggestionStrict for mempool replacements.
 func BumpFeeSuggestion(base *FeeSuggestion, bumpPct int) *FeeSuggestion {

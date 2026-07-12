@@ -55,9 +55,16 @@ func ResignRescueTx(
 	useFees := fees
 	if useFees == nil {
 		useFees = txpkg.BumpFeeSuggestionStrict(prevFees, bumpPct)
-	} else {
-		useFees = txpkg.EnsureReplacementFees(prevFees, useFees)
 	}
+	// TOCTOU: refresh aggressive fees from RPC immediately before re-sign.
+	if client != nil {
+		fc := txpkg.NewFeeCalculator(client, 120)
+		if fresh, err := fc.SuggestAggressiveFees(ctx); err == nil {
+			freshBumped := txpkg.BumpFeeSuggestionStrict(fresh, bumpPct)
+			useFees = txpkg.MaxFeeSuggestion(useFees, freshBumped)
+		}
+	}
+	useFees = txpkg.EnsureReplacementFees(prevFees, useFees)
 	raw, _, err = signRescueTxWithNonce(chainID, key, nonce, to, value, useFees)
 	return raw, useFees, err
 }
