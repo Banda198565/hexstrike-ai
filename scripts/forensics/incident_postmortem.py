@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "artifacts" / "forensics" / "incident-total-compromise.json"
+CONCLUSION_MD = ROOT / "artifacts" / "forensics" / "incident-conclusion.md"
 MD = ROOT / "docs" / "forensics" / "INCIDENT-TOTAL-COMPROMISE-POSTMORTEM.md"
 
 HOT = "0x4943f5e7f4e450d48ae82026163ecde8a52c53da"
@@ -38,6 +39,14 @@ payload = {
     "ir_phases": ["containment", "asset_rescue", "eradication", "recovery"],
     "verdict_actual": "Perimeter exposed; key not confirmed leaked; drain blocked",
     "verdict_worst_case": "Infrastructure unfit; keys burned; greenfield + new payout rail required",
+    "conclusion": {
+        "executive_summary": "Infrastructure critically exposed but not fully breached as of 2026-07-12. Hot wallet is payroll disbursement rail. Forensics CLOSED. Worst-case IR plan READY.",
+        "actual_verdict": "Preventive containment required; no unauthorized withdrawal confirmed; private key not obtained.",
+        "worst_case_verdict": "Total compromise: burn 0x4943..., greenfield rebuild, Vault signing, new payout rail.",
+        "case_status_forensics": "CLOSED",
+        "case_status_ir": "PREVENTIVE_MONITORING",
+        "trigger_worst_case": ["unauthorized_signed_tx", "key_exfil_confirmed", "anomalous_outflow"],
+    },
     "markdown_source": str(MD.relative_to(ROOT)),
     "related_artifacts": [
         "artifacts/forensics/hot-wallet-dossier.json",

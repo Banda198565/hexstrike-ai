@@ -155,11 +155,97 @@
 
 ---
 
-## 7. Заключение для инцидент-лога
+## 7. ВЫВОД (Executive Conclusion)
 
-> **Worst-case вердикт:** При подтверждённой полной компрометации инфраструктура **непригодна** к дальнейшей эксплуатации без greenfield rebuild. Криптографические ключи hot wallet считаются **скомпрометированными**. Требуется переход на **резервный контур выплат** (новый адрес + Vault signing).
->
-> **Actual-state вердикт (2026-07-12):** Perimeter **exposed**, payroll rail **identified**, private key **not confirmed leaked**, drain **not executed**. Рекомендуется **превентивный** containment до materialization worst-case.
+### 7.1 Резюме для руководства
+
+По результатам авторизованного pentest (2026-07-08), read-only forensics (2026-07-12) и моделирования сценария **Total Compromise** установлено следующее.
+
+**Объект:** операционный hot wallet `0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA` — payroll/disbursement rail (~$2.1M multichain, ~977 recipients/day), не drainer/fraud kit.
+
+**Фактическое состояние на 2026-07-12:**
+- Периметр **скомпрометирован на уровне инфраструктуры** (Jenkins RCE, open BSC RPC, passive mempool intel).
+- **Криптографический ущерб не materialized:** private key hot wallet **не получен**, несанкционированный drain **не выполнен**.
+- Forensics pipeline **закрыт:** payroll/OTC hypothesis — **MEDIUM-HIGH**, case status — **CLOSED**.
+
+**Worst-case (при эскалации до полной компрометации signing service):**
+- Hot wallet и вся связанная CI/RPC инфраструктура считаются **totally compromised**.
+- Операционный адрес `0x4943...` **подлежит выводу из эксплуатации** (burn).
+- Обязателен **greenfield rebuild** + **резервный контур выплат**.
+
+---
+
+### 7.2 Выводы по направлениям
+
+| Направление | Вывод |
+|-------------|-------|
+| **Attack surface** | Критический: публичный Jenkins + открытый JSON-RPC создают сквозной путь к signing layer |
+| **Business impact (actual)** | Exposure ~$2.1M treasury **без** подтверждённой кражи; reputational + regulatory risk при утечке KYC trail (Binance funding) |
+| **Business impact (worst-case)** | Total loss hot wallet liquidity + останов payroll rail + incident response costs |
+| **Root cause** | Отсутствие network segmentation, secrets in CI, signing key proximity to compromised hosts |
+| **Attribution** | Legal entity **UNIDENTIFIED**; behavioral class — payment processor / payroll |
+| **Containment status** | **NOT EXECUTED** (preventive phase); IR plan **READY** |
+
+---
+
+### 7.3 Матрица решений (Disposition)
+
+| Сценарий | Решение | Срок |
+|----------|---------|------|
+| **Actual (сейчас)** | Превентивный hardening: закрыть Jenkins WAN, RPC auth, rotate CI secrets | 0–72 ч |
+| **Actual (сейчас)** | Продолжить read-only monitor hot wallet (`autonomous_monitor.py`) | ongoing |
+| **Worst-case trigger** | Power-off `51.250.97.223` + `51.222.42.220`, revoke all tokens | немедленно |
+| **Worst-case trigger** | Asset rescue → cold wallet (только легитимный владелец, clean RPC) | 4–24 ч |
+| **Worst-case trigger** | Burn `0x4943...`, greenfield + Vault signing + new hot wallet | 1–7 дней |
+
+**Trigger worst-case IR:** любое из событий — unauthorized signed tx с `0x4943...`, confirmed key exfil, anomalous outflow > threshold.
+
+---
+
+### 7.4 Итоговый вердикт (формулировка для инцидент-лога)
+
+**При фактическом состоянии (2026-07-12):**
+
+> Инфраструктура crypto-ops **критически exposed**, но **не признана fully breached**. Hot wallet классифицирован как **payroll disbursement rail**. Private key **не подтверждён как скомпрометированный**. Несанкционированный вывод средств **не зафиксирован**. Дело forensics — **закрыто**. Требуется **превентивный containment** до наступления worst-case.
+
+**При сценарии Total Compromise:**
+
+> Инфраструктура **признана непригодной** к дальнейшей эксплуатации. Криптографические ключи hot wallet **считаются скомпрометированными**. Адрес `0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA` **исключается** из операционного цикла. Выполнить containment → asset rescue (при наличии ликвидности) → greenfield deployment → миграция payroll rail на новый контур.
+
+---
+
+### 7.5 Обязательные действия (Action Items)
+
+| Priority | Action | Owner | Mac | Server |
+|----------|--------|-------|-----|--------|
+| P0 | Закрыть Jenkins `:8080` из WAN | Infra | — | Yandex console |
+| P0 | Закрыть/авторизовать RPC `:8545` | Infra | — | OVH firewall |
+| P1 | Rotate Jenkins + GitHub/GitLab secrets | SecOps | PAT revoke | CI credential purge |
+| P1 | Vault/KMS для signing (raw key off CI) | Eng | design | deploy |
+| P2 | Continuous mempool monitor hot wallet | HexStrike | `autonomous_monitor.py` | `autonomous_monitor.py` |
+| P2 | Responsible disclosure Jenkins CVE pack | SecOps | `jenkins-cve-report.json` | same |
+
+---
+
+### 7.6 Статус дела
+
+| Поле | Значение |
+|------|----------|
+| Case ID | `HEX-2026-07-12-TOTAL-COMPROMISE` |
+| Forensics phase | **CLOSED** |
+| IR phase (actual) | **PREVENTIVE / MONITORING** |
+| IR phase (worst-case plan) | **DOCUMENTED — READY** |
+| Next review | При первом unauthorized tx или key exfil alert |
+
+---
+
+### 7.7 Подпись (placeholder)
+
+| Роль | ФИО | Дата | Подпись |
+|------|-----|------|---------|
+| Incident Commander | _______________ | 2026-07-12 | _______ |
+| Forensics Lead | HexStrike Agent | 2026-07-12 | auto |
+| Client Representative | _______________ | _________ | _______ |
 
 ---
 
