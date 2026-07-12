@@ -54,6 +54,12 @@ EVA_ALERT = Path("/Volumes/Eva/alerts/latest-alert.json")
 STATE_FILE = ROOT / "artifacts" / "monitor" / "autonomous_state.json"
 PENDING_ACTION = ROOT / "artifacts" / "pending_action.json"
 
+HOT_WALLET = normalize_addr(
+    os.environ.get("TARGET_WALLET", "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA")
+)
+HEARTBEAT_EVERY_POLLS = int(os.environ.get("MONITOR_HEARTBEAT_POLLS", "30"))
+BLOCK_SCAN_EVERY_POLLS = int(os.environ.get("MONITOR_BLOCK_SCAN_POLLS", "60"))
+
 # Known bridge/sink addresses from prior investigations
 SINK_KEYWORDS = ("bridge", "rhino", "sink", "offramp", "swap")
 HIGH_RISK_LABELS = ("bridge", "sink", "rhino", "hot_wallet", "authority")
@@ -350,11 +356,19 @@ def write_alert(alert: dict[str, Any]) -> None:
                 "pool": alert.get("pool"),
             },
             "rag_context": alert.get("rag_hits", [])[:2],
-            "recommended_actions": [
-                "Review alert in artifacts/alerts.log",
-                "Cross-check RAG snippets against master_context.json",
-                "Manual decision required — no auto-broadcast",
-            ],
+            "recommended_actions": (
+                [
+                    "IR TRIGGER: verify hot wallet outflow authorization",
+                    "If unauthorized: execute rescue owner protocol (INCIDENT-CONCLUSION.md)",
+                    "Contain Jenkins/RPC/signing service immediately",
+                ]
+                if alert.get("ir_trigger")
+                else [
+                    "Review alert in artifacts/alerts.log",
+                    "Cross-check RAG snippets against master_context.json",
+                    "Manual decision required — no auto-broadcast",
+                ]
+            ),
         }
         PENDING_ACTION.write_text(json.dumps(pending, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
@@ -391,6 +405,34 @@ def save_state(state: dict[str, Any]) -> None:
     STATE_FILE.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 
+def _tx_outflow_value_wei(tx: dict[str, Any]) -> int:
+    raw = tx.get("value") or "0x0"
+    if isinstance(raw, int):
+        return max(raw, 0)
+    if isinstance(raw, str):
+        try:
+            return int(raw, 16)
+        except ValueError:
+            return 0
+    return 0
+
+
+def _tx_has_contract_call(tx: dict[str, Any]) -> bool:
+    inp = (tx.get("input") or "0x").strip().lower()
+    return len(inp) > 2
+
+
+def is_hot_wallet_outflow(tx: dict[str, Any]) -> bool:
+    """Pending tx signed from hot wallet with value or contract call (IR trigger candidate)."""
+    frm = normalize_addr(tx.get("from"))
+    to = normalize_addr(tx.get("to"))
+    if frm != HOT_WALLET:
+        return False
+    if not to or to == frm:
+        return False
+    return _tx_outflow_value_wei(tx) > 0 or _tx_has_contract_call(tx)
+
+
 def process_transaction(
     tx: dict[str, Any],
     watched: set[str],
@@ -401,6 +443,29 @@ def process_transaction(
     tx_hash = (tx.get("hash") or "").lower()
     if ignored_hashes and tx_hash in ignored_hashes:
         return None
+
+    if is_hot_wallet_outflow(tx):
+        return {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "alert_type": "HOT_WALLET_OUTFLOW",
+            "severity": SEVERITY_CRITICAL,
+            "ir_trigger": True,
+            "message": (
+                f"IR TRIGGER: pending outflow from hot wallet {HOT_WALLET} "
+                f"-> {tx.get('to')} (review immediately; possible unauthorized signing)"
+            ),
+            "rpc": rpc_url,
+            "pool": tx.get("pool", "pending"),
+            "hash": tx.get("hash"),
+            "from": tx.get("from"),
+            "to": tx.get("to"),
+            "value": tx.get("value"),
+            "context_hits": [f"from:{HOT_WALLET}"],
+            "high_risk": True,
+            "risk_reason": "hot_wallet_pending_outflow",
+            "unknown_pattern": True,
+            "rag_hits": [],
+        }
 
     hits = tx_context_hits(tx, watched)
     if not hits:
@@ -459,6 +524,37 @@ def _fetch_txpool(config_path: Path, endpoints: list[str], timeout: float) -> tu
     return rpc_with_fallback(endpoints, "txpool_content", [], timeout=timeout)
 
 
+def _scan_latest_block_hot_outflows(
+    config_path: Path, endpoints: list[str], timeout: float, seen_hashes: set[str]
+) -> list[dict[str, Any]]:
+    """Fallback: mined txs from hot wallet (Flashbots/private mempool blind spot)."""
+    try:
+        if os.environ.get("HEXSTRIKE_STEALTH", "1") != "0":
+            client = StealthRpcClient(config_path)
+            _, block_resp = client.call("eth_getBlockByNumber", ["latest", True], timeout=timeout)
+        else:
+            _, block_resp = rpc_with_fallback(
+                endpoints, "eth_getBlockByNumber", ["latest", True], timeout=timeout
+            )
+        block = (block_resp.get("result") or {}) if isinstance(block_resp, dict) else {}
+        out: list[dict[str, Any]] = []
+        for tx in block.get("transactions") or []:
+            if not isinstance(tx, dict):
+                continue
+            tx_hash = (tx.get("hash") or "").lower()
+            if not tx_hash or tx_hash in seen_hashes:
+                continue
+            if normalize_addr(tx.get("from")) != HOT_WALLET:
+                continue
+            tx_copy = dict(tx)
+            tx_copy["pool"] = "mined_latest_block"
+            out.append(tx_copy)
+        return out
+    except Exception as exc:  # noqa: BLE001
+        print(f"[block-scan] WARN: {exc}")
+        return []
+
+
 def run_monitor(
     config_path: Path,
     poll_interval: float = 1.0,
@@ -495,6 +591,8 @@ def run_monitor(
     print(f"[monitor] Desktop alert: {DESKTOP_ALERT}")
     stealth_on = os.environ.get("HEXSTRIKE_STEALTH", "1") != "0"
     print(f"[monitor] Stealth transport: {'on' if stealth_on else 'off'}")
+    print(f"[monitor] HOT_WALLET IR trigger: {HOT_WALLET}")
+    print(f"[monitor] Heartbeat every {HEARTBEAT_EVERY_POLLS} polls | block-scan every {BLOCK_SCAN_EVERY_POLLS} polls")
 
     start = time.time()
     polls = 0
@@ -508,9 +606,11 @@ def run_monitor(
         state = process_feedback_file(state)
         ignored_hashes = load_feedback_ignored(state)
 
+        poll_started = time.time()
         try:
             active_rpc, resp = _fetch_txpool(config_path, endpoints, timeout)
             content = resp.get("result") or {}
+            poll_latency_ms = round((time.time() - poll_started) * 1000, 1)
         except Exception as exc:
             print(f"[warn] RPC error (poll {polls}): {exc} — reconnect in {RECONNECT_DELAY}s")
             time.sleep(RECONNECT_DELAY)
@@ -518,7 +618,23 @@ def run_monitor(
                 break
             continue
 
-        for tx in iter_txpool_txs(content):
+        if polls == 1 or polls % HEARTBEAT_EVERY_POLLS == 0:
+            pending_n = sum(
+                1 for _ in iter_txpool_txs(content)
+            )
+            print(
+                f"[heartbeat] poll={polls} rpc={active_rpc} "
+                f"latency_ms={poll_latency_ms} pending_txs={pending_n} "
+                f"seen_total={txs_seen} alerts={alerts_count}"
+            )
+
+        block_txs: list[dict[str, Any]] = []
+        if polls % BLOCK_SCAN_EVERY_POLLS == 0:
+            block_txs = _scan_latest_block_hot_outflows(
+                config_path, endpoints, timeout, seen_hashes
+            )
+
+        for tx in list(iter_txpool_txs(content)) + block_txs:
             tx_hash = tx.get("hash")
             if not tx_hash or tx_hash in seen_hashes:
                 continue
