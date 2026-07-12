@@ -1,0 +1,24 @@
+services:
+  osint-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hexstrike-osint-agent:latest
+    container_name: hexstrike-osint-agent
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      ARKHAM_API_KEY: ${ARKHAM_API_KEY:-}
+      GETBLOCK_API_KEY: ${GETBLOCK_API_KEY:-}
+      SHODAN_API_KEY: ${SHODAN_API_KEY:-}
+      WALLET_TARGET: ${WALLET_TARGET:-0x730ea0231808f42a20f8921ba7fbc788226768f5}
+      IP_TARGET: ${IP_TARGET:-51.250.97.223}
+      WALLET_INTERVAL: ${WALLET_INTERVAL:-15s}
+      IP_INTERVAL: ${IP_INTERVAL:-30s}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
