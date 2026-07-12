@@ -26,7 +26,10 @@ echo "=== REVERT FLOW E2E (Anvil) ==="
 require_tools
 
 # Local Anvil only — never mainnet
+"$SANDBOX/stop-anvil.sh" 2>/dev/null || true
 "$SANDBOX/start-anvil.sh"
+sleep 1
+RPC="http://127.0.0.1:${ANVIL_PORT:-8545}"
 "$SANDBOX/setup-anvil-env.sh" 2>/dev/null || true
 ENV_FILE="${SANDBOX_ENV:-$("$SANDBOX/resolve-anvil-env.sh")}"
 # shellcheck disable=SC1090

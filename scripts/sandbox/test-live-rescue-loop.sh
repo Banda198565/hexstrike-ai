@@ -22,6 +22,9 @@ require_tools
 "$SANDBOX/start-anvil.sh"
 sleep 1
 
+# Force local Anvil — cloud/mainnet .env must not leak into cheatcode RPC calls
+RPC="http://127.0.0.1:${ANVIL_PORT:-8545}"
+
 MNEMONIC="${ANVIL_MNEMONIC:-test test test test test test test test test test test junk}"
 BOT_INDEX="${ANVIL_BOT_INDEX:-1}"
 BOT="$(cast wallet address --mnemonic "$MNEMONIC" --mnemonic-index "$BOT_INDEX")"
