@@ -26,9 +26,16 @@
         "Agent-Graph-01",
         "Agent-Infra-01",
         "Agent-Contract-02",
+        "Agent-Contract-03",
+        "Agent-Contract-04",
         "Agent-Vuln-05",
         "Agent-Report-06",
-        "Agent-Battle-07"
+        "Agent-Battle-07",
+        "Agent-Malware-08",
+        "Agent-Malware-09",
+        "Agent-Malware-10",
+        "Agent-Malware-11",
+        "Agent-Malware-12"
       ]
     },
     "Agent-OSINT-03": {
@@ -189,6 +196,83 @@
           "script": "scripts/agents/agent_report_vps_master.py",
           "output": "artifacts/vps-master-report.json",
           "include": ["all-artifacts", "orchestrator-latest", "highlights"]
+        }
+      }
+    },
+    "Agent-Malware-08": {
+      "role": "malware-forensics",
+      "description": "TRX Drainer Tool static IOC extraction (read-only)",
+      "tasks": {
+        "static-ioc-extract": {
+          "script": "scripts/agents/agent_malware_08.py",
+          "output": "artifacts/trx-drainer-tool-iocs.json",
+          "constraints": ["read-only", "static-analysis"]
+        }
+      }
+    },
+    "Agent-Malware-09": {
+      "role": "malware-forensics",
+      "description": "EVM drainer deploy kit static IOC extraction (read-only)",
+      "tasks": {
+        "static-ioc-extract": {
+          "script": "scripts/agents/agent_malware_09.py",
+          "output": "artifacts/evm-drainer-iocs.json",
+          "constraints": ["read-only", "static-analysis"]
+        }
+      }
+    },
+    "Agent-Malware-10": {
+      "role": "malware-forensics",
+      "description": "ApeTerminal Next.js drainer static IOC extraction (read-only)",
+      "tasks": {
+        "static-ioc-extract": {
+          "script": "scripts/agents/agent_malware_10.py",
+          "output": "artifacts/apeterminal-main-iocs.json",
+          "constraints": ["read-only", "static-analysis"]
+        }
+      }
+    },
+    "Agent-Malware-11": {
+      "role": "malware-forensics",
+      "description": "Solana Drainer Tool static IOC extraction (read-only)",
+      "tasks": {
+        "static-ioc-extract": {
+          "script": "scripts/agents/agent_malware_11.py",
+          "output": "artifacts/solana-drainer-tool-iocs.json",
+          "constraints": ["read-only", "static-analysis"]
+        }
+      }
+    },
+    "Agent-Malware-12": {
+      "role": "malware-forensics",
+      "description": "Vanilla Drainer OSINT IOC extraction (read-only)",
+      "tasks": {
+        "osint-ioc-extract": {
+          "script": "scripts/agents/agent_malware_12.py",
+          "output": "artifacts/vanilla-drainer-iocs.json",
+          "constraints": ["read-only", "osint-only"]
+        }
+      }
+    },
+    "Agent-Contract-03": {
+      "role": "contract-forensics",
+      "description": "EIP-2612 permit farming static analysis (read-only)",
+      "tasks": {
+        "permit-farming-analyze": {
+          "script": "scripts/agents/agent_contract_03.py",
+          "output": "artifacts/permit-farming-eip2612-iocs.json",
+          "constraints": ["read-only", "static-analysis"]
+        }
+      }
+    },
+    "Agent-Contract-04": {
+      "role": "contract-forensics",
+      "description": "CREATE2 / EIP-1167 factory pipeline analysis (read-only)",
+      "tasks": {
+        "create2-analyze": {
+          "script": "scripts/agents/agent_contract_04.py",
+          "output": "artifacts/create2-drainer-iocs.json",
+          "constraints": ["read-only", "static-analysis"]
         }
       }
     }

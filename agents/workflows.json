@@ -113,6 +113,62 @@
         {"agent": "Agent-Report-06", "task": "generate-defensive-checklist"},
         {"agent": "Agent-Report-06", "task": "generate-vps-master-report"}
       ]
+    },
+    "trx-drainer-forensics": {
+      "description": "TRX Drainer Tool static IOC + master report bundle",
+      "mode": "forensics",
+      "steps": [
+        {"agent": "Agent-Malware-08", "task": "static-ioc-extract"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "static-ioc-extract"}
+      ]
+    },
+    "evm-drainer-forensics": {
+      "description": "EVM drainer deploy kit static IOC + master report",
+      "mode": "forensics",
+      "steps": [
+        {"agent": "Agent-Malware-09", "task": "static-ioc-extract"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "static-ioc-extract"}
+      ]
+    },
+    "apeterminal-forensics": {
+      "description": "ApeTerminal Next.js drainer static IOC + master report",
+      "mode": "forensics",
+      "steps": [
+        {"agent": "Agent-Malware-10", "task": "static-ioc-extract"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "static-ioc-extract"}
+      ]
+    },
+    "solana-drainer-forensics": {
+      "description": "Solana Drainer Tool static IOC + master report",
+      "mode": "forensics",
+      "steps": [
+        {"agent": "Agent-Malware-11", "task": "static-ioc-extract"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "static-ioc-extract"}
+      ]
+    },
+    "vanilla-drainer-forensics": {
+      "description": "Vanilla Drainer OSINT IOC + master report",
+      "mode": "forensics",
+      "steps": [
+        {"agent": "Agent-Malware-12", "task": "osint-ioc-extract"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "osint-ioc-extract"}
+      ]
+    },
+    "permit-farming-forensics": {
+      "description": "EIP-2612 permit farming static analysis + master report",
+      "mode": "forensics",
+      "steps": [
+        {"agent": "Agent-Contract-03", "task": "permit-farming-analyze"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "permit-farming-analyze"}
+      ]
+    },
+    "create2-forensics": {
+      "description": "CREATE2 / EIP-1167 factory pipeline analysis + master report",
+      "mode": "forensics",
+      "steps": [
+        {"agent": "Agent-Contract-04", "task": "create2-analyze"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "create2-analyze"}
+      ]
     }
   }
 }

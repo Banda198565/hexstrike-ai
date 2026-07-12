@@ -1,0 +1,17 @@
+# HexStrike On-Chain Forensics — Operator Rules
+# Read-only defensive analysis only. No wallet interaction, no exploit execution.
+
+## Execution path
+- All forensics MUST run via: `export HEXSTRIKE_MODE=forensics && ./scripts/run-all-forensics.sh`
+- Target wallet tests: `python3 scripts/hexstrike-orchestrator.py run field-targets-5`
+- Operator audit: `python3 scripts/hexstrike-orchestrator.py run operator-lab`
+
+## Target sources (2026-07-07)
+- TARGETS-REPORT-20260707.md — 5 wallet field set
+- DAILY-REPORT-20260707.md — daily ops snapshot
+- operator-audit.txt — local crypto hygiene audit output
+
+## Constraints
+- Read-only on-chain (Etherscan/BscScan/BaseScan) and OSINT
+- Artifacts → artifacts/recon/ and artifacts/orchestrator/
+- No drain/exploit instructions — disclosure and IR only

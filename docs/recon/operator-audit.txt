@@ -1,0 +1,17 @@
+HexStrike Operator Crypto Audit — 2026-07-07
+============================================
+Mode: read-only / local-only
+Host: cloud-agent validation run
+
+[PASS] No private keys in repo tracked files
+[PASS] artifacts/ gitignored
+[PASS] forensics agents constrained to read-only static scan
+[INFO] Exchange API keys: not configured in cloud (expected)
+[INFO] Desktop mirror ~/Desktop/on-chain-forensics: not present (expected on Mac)
+
+Recommended Mac operator steps:
+  python3 scripts/hexstrike-orchestrator.py run operator-lab
+  export HEXSTRIKE_MODE=forensics && ./scripts/run-all-forensics.sh
+
+Target wallet test:
+  python3 scripts/hexstrike-orchestrator.py run field-targets-5

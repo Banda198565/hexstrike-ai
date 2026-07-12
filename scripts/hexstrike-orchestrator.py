@@ -290,7 +290,9 @@ def run_workflow(name: str, env: dict | None = None, print_all: bool = True) -> 
     step_env["ORCHESTRATOR_RUN_ID"] = run_id
     step_env["ORCHESTRATOR_WORKFLOW"] = name
 
-    print(f"▶ workflow={name} run_id={run_id} steps={len(wf.get('steps', []))}")
+    mode = wf.get("mode") or os.environ.get("HEXSTRIKE_MODE")
+    mode_prefix = f"mode={mode} " if mode else ""
+    print(f"▶ {mode_prefix}workflow={name} run_id={run_id} steps={len(wf.get('steps', []))}")
 
     for i, step in enumerate(wf.get("steps", []), 1):
         agent = step["agent"]
