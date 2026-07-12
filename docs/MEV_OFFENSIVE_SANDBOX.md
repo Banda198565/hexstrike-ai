@@ -98,6 +98,15 @@ MEV_STRESS_SKIP_UNIT=1 bash scripts/sandbox/run-mev-stress.sh
 
 Still **simulation only** — no mainnet bundle submission.
 
+## Production hardening (live pipeline)
+
+```bash
+bash scripts/sandbox/run-mev-live-stress.sh
+hexstrike-agent mev live -v
+```
+
+See [OFFENSIVE_CORE.md](../OFFENSIVE_CORE.md) for full stack map.
+
 
 
 ```

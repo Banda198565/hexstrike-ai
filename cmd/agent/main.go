@@ -46,6 +46,8 @@ func main() {
 			code, err = agent.RunMEV()
 		case "fork":
 			code, err = agent.RunMEVFork()
+		case "live":
+			code, err = agent.RunMEVLive()
 		default:
 			fmt.Fprintf(os.Stderr, "unknown mev subcommand: %s\n", sub)
 			printUsage()
@@ -81,11 +83,11 @@ func printUsage() {
 
 Usage:
   hexstrike-agent battle [-v] [-d /path/to/hexstrike-ai]
-  hexstrike-agent mev [full|fork] [-v] [-d /path]
+  hexstrike-agent mev [full|fork|live] [-v] [-d /path]
   hexstrike-agent version
 
 Commands:
-  battle    Run the 11-attack sandbox battle suite (full MEV offensive)
-  mev       Offensive MEV: full = Anvil stack, fork = BSC fork sim
+  battle    Run the 13-attack sandbox battle suite (defense + MEV offensive)
+  mev       Offensive MEV: full=Anvil, fork=BSC fork, live=mempool pipeline
   version   Print agent version`)
 }

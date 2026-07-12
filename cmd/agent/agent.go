@@ -28,6 +28,8 @@ const (
 	AttackMEVFrontrun   AttackID = "09-mev-frontrun-gas-race"
 	AttackMEVJIT        AttackID = "10-mev-jit-liquidity"
 	AttackMEVBackrun    AttackID = "11-mev-backrun-arb"
+	AttackMEVForkPipe   AttackID = "12-fork-offensive-mempool"
+	AttackBattleSync    AttackID = "13-battle-offensive-rescue-sync"
 )
 
 // Outcome categorizes attack results.
@@ -51,12 +53,15 @@ type AttackResult struct {
 
 // BattleSummary aggregates statistics.
 type BattleSummary struct {
-	Total          int `json:"total"`
-	VulnConfirmed  int `json:"vuln_confirmed"`
-	Defended       int `json:"defended"`
-	Inconclusive   int `json:"inconclusive"`
-	Skipped        int `json:"skipped"`
-	ReadinessScore int `json:"readiness_score"`
+	Total             int `json:"total"`
+	VulnConfirmed     int `json:"vuln_confirmed"`
+	Defended          int `json:"defended"`
+	Inconclusive      int `json:"inconclusive"`
+	Skipped           int `json:"skipped"`
+	ReadinessScore    int `json:"readiness_score"`
+	DefenseScore      int `json:"defense_score,omitempty"`
+	OffensiveScore    int `json:"offensive_score,omitempty"`
+	IntegrationScore  int `json:"integration_score,omitempty"`
 }
 
 // BattleReport is persisted to artifacts/sandbox/battle-report.json.
@@ -89,6 +94,8 @@ var DefaultAttacks = []AttackID{
 	AttackMEVFrontrun,
 	AttackMEVJIT,
 	AttackMEVBackrun,
+	AttackMEVForkPipe,
+	AttackBattleSync,
 }
 
 var resultLine = regexp.MustCompile(`\[RESULT\]\s+(\S+)\s+→\s+(\S+)`)
@@ -157,7 +164,7 @@ func (a *Agent) RunBattle() (int, error) {
 	a.log("    ✓ Environment ready")
 
 	a.rule()
-	a.log("Launching battle test suite (11 attacks)...")
+	a.log("Launching battle test suite (13 attacks)...")
 	a.rule()
 
 	runs := a.runAllTests()
@@ -321,6 +328,20 @@ func (a *Agent) buildReport(prereqs map[string]bool, runs []AttackResult) Battle
 	summary := BattleSummary{Total: len(runs)}
 	vulns := make([]string, 0)
 
+	defenseIDs := map[AttackID]bool{
+		AttackBaseline: true, AttackRaceDuplicate: true, AttackFrontRun: true,
+		AttackReplay: true, AttackTOCTOU: true, AttackCompromised: true, AttackHardening: true,
+	}
+	offensiveIDs := map[AttackID]bool{
+		AttackMEVSandwich: true, AttackMEVFrontrun: true, AttackMEVJIT: true,
+		AttackMEVBackrun: true, AttackMEVForkPipe: true,
+	}
+	integrationIDs := map[AttackID]bool{AttackBattleSync: true}
+
+	defTotal, defVuln := 0, 0
+	offTotal, offVuln := 0, 0
+	intTotal, intVuln := 0, 0
+
 	for _, r := range runs {
 		switch r.Outcome {
 		case OutcomeVulnConfirmed:
@@ -333,9 +354,38 @@ func (a *Agent) buildReport(prereqs map[string]bool, runs []AttackResult) Battle
 		case OutcomeSkipped:
 			summary.Skipped++
 		}
+		if defenseIDs[r.Scenario] {
+			defTotal++
+			if r.Outcome == OutcomeVulnConfirmed {
+				defVuln++
+			}
+		}
+		if offensiveIDs[r.Scenario] {
+			offTotal++
+			if r.Outcome == OutcomeVulnConfirmed {
+				offVuln++
+			}
+		}
+		if integrationIDs[r.Scenario] {
+			intTotal++
+			if r.Outcome == OutcomeVulnConfirmed {
+				intVuln++
+			}
+		}
 	}
 
-	score := 50 + summary.VulnConfirmed*3 + summary.Defended*5 - summary.Inconclusive*10
+	if defTotal > 0 {
+		summary.DefenseScore = defVuln * 100 / defTotal
+	}
+	if offTotal > 0 {
+		summary.OffensiveScore = offVuln * 100 / offTotal
+	}
+	if intTotal > 0 {
+		summary.IntegrationScore = intVuln * 100 / intTotal
+	}
+
+	// Weighted readiness: 40% defense + 40% offensive + 20% integration
+	score := int(0.4*float64(summary.DefenseScore) + 0.4*float64(summary.OffensiveScore) + 0.2*float64(summary.IntegrationScore))
 	if score < 0 {
 		score = 0
 	}

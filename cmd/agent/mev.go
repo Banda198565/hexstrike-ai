@@ -117,3 +117,37 @@ func (a *Agent) RunMEVFork() (int, error) {
 	fmt.Println("  artifacts/sandbox/mev-bsc-fork-result.json")
 	return 0, nil
 }
+
+// RunMEVLive runs production-hardened live pipeline (mempool → PnL → builder sim).
+func (a *Agent) RunMEVLive() (int, error) {
+	a.printBanner("⚔ HexStrike MEV Offensive — Live Pipeline (read-only)")
+
+	prereqs := a.verifyPrerequisites()
+	if !a.allPrereqsOK(prereqs) {
+		return 1, fmt.Errorf("missing prerequisites")
+	}
+
+	sandbox := filepath.Join(a.repoRoot, "scripts", "sandbox")
+	cmd := exec.Command("python3", filepath.Join(sandbox, "mev", "offensive_pipeline.py"))
+	cmd.Dir = a.repoRoot
+	cmd.Env = append(os.Environ(),
+		"MEV_SANDBOX_ONLY=1",
+		"MEV_ALLOWED_CHAINS=56",
+		"BUILDER_SIM_ONLY=1",
+		"PIPELINE_USE_FORK=1",
+	)
+	out, err := cmd.CombinedOutput()
+	if a.verbose {
+		fmt.Print(string(out))
+	}
+	if err != nil {
+		return 1, fmt.Errorf("live pipeline: %w\n%s", err, string(out))
+	}
+
+	a.log("MEV live pipeline complete (simulation only)")
+	fmt.Println("  artifacts/sandbox/mev-live-mempool-scan.json")
+	fmt.Println("  artifacts/sandbox/mev-bsc-fork-result.json")
+	fmt.Println("  artifacts/sandbox/mev-builder-sim.json")
+	fmt.Println("  artifacts/sandbox/mev-live-pipeline-result.json")
+	return 0, nil
+}
