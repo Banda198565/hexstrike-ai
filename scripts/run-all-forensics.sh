@@ -5,6 +5,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# shellcheck source=/dev/null
+source "$ROOT/scripts/forensics-env-mac.sh"
+
 export HEXSTRIKE_MODE="${HEXSTRIKE_MODE:-forensics}"
 RUNNER="$ROOT/scripts/run-forensics-module.sh"
 
@@ -44,5 +47,6 @@ run_one "Permit Farming"  "Agent-Contract-03" "permit-farming-analyze" "permit" 
 run_one "CREATE2"         "Agent-Contract-04" "create2-analyze"       "create2"    "create2-forensics"
 
 echo "=== ALL forensics complete (failed=${failed}) ==="
+echo "${failed}" > "$ROOT/artifacts/forensics/.last-run-failed"
 echo "Artifacts: ${ROOT}/artifacts/*-iocs.json"
 exit $(( failed > 0 ? 1 : 0 ))

@@ -13,6 +13,13 @@ INSTRUCTION_FILES: dict[str, str] = {
     "core.execution": "execution.md",
     "skill.recon_osint": "recon_osint.md",
     "skill.timing_analysis": "timing_analysis.md",
+    "skill.trx_drainer": "trx_drainer_forensics.md",
+    "skill.evm_drainer": "evm_drainer_forensics.md",
+    "skill.apeterminal_drainer": "apeterminal_forensics.md",
+    "skill.solana_drainer": "solana_drainer_forensics.md",
+    "skill.vanilla_drainer": "vanilla_drainer_forensics.md",
+    "skill.permit_farming": "permit_farming_forensics.md",
+    "skill.create2_drainer": "create2_drainer_forensics.md",
 }
 
 

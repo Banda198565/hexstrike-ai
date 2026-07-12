@@ -80,12 +80,16 @@ class ForensicsEngine:
         return result
 
     def trace_recipient_depth(self, address: str, depth: int = 2) -> dict[str, Any]:
-        """Placeholder depth analysis — emits bus event for chain_tracer skill."""
+        """Depth analysis via chain_tracer skill."""
+        from hexstrike.skills.chain_tracer import ChainTracerSkill
+
+        tracer = ChainTracerSkill(bus=self.bus, forensics=self)
+        graph = tracer.trace(address, depth=depth)
         payload = {
             "root": address.lower(),
             "depth": depth,
-            "status": "queued",
-            "note": "Use skills.chain_tracer for full multichain traversal",
+            "status": "complete" if len(graph.get("nodes", [])) > 1 else "partial",
+            "graph": graph,
         }
         self.bus.publish("forensics.trace_request", payload, source="core.forensics")
         return payload

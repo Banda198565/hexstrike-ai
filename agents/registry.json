@@ -35,7 +35,8 @@
         "Agent-Malware-09",
         "Agent-Malware-10",
         "Agent-Malware-11",
-        "Agent-Malware-12"
+        "Agent-Malware-12",
+        "Agent-Forensics-01"
       ]
     },
     "Agent-OSINT-03": {
@@ -196,6 +197,11 @@
           "script": "scripts/agents/agent_report_vps_master.py",
           "output": "artifacts/vps-master-report.json",
           "include": ["all-artifacts", "orchestrator-latest", "highlights"]
+        },
+        "generate-session-report": {
+          "script": "scripts/forensics/generate_session_report.py",
+          "output": "artifacts/forensics/session-summary.json",
+          "constraints": ["forensics", "reporting"]
         }
       }
     },
@@ -273,6 +279,40 @@
           "script": "scripts/agents/agent_contract_04.py",
           "output": "artifacts/create2-drainer-iocs.json",
           "constraints": ["forensics", "defensive-analysis"]
+        }
+      }
+    },
+    "Agent-Forensics-01": {
+      "role": "forensics-analyzer",
+      "description": "Полный analyzer: attack_chain + on-chain enrichment",
+      "tasks": {
+        "run-analyzer-trx": {
+          "script": "scripts/agents/agent_forensics_01.py",
+          "output": "artifacts/forensics/trx-drainer-report.json"
+        },
+        "run-analyzer-evm": {
+          "script": "scripts/agents/agent_forensics_01.py",
+          "output": "artifacts/forensics/evm-drainer-report.json"
+        },
+        "run-analyzer-apeterminal": {
+          "script": "scripts/agents/agent_forensics_01.py",
+          "output": "artifacts/forensics/apeterminal-drainer-report.json"
+        },
+        "run-analyzer-solana": {
+          "script": "scripts/agents/agent_forensics_01.py",
+          "output": "artifacts/forensics/solana-drainer-report.json"
+        },
+        "run-analyzer-vanilla": {
+          "script": "scripts/agents/agent_forensics_01.py",
+          "output": "artifacts/forensics/vanilla-drainer-report.json"
+        },
+        "run-analyzer-permit": {
+          "script": "scripts/agents/agent_forensics_01.py",
+          "output": "artifacts/forensics/permit-farming-report.json"
+        },
+        "run-analyzer-create2": {
+          "script": "scripts/agents/agent_forensics_01.py",
+          "output": "artifacts/forensics/create2-drainer-report.json"
         }
       }
     }

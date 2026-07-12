@@ -65,9 +65,10 @@ def run_task(agent: str, task: str, output: str | None, extra: dict) -> int:
 
     for k, v in extra.items():
         env[k.upper()] = str(v)
+    env["HEXSTRIKE_TASK"] = task
 
     if script_path.endswith(".py"):
-        cmd = [sys.executable, script_path]
+        cmd = [sys.executable, script_path, task]
     elif script_path.endswith(".sh"):
         cmd = ["bash", script_path]
     else:
@@ -134,8 +135,9 @@ def main() -> int:
         env["INPUT"] = os.path.join(ROOT, spec["input"])
     for k, v in extra.items():
         env[k.upper()] = str(v)
+    env["HEXSTRIKE_TASK"] = args.task
     if script_path.endswith(".py"):
-        cmd = [sys.executable, script_path]
+        cmd = [sys.executable, script_path, args.task]
     elif script_path.endswith(".sh"):
         cmd = ["bash", script_path]
     else:

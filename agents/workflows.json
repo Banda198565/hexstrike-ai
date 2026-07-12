@@ -115,51 +115,57 @@
       ]
     },
     "trx-drainer-forensics": {
-      "description": "TRX Drainer Tool static IOC + master report bundle",
+      "description": "TRX Drainer Tool static IOC + analyzer + master report",
       "mode": "forensics",
       "steps": [
         {"agent": "Agent-Malware-08", "task": "static-ioc-extract"},
-        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "static-ioc-extract"}
+        {"agent": "Agent-Forensics-01", "task": "run-analyzer-trx", "depends_on": "static-ioc-extract"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "run-analyzer-trx"}
       ]
     },
     "evm-drainer-forensics": {
-      "description": "EVM drainer deploy kit static IOC + master report",
+      "description": "EVM drainer deploy kit static IOC + analyzer + report",
       "mode": "forensics",
       "steps": [
         {"agent": "Agent-Malware-09", "task": "static-ioc-extract"},
-        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "static-ioc-extract"}
+        {"agent": "Agent-Forensics-01", "task": "run-analyzer-evm", "depends_on": "static-ioc-extract"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "run-analyzer-evm"}
       ]
     },
     "apeterminal-forensics": {
-      "description": "ApeTerminal Next.js drainer static IOC + master report",
+      "description": "ApeTerminal Next.js drainer static IOC + analyzer + report",
       "mode": "forensics",
       "steps": [
         {"agent": "Agent-Malware-10", "task": "static-ioc-extract"},
-        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "static-ioc-extract"}
+        {"agent": "Agent-Forensics-01", "task": "run-analyzer-apeterminal", "depends_on": "static-ioc-extract"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "run-analyzer-apeterminal"}
       ]
     },
     "solana-drainer-forensics": {
-      "description": "Solana Drainer Tool static IOC + master report",
+      "description": "Solana Drainer Tool static IOC + analyzer + report",
       "mode": "forensics",
       "steps": [
         {"agent": "Agent-Malware-11", "task": "static-ioc-extract"},
-        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "static-ioc-extract"}
+        {"agent": "Agent-Forensics-01", "task": "run-analyzer-solana", "depends_on": "static-ioc-extract"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "run-analyzer-solana"}
       ]
     },
     "vanilla-drainer-forensics": {
-      "description": "Vanilla Drainer OSINT IOC + master report",
+      "description": "Vanilla Drainer OSINT IOC + analyzer + report",
       "mode": "forensics",
       "steps": [
         {"agent": "Agent-Malware-12", "task": "osint-ioc-extract"},
-        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "osint-ioc-extract"}
+        {"agent": "Agent-Forensics-01", "task": "run-analyzer-vanilla", "depends_on": "osint-ioc-extract"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "run-analyzer-vanilla"}
       ]
     },
     "permit-farming-forensics": {
-      "description": "EIP-2612 permit farming static analysis + master report",
+      "description": "EIP-2612 permit farming analysis + analyzer + report",
       "mode": "forensics",
       "steps": [
         {"agent": "Agent-Contract-03", "task": "permit-farming-analyze"},
-        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "permit-farming-analyze"}
+        {"agent": "Agent-Forensics-01", "task": "run-analyzer-permit", "depends_on": "permit-farming-analyze"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "run-analyzer-permit"}
       ]
     },
     "create2-forensics": {
@@ -167,8 +173,28 @@
       "mode": "forensics",
       "steps": [
         {"agent": "Agent-Contract-04", "task": "create2-analyze"},
-        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "create2-analyze"}
+        {"agent": "Agent-Forensics-01", "task": "run-analyzer-create2", "depends_on": "create2-analyze"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "run-analyzer-create2"}
       ]
+    },
+    "operator-targets-3progon": {
+      "description": "3 прогона (часть 1+2): operator-lab + field-targets-5 + сводный отчёт RU",
+      "mode": "forensics",
+      "env": {
+        "WALLETS_FILE": "scripts/sandbox/field-targets-5.json",
+        "WALLETS_ONLY": "1"
+      },
+      "steps": [
+        {"agent": "Agent-Report-06", "task": "operator-balance-check"},
+        {"agent": "Agent-Report-06", "task": "operator-crypto-audit", "optional": true},
+        {"agent": "Agent-Battle-07", "task": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "target-fork-setup", "depends_on": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "multi-wallet-recon", "depends_on": "target-fork-setup"},
+        {"agent": "Agent-Battle-07", "task": "generate-target-conclusion", "depends_on": "multi-wallet-recon"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "generate-target-conclusion"},
+        {"agent": "Agent-Report-06", "task": "generate-session-report", "depends_on": "generate-vps-master-report", "optional": true}
+      ],
+      "note": "Прогон 3 (7 forensics): bash scripts/run-three-progons.sh или run-all-forensics.sh"
     }
   }
 }

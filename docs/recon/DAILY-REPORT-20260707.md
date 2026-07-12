@@ -1,20 +1,23 @@
-# DAILY REPORT — 2026-07-07
+# ЕЖЕДНЕВНЫЙ ОТЧЁТ — 2026-07-07
 
-## Operator status
-- Mode: read-only forensics
-- Orchestrator: hexstrike-orchestrator.py
-- Field targets: 5 wallets (see TARGETS-REPORT-20260707.md)
+## Статус оператора
+- Режим: read-only forensics
+- Оркестратор: hexstrike-orchestrator.py
+- Цели: 5 кошельков (см. TARGETS-REPORT-20260707.md)
 
-## Workflows scheduled
-1. field-targets-5 — wallet profile + recon + conclusion
-2. operator-lab — balance check + crypto audit
-3. run-all-forensics — malware/contract IOC modules (when repos present)
+## Три прогона
+1. **operator-lab** — баланс + crypto-audit + чеклист
+2. **field-targets-5** — профиль → fork → recon → вердикт
+3. **run-all-forensics** — 7 модулей malware/contract IOC
 
-## Artifacts expected
+Команда: `bash scripts/run-three-progons.sh`
+
+## Ожидаемые артефакты
 - artifacts/sandbox/target-conclusion.json
+- artifacts/forensics/session-report-*.md (RU)
 - artifacts/orchestrator/latest.json
-- artifacts/*-iocs.json
+- artifacts/*-iocs.json + artifacts/forensics/*-report.json
 
-## Notes
-- Infra-correlated wallet tied to Yandex Cloud 51.250.97.223
-- Hot wallet multichain net ~$2.11M (recon-master Phase A)
+## Заметки
+- infra-кошелёк связан с Yandex Cloud 51.250.97.223
+- hot_wallet ~$2.11M multichain (recon Phase A)

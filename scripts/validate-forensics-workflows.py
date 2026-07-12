@@ -33,9 +33,15 @@ def main() -> int:
         return 1
     for w in REQUIRED:
         steps = inner[w].get("steps", [])
-        if not steps or "agent" not in steps[0]:
+        if len(steps) < 2:
+            print(f"TOO FEW STEPS for {w}: {len(steps)}")
+            return 1
+        if "agent" not in steps[0]:
             print(f"INVALID STEP FORMAT for {w}: {steps[:1]}")
             return 1
+        # полный модуль: IOC + analyzer + report (3 шага)
+        if len(steps) < 3:
+            print(f"WARN: {w} has {len(steps)} steps (expected 3 for full module)")
     print("[INSPECTOR] All 7 forensics workflows registered correctly.")
     return 0
 
