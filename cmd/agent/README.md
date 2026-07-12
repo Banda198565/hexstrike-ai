@@ -46,6 +46,12 @@ cd cmd/agent && go test ./...
 Env: `ARKHAM_API_KEY`, `ARKHAM_API_BASE` (optional), `ALLOWED_FUNDERS` (comma-separated, wired at engine init).
 
 
+### Run MEV offensive sandbox
+
+```bash
+hexstrike-agent mev -v
+```
+
 ### Run Full Battle Suite
 
 ```bash

@@ -5,7 +5,8 @@ set -euo pipefail
 REDTEAM="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SANDBOX="$(cd "$REDTEAM/.." && pwd)"
 ROOT="$(cd "$SANDBOX/../.." && pwd)"
-RPC="${RPC_URL:-http://127.0.0.1:8545}"
+# Pin local Anvil — mainnet RPC_URL in cloud .env must not leak here
+RPC="http://127.0.0.1:${ANVIL_PORT:-8545}"
 MNEMONIC="${ANVIL_MNEMONIC:-test test test test test test test test test test test junk}"
 EVENTS="$ROOT/artifacts/sandbox/dummy-bot-events.jsonl"
 ALERTS="$ROOT/artifacts/sandbox/anomaly-alerts.jsonl"
