@@ -113,6 +113,43 @@
         {"agent": "Agent-Report-06", "task": "generate-defensive-checklist"},
         {"agent": "Agent-Report-06", "task": "generate-vps-master-report"}
       ]
+    },
+    "field-recon-full": {
+      "description": "P1+P2: all report wallets JSON + hot mempool watch + signing hunt",
+      "env": {
+        "WALLETS_FILE": "scripts/sandbox/field-targets-full.json",
+        "MEV_SANDBOX_ONLY": "1"
+      },
+      "steps": [
+        {"agent": "Agent-MEV-Offensive", "task": "field-recon-full"},
+        {"agent": "Agent-MEV-Offensive", "task": "hot-wallet-watch", "depends_on": "field-recon-full"},
+        {"agent": "Agent-Signing-Bot-Hunt", "task": "signing-bot-hunt", "depends_on": "hot-wallet-watch"}
+      ],
+      "note": "Read-only. Artifacts: field-recon-bundle.json, hot-wallet-watch.json, signing-bot-hunt.json"
+    },
+    "pentest-chain": {
+      "description": "P4: Jenkins + Geth RPC passive enum → signing bot hypotheses",
+      "env": {
+        "SANDBOX_MODE": "1",
+        "DRY_RUN": "true"
+      },
+      "steps": [
+        {"agent": "Agent-Pentest-Jenkins", "task": "jenkins-enum"},
+        {"agent": "Agent-Pentest-RPC", "task": "geth-enum"},
+        {"agent": "Agent-Signing-Bot-Hunt", "task": "signing-bot-hunt", "depends_on": "geth-enum"}
+      ],
+      "note": "Passive only — no credential dump, no personal_* RPC"
+    },
+    "operator-rescue": {
+      "description": "P5: operator BOT 0x85dB… Puissant dry-run rescue",
+      "env": {
+        "DRY_RUN": "true",
+        "BOT_ADDRESS": "0x85dB346BE1d9d5D8ec4F57acf0067FbE53a6E846"
+      },
+      "steps": [
+        {"agent": "Agent-MEV-Offensive", "task": "operator-rescue-puissant"}
+      ],
+      "note": "Operator-owned wallets only. Default DRY_RUN=true."
     }
   }
 }

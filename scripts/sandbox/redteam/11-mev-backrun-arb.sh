@@ -14,7 +14,7 @@ if [[ "$CHAIN" != "$REDTEAM_CHAIN_ID" ]]; then
   exit 0
 fi
 
-export MEV_RPC_URL="$RPC" MEV_SANDBOX_ONLY=1 MEV_ALLOWED_CHAINS="${MEV_ALLOWED_CHAINS:-$REDTEAM_CHAIN_ID}"
+export MEV_RPC_URL="$RPC" MEV_SANDBOX_ONLY=1 MEV_ALLOWED_CHAINS="$REDTEAM_CHAIN_ID"
 
 if python3 "$SANDBOX/mev/backrun_engine.py" > /tmp/mev-11.log 2>&1; then
   profit="$(python3 -c "import json;print(json.load(open('$ROOT/artifacts/sandbox/mev-backrun-result.json'))['profit_wei'])")"

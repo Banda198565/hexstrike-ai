@@ -19,6 +19,12 @@ ENV_FILE="${SANDBOX_ENV:-$("$SANDBOX/resolve-anvil-env.sh")}"
 # shellcheck disable=SC1090
 set -a && source "$ENV_FILE" && set +a
 
+# Strip mainnet MEV pollution — battle must stay on local Anvil (31337)
+unset MEV_ALLOWED_CHAINS MEV_RPC_URL MEV_MAINNET_SUBMIT BSC_HTTP_URL BSC_HTTP_FALLBACK \
+  PIPELINE_USE_FORK BUILDER_SIM_ONLY HOT_WALLET_WATCH || true
+export MEV_SANDBOX_ONLY=1
+export MEV_ALLOWED_CHAINS="$REDTEAM_CHAIN_ID"
+
 BOT="${BOT_ADDRESS:?BOT_ADDRESS missing — run setup-anvil-env.sh}"
 FUNDER="${FUNDER_ADDRESS:?FUNDER_ADDRESS missing}"
 THRESHOLD="${THRESHOLD_WEI:-500000000000000000}"

@@ -55,7 +55,8 @@
           "scan_fork_mempool_tool",
           "get_fork_reserves_tool",
           "builder_sim_dry_run",
-          "run_offensive_pipeline_tool"
+          "run_offensive_pipeline_tool",
+          "watch_hot_wallet_mempool"
         ],
         "defi-dex-mcp": [
           "check_dex_liquidity"
@@ -73,6 +74,9 @@
         ],
         "full_pipeline": [
           "run_offensive_pipeline_tool"
+        ],
+        "hot_wallet_watch": [
+          "watch_hot_wallet_mempool"
         ]
       },
       "constraints": ["MEV_SANDBOX_ONLY=1", "no-mainnet-submit", "BUILDER_SIM_ONLY=1"]

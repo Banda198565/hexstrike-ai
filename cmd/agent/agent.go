@@ -215,6 +215,15 @@ func (a *Agent) setupEnvironment() error {
 	// Clear per-run redteam report so scripts append fresh results.
 	_ = os.Remove(filepath.Join(artifacts, "redteam-report.json"))
 
+	// Stop any stale BSC fork so Anvil binds to 8545.
+	stopFork := filepath.Join(sandbox, "stop-bsc-fork.sh")
+	if _, err := os.Stat(stopFork); err == nil {
+		cmd := exec.Command("bash", stopFork)
+		cmd.Dir = a.repoRoot
+		a.battleEnv(cmd)
+		_, _ = cmd.CombinedOutput()
+	}
+
 	scripts := []string{"start-anvil.sh", "setup-anvil-env.sh"}
 	for _, name := range scripts {
 		script := filepath.Join(sandbox, name)
@@ -223,6 +232,7 @@ func (a *Agent) setupEnvironment() error {
 		}
 		cmd := exec.Command("bash", script)
 		cmd.Dir = a.repoRoot
+		a.battleEnv(cmd)
 		out, err := cmd.CombinedOutput()
 		if a.verbose {
 			fmt.Print(string(out))
@@ -240,6 +250,32 @@ func (a *Agent) setupEnvironment() error {
 		_ = cmd.Run()
 	}
 	return nil
+}
+
+// battleEnv strips mainnet MEV variables that pollute local Anvil red-team runs.
+func (a *Agent) battleEnv(cmd *exec.Cmd) {
+	strip := map[string]bool{
+		"MEV_ALLOWED_CHAINS": true,
+		"MEV_RPC_URL":        true,
+		"MEV_MAINNET_SUBMIT": true,
+		"BSC_HTTP_URL":       true,
+		"BSC_HTTP_FALLBACK":  true,
+		"PIPELINE_USE_FORK":  true,
+		"BUILDER_SIM_ONLY":   true,
+		"HOT_WALLET_WATCH":   true,
+	}
+	filtered := make([]string, 0, len(os.Environ()))
+	for _, entry := range os.Environ() {
+		key := entry
+		if i := strings.IndexByte(entry, '='); i > 0 {
+			key = entry[:i]
+		}
+		if strip[key] {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	cmd.Env = filtered
 }
 
 func (a *Agent) runAllTests() []AttackResult {
@@ -268,6 +304,7 @@ func (a *Agent) runAttack(attack AttackID) AttackResult {
 
 	cmd := exec.Command("bash", script)
 	cmd.Dir = a.repoRoot
+	a.battleEnv(cmd)
 	out, err := cmd.CombinedOutput()
 	result.ExitCode = 0
 	if err != nil {

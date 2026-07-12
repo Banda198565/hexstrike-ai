@@ -21,6 +21,7 @@ from fork_mempool import PANCAKE_ROUTER, scan_mempool  # noqa: E402
 from fork_offensive import get_reserves  # noqa: E402
 from mempool_live import scan_live_mempool  # noqa: E402
 from offensive_pipeline import run_pipeline  # noqa: E402
+from hot_wallet_watch import run_watch  # noqa: E402
 
 mcp = FastMCP("mev-offensive-mcp")
 
@@ -114,6 +115,24 @@ def builder_sim_dry_run(
             builder_tip_wei=builder_tip_wei,
         )
     path = _write_artifact("mev-builder-sim.json", payload)
+    return {"artifact": path, **payload}
+
+
+@mcp.tool()
+def watch_hot_wallet_mempool(
+    block_depth: int = 20,
+    watch_addresses: str = "",
+) -> dict[str, Any]:
+    """Live alerts on hot-wallet outgoing USDT + pending native txs (read-only)."""
+    gate = _sandbox_gate()
+    if gate:
+        return gate
+    os.environ.setdefault("HOT_WATCH_BLOCK_DEPTH", str(block_depth))
+    os.environ.setdefault("HOT_WATCH_ONCE", "1")
+    if watch_addresses.strip():
+        os.environ["HOT_WALLET_WATCH"] = watch_addresses.strip()
+    payload = run_watch(once=True)
+    path = _write_artifact("hot-wallet-watch.json", payload)
     return {"artifact": path, **payload}
 
 

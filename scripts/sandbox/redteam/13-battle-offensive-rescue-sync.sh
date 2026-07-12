@@ -17,7 +17,7 @@ fi
 EVENTS_BEFORE="$(snapshot_events)"
 start_bot_background "POLL_INTERVAL_SEC=3"
 
-export MEV_RPC_URL="$RPC" MEV_SANDBOX_ONLY=1 MEV_ALLOWED_CHAINS="${MEV_ALLOWED_CHAINS:-$REDTEAM_CHAIN_ID}"
+export MEV_RPC_URL="$RPC" MEV_SANDBOX_ONLY=1 MEV_ALLOWED_CHAINS="$REDTEAM_CHAIN_ID"
 python3 "$SANDBOX/mev/mempool_scanner.py" > /tmp/mev-13-scan.log 2>&1 || true
 
 # Classifier gate smoke (no unprofitable tx submit)

@@ -1,0 +1,29 @@
+{
+  "version": "1",
+  "exclusive": false,
+  "purpose": "All wallets from pentest reports + operator/target roles",
+  "source_reports": [
+    "MY_OPERATOR_WALLET.md",
+    "PENTEST_DOKLAD_20260708.md",
+    "PENTEST_FULL_REPORT.md",
+    "field-targets-5.json"
+  ],
+  "wallets": [
+    {"role": "hot_wallet", "address": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA", "chain_id": 56, "priority": 1},
+    {"role": "hot_wallet_2", "address": "0xce648a7c1dd3dabc9cd2f87c93986a98608f1eef", "chain_id": 56, "priority": 2},
+    {"role": "treasury_bnb", "address": "0x29bdfbf7d27462a2d115748ace2bd71a2646946c", "chain_id": 56, "priority": 3},
+    {"role": "puissant_validator", "address": "0x4848489f0b2bedd788c696e2d79b6b69d7484848", "chain_id": 56, "priority": 4},
+    {"role": "authority_eip7702", "address": "0x730ea0231808f42a20f8921ba7fbc788226768f5", "chain_id": 56, "priority": 5},
+    {"role": "rhino_bridge", "address": "0xb80a582fa430645a043bb4f6135321ee01005fef", "chain_id": 56, "priority": 6},
+    {"role": "infra_correlated", "address": "0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a", "chain_id": 56, "priority": 7},
+    {"role": "operator_proof", "address": "0x85dB346BE1d9d5D8ec4F57acf0067FbE53a6E846", "chain_id": 56, "priority": 8},
+    {"role": "target_watch", "address": "0x96B23C4680E1a37cE17730e6118D0C9223e72A66", "chain_id": 56, "priority": 9},
+    {"role": "safe_funder", "address": "0x060447dC91dfb22A5233731aF67E9E8dafdF24d1", "chain_id": 56, "priority": 10}
+  ],
+  "infra_targets": [
+    {"role": "jenkins", "host": "51.250.97.223", "ports": [8080, 22, 3389]},
+    {"role": "bsc_node", "host": "51.222.42.220", "ports": [8545, 22]},
+    {"role": "kz_gateway", "host": "38.107.234.149", "ports": [443, 6379, 5432]},
+    {"role": "litellm", "host": "118.196.141.168", "ports": [4000]}
+  ]
+}

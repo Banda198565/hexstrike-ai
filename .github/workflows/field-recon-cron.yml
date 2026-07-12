@@ -1,0 +1,56 @@
+name: Field Recon Cron
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  field-recon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python deps
+        run: |
+          python3 -m pip install -q httpx fastmcp 2>/dev/null || true
+
+      - name: Field recon (all wallets)
+        run: |
+          chmod +x scripts/sandbox/run-field-targets-recon.sh
+          WALLETS_FILE=scripts/sandbox/field-targets-full.json \
+            bash scripts/sandbox/run-field-targets-recon.sh
+        continue-on-error: true
+
+      - name: Hot wallet mempool watch
+        env:
+          MEV_SANDBOX_ONLY: "1"
+          HOT_WATCH_ONCE: "1"
+        run: python3 scripts/sandbox/mev/hot_wallet_watch.py
+        continue-on-error: true
+
+      - name: Signing bot hunt
+        run: python3 scripts/agents/agent_signing_bot_hunt.py
+        continue-on-error: true
+
+      - name: Pentest enum (passive)
+        env:
+          SANDBOX_MODE: "1"
+          DRY_RUN: "true"
+        run: |
+          chmod +x scripts/pentest/*.sh
+          bash scripts/pentest/geth-rpc-enum.sh || true
+          bash scripts/pentest/jenkins-rpc-enum.sh || true
+        continue-on-error: true
+
+      - name: Upload recon artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: field-recon-${{ github.run_id }}
+          path: |
+            artifacts/sandbox/field-recon-bundle.json
+            artifacts/sandbox/hot-wallet-watch.json
+            artifacts/sandbox/signing-bot-hunt.json
+            artifacts/sandbox/geth-rpc-enum.json
+            artifacts/sandbox/jenkins-rpc-enum.json

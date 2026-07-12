@@ -53,3 +53,4 @@ else
 fi
 
 reset_bot_balance
+exit 0

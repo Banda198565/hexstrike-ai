@@ -28,7 +28,11 @@
         "Agent-Contract-02",
         "Agent-Vuln-05",
         "Agent-Report-06",
-        "Agent-Battle-07"
+        "Agent-Battle-07",
+        "Agent-MEV-Offensive",
+        "Agent-Signing-Bot-Hunt",
+        "Agent-Pentest-Jenkins",
+        "Agent-Pentest-RPC"
       ]
     },
     "Agent-OSINT-03": {
@@ -168,7 +172,7 @@
     },
     "Agent-MEV-Offensive": {
       "role": "mev-offensive",
-      "description": "Read-only MEV offensive pipeline — live mempool, fork PnL, builder dry-run",
+      "description": "Read-only MEV offensive pipeline — live mempool, fork PnL, builder dry-run, hot watch",
       "tasks": {
         "live-mempool-scan": {
           "script": "scripts/sandbox/mev/mempool_live.py",
@@ -192,11 +196,60 @@
           "script": "scripts/sandbox/run-mev-live-stress.sh",
           "output": "artifacts/sandbox/mev-live-stress-report.json",
           "constraints": ["sandbox-only"]
+        },
+        "hot-wallet-watch": {
+          "script": "scripts/sandbox/mev/hot_wallet_watch.py",
+          "output": "artifacts/sandbox/hot-wallet-watch.json",
+          "mcp_tools": ["watch_hot_wallet_mempool"],
+          "constraints": ["read-only", "MEV_SANDBOX_ONLY=1"]
+        },
+        "field-recon-full": {
+          "script": "scripts/sandbox/run-field-targets-recon.sh",
+          "output": "artifacts/sandbox/field-recon-bundle.json",
+          "constraints": ["read-only"]
+        },
+        "operator-rescue-puissant": {
+          "script": "scripts/sandbox/run-operator-rescue-mainnet.sh",
+          "output": "artifacts/sandbox/operator-rescue-puissant.json",
+          "constraints": ["operator-owned-only", "DRY_RUN=true"]
         }
       },
       "mcp_servers": ["mev-offensive-mcp", "evm-rpc-mcp", "defi-dex-mcp"],
       "cli": "./bin/hexstrike-agent mev live",
       "depends_on": ["foundry", "python3", "fastmcp"]
+    },
+    "Agent-Signing-Bot-Hunt": {
+      "role": "signing-intel",
+      "description": "Locate signing-bot custody hypotheses from local artifacts (read-only)",
+      "tasks": {
+        "signing-bot-hunt": {
+          "script": "scripts/agents/agent_signing_bot_hunt.py",
+          "output": "artifacts/sandbox/signing-bot-hunt.json",
+          "constraints": ["read-only", "no-key-exfil"]
+        }
+      }
+    },
+    "Agent-Pentest-Jenkins": {
+      "role": "pentest-passive",
+      "description": "Jenkins/RPC passive fingerprint — no exploit",
+      "tasks": {
+        "jenkins-enum": {
+          "script": "scripts/pentest/jenkins-rpc-enum.sh",
+          "output": "artifacts/sandbox/jenkins-rpc-enum.json",
+          "constraints": ["SANDBOX_MODE=1", "no-groovy", "no-bruteforce"]
+        }
+      }
+    },
+    "Agent-Pentest-RPC": {
+      "role": "pentest-passive",
+      "description": "Geth JSON-RPC read-only module enum",
+      "tasks": {
+        "geth-enum": {
+          "script": "scripts/pentest/geth-rpc-enum.sh",
+          "output": "artifacts/sandbox/geth-rpc-enum.json",
+          "constraints": ["SANDBOX_MODE=1", "no-personal-module"]
+        }
+      }
     },
     "Agent-Report-06": {
       "role": "reporting",

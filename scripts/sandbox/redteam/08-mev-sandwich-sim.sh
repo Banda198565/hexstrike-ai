@@ -16,7 +16,7 @@ fi
 
 export MEV_RPC_URL="$RPC"
 export MEV_SANDBOX_ONLY=1
-export MEV_ALLOWED_CHAINS="${MEV_ALLOWED_CHAINS:-$REDTEAM_CHAIN_ID}"
+export MEV_ALLOWED_CHAINS="$REDTEAM_CHAIN_ID"
 
 if ! python3 "$SANDBOX/mev/sandwich_engine.py" > /tmp/mev-08.log 2>&1; then
   log_result "08-mev-sandwich-sim" "INCONCLUSIVE" "sandwich_engine failed — see /tmp/mev-08.log"
