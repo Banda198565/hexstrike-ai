@@ -53,7 +53,29 @@ hexstrike-agent battle -v
 - Fork engine: `chain_id == 56`
 - `MEV_SANDBOX_ONLY=1` required
 
-## MEV triad complete
+## MEV stress testing (Variant B + C)
+
+```bash
+# Full suite: unit classifiers + live Anvil e2e (attacks 08–11)
+bash scripts/sandbox/run-mev-stress.sh
+
+# Unit tests only (no Anvil)
+MEV_STRESS_SKIP_E2E=1 bash scripts/sandbox/run-mev-stress.sh
+
+# E2e only (skip Python/Go unit phase)
+MEV_STRESS_SKIP_UNIT=1 bash scripts/sandbox/run-mev-stress.sh
+```
+
+### Variant C invariants (Anvil e2e)
+
+| Step | Validates |
+|------|-----------|
+| Full stack pipeline | `MockAMM` / `MockCLAMM` / `MockRouter` deploy + tx + artifacts |
+| `mev_e2e_assert.py` | `profit_wei > 0`, `net_after_gas_wei > 0`, contract addresses |
+| JIT skip gate | Classifier blocks mint/burn without `JIT_FORCE_DEMO` |
+| Redteam 08–11 | Gas race ordering + engine re-runs on same Anvil session |
+| `mev-stress-report.json` | Unified pass/fail matrix |
+
 
 ```
 sandwich → frontrun → backrun → JIT

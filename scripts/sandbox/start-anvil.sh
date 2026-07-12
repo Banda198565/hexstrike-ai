@@ -19,6 +19,7 @@ if [[ -f "$PID_FILE" ]] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
   echo "       RPC: http://${HOST}:${PORT}"
   exit 0
 fi
+rm -f "$PID_FILE"
 
 echo "[start] Anvil on http://${HOST}:${PORT} (chain-id 31337)"
 nohup anvil \
