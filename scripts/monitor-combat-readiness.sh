@@ -25,6 +25,14 @@ ok()   { echo -e "${GREEN}PASS${NC}: $*"; pass=$((pass + 1)); }
 bad()  { echo -e "${RED}FAIL${NC}: $*"; fail=$((fail + 1)); }
 note() { echo -e "${YELLOW}WARN${NC}: $*"; warn=$((warn + 1)); }
 
+monitor_procs() {
+  ps aux 2>/dev/null | grep '[a]utonomous_monitor.py' || true
+}
+
+monitor_count() {
+  monitor_procs | wc -l | tr -d ' '
+}
+
 echo "=== HexStrike Monitor Combat Readiness ==="
 echo "Target: $TARGET_WALLET"
 echo "RPC:    $RPC_URL"
@@ -140,13 +148,13 @@ note "Flashbots/private mempool: invisible to txpool — block scan every MONITO
 note "Mempool reorg (tx disappears): seen_hashes suppresses duplicate alerts; no false IR on vanish"
 note "Rescue owner: NOT auto-fired — operator must run IR per INCIDENT-CONCLUSION.md"
 
-# 8. Production process check
+# 8. Production process check (ps-based — works on Linux and macOS)
 echo ""
 echo "--- Production process ---"
-if pgrep -f 'autonomous_monitor.py' >/dev/null 2>&1; then
-  ok "autonomous_monitor.py process running ($(pgrep -cf 'autonomous_monitor.py' || echo 0) instance(s))"
-  pgrep -af 'autonomous_monitor.py' | head -3
-  inst=$(pgrep -cf 'autonomous_monitor.py' || echo 0)
+inst=$(monitor_count)
+if [[ "$inst" -gt 0 ]]; then
+  ok "autonomous_monitor.py process running (${inst} instance(s))"
+  monitor_procs | head -3
   if [[ "$inst" -gt 1 ]]; then
     bad "Multiple monitor instances — kill duplicates (pkill -f autonomous_monitor.py; restart one)"
   fi
