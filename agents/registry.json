@@ -94,7 +94,7 @@
       "tasks": {
         "deploy-mcp": {
           "script": "scripts/deploy-blockchain-mcp.sh",
-          "servers": ["evm-rpc-mcp", "block-explorer-mcp", "defi-dex-mcp"],
+          "servers": ["evm-rpc-mcp", "block-explorer-mcp", "defi-dex-mcp", "mev-offensive-mcp"],
           "config": "mcp-config.json"
         }
       }
@@ -124,7 +124,7 @@
     },
     "Agent-Battle-07": {
       "role": "sandbox-redteam",
-      "description": "Autonomous Go agent — 7-attack Anvil battle suite + readiness score",
+      "description": "Autonomous Go agent — 13-attack battle suite (01-13) + offensive MEV stress",
       "tasks": {
         "battle-suite": {
           "script": "scripts/sandbox/run-battle-suite.sh",
@@ -165,6 +165,38 @@
       },
       "cli": "./bin/hexstrike-agent",
       "depends_on": ["foundry", "python3"]
+    },
+    "Agent-MEV-Offensive": {
+      "role": "mev-offensive",
+      "description": "Read-only MEV offensive pipeline — live mempool, fork PnL, builder dry-run",
+      "tasks": {
+        "live-mempool-scan": {
+          "script": "scripts/sandbox/mev/mempool_live.py",
+          "output": "artifacts/sandbox/mev-live-mempool-scan.json",
+          "mcp_tools": ["scan_live_mempool_tool"],
+          "constraints": ["read-only", "MEV_SANDBOX_ONLY=1", "no-mainnet-submit"]
+        },
+        "offensive-pipeline": {
+          "script": "scripts/sandbox/mev/offensive_pipeline.py",
+          "output": "artifacts/sandbox/mev-live-pipeline-result.json",
+          "mcp_tools": ["run_offensive_pipeline_tool"],
+          "constraints": ["read-only", "BUILDER_SIM_ONLY=1"]
+        },
+        "builder-sim": {
+          "script": "scripts/sandbox/mev/builder_sim.py",
+          "output": "artifacts/sandbox/mev-builder-sim.json",
+          "mcp_tools": ["builder_sim_dry_run"],
+          "constraints": ["simulation-only", "would_submit=false"]
+        },
+        "mev-stress": {
+          "script": "scripts/sandbox/run-mev-live-stress.sh",
+          "output": "artifacts/sandbox/mev-live-stress-report.json",
+          "constraints": ["sandbox-only"]
+        }
+      },
+      "mcp_servers": ["mev-offensive-mcp", "evm-rpc-mcp", "defi-dex-mcp"],
+      "cli": "./bin/hexstrike-agent mev live",
+      "depends_on": ["foundry", "python3", "fastmcp"]
     },
     "Agent-Report-06": {
       "role": "reporting",

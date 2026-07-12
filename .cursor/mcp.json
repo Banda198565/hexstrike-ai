@@ -1,55 +1,46 @@
 {
   "mcpServers": {
-    "hexstrike-ai": {
-      "command": "python3",
-      "args": [
-        "/workspace/hexstrike_mcp.py",
-        "--server",
-        "http://127.0.0.1:8888"
-      ],
-      "description": "HexStrike AI v6.0 - Advanced Cybersecurity Automation Platform",
-      "timeout": 300,
-      "alwaysAllow": []
-    },
     "evm-rpc-mcp": {
-      "command": "python3",
+      "command": "/workspace/hexstrike-env/bin/python3",
       "args": ["/workspace/mcp/evm_rpc_mcp.py"],
       "env": {
         "EVM_RPC_URL": "https://bsc-dataseed.binance.org",
         "EVM_CHAIN_ID": "56"
       },
-      "description": "Read-only EVM RPC",
+      "description": "Read-only EVM RPC: balances, eth_call, bytecode",
       "timeout": 120
     },
     "block-explorer-mcp": {
-      "command": "python3",
+      "command": "/workspace/hexstrike-env/bin/python3",
       "args": ["/workspace/mcp/block_explorer_mcp.py"],
       "env": {
         "EVM_RPC_URL": "https://bsc-dataseed.binance.org",
         "EVM_CHAIN_ID": "56"
       },
-      "description": "On-chain graph + token verify",
+      "description": "On-chain graph, token verify, transfer logs",
       "timeout": 180
     },
     "defi-dex-mcp": {
-      "command": "python3",
+      "command": "/workspace/hexstrike-env/bin/python3",
       "args": ["/workspace/mcp/defi_dex_mcp.py"],
       "env": {
         "EVM_RPC_URL": "https://bsc-dataseed.binance.org",
         "EVM_CHAIN_ID": "56"
       },
-      "description": "Pancake liquidity heuristics",
+      "description": "Pancake liquidity + flash-loan exposure heuristics",
       "timeout": 120
     },
     "mev-offensive-mcp": {
-      "command": "python3",
+      "command": "/workspace/hexstrike-env/bin/python3",
       "args": ["/workspace/mcp/mev_offensive_mcp.py"],
       "env": {
         "MEV_SANDBOX_ONLY": "1",
         "BUILDER_SIM_ONLY": "1",
-        "BSC_HTTP_URL": "https://bsc-dataseed.binance.org"
+        "BSC_HTTP_URL": "https://bsc-dataseed.binance.org",
+        "MEV_RPC_URL": "http://127.0.0.1:8545",
+        "EVM_CHAIN_ID": "56"
       },
-      "description": "MEV offensive sandbox (no mainnet submit)",
+      "description": "MEV offensive sandbox: live mempool, fork PnL, builder dry-run (no submit)",
       "timeout": 300
     }
   }

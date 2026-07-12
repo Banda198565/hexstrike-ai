@@ -85,6 +85,22 @@ PUISSANT_ENDPOINT=https://puissant-builder.48.club/
 | `mev-builder-sim.json` | Puissant dry-run |
 | `battle-report.json` | Defense + offensive + integration scores |
 
+## MCP integration
+
+| Server | Tools | Config |
+|--------|-------|--------|
+| `mev-offensive-mcp` | `scan_live_mempool_tool`, `run_offensive_pipeline_tool`, `builder_sim_dry_run`, `get_fork_reserves_tool` | `.cursor/mcp.json` |
+| `evm-rpc-mcp` | `eth_call_read`, `get_erc20_balance` | `mcp-config.json` |
+| `defi-dex-mcp` | `check_dex_liquidity` | `mcp/agent-bindings.json` |
+
+```bash
+# Smoke test all MCP servers (including MEV)
+./scripts/mcp-smoke-test.sh
+
+# Agent registry
+# Agent-MEV-Offensive → mev-offensive-mcp + evm-rpc-mcp + defi-dex-mcp
+```
+
 ## Safety
 
 - `MEV_SANDBOX_ONLY=1` required for Python engines

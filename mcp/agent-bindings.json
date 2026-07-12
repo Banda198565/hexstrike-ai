@@ -1,0 +1,81 @@
+{
+  "version": "1",
+  "mode": "read-only",
+  "default_rpc": "http://51.222.42.220:8545",
+  "default_chain_id": 56,
+  "agents": {
+    "Agent-Infra-01": {
+      "task": "deploy-mcp",
+      "servers": ["evm-rpc-mcp", "block-explorer-mcp", "defi-dex-mcp"],
+      "config": "mcp-config.json",
+      "isolate_network": true,
+      "deploy_script": "scripts/deploy-blockchain-mcp.sh"
+    },
+    "Agent-Graph-01": {
+      "task": "bind-mcp-tools",
+      "target": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+      "token": "0x55d398326f99059fF775485246999027B3197955",
+      "tools": {
+        "block-explorer-mcp": [
+          "get_token_transfers",
+          "verify_erc20_token",
+          "address_graph_summary",
+          "get_contract_abi_stub"
+        ],
+        "defi-dex-mcp": [
+          "check_dex_liquidity",
+          "check_flashloan_exposure"
+        ],
+        "evm-rpc-mcp": [
+          "get_erc20_balance",
+          "get_contract_code",
+          "eth_call_read"
+        ]
+      },
+      "workflows": {
+        "usdt_flash_verification": [
+          "verify_erc20_token",
+          "check_dex_liquidity",
+          "get_erc20_balance"
+        ],
+        "onchain_graph": [
+          "get_token_transfers",
+          "address_graph_summary"
+        ]
+      }
+    },
+    "Agent-MEV-Offensive": {
+      "task": "offensive-pipeline",
+      "chain_id": 56,
+      "router": "0x10ED43C718714eb63d5aA57B78B54704E256024E",
+      "pair": "0x16b9a82891338f9ba80e2d6970fdda79d1eb0dae",
+      "tools": {
+        "mev-offensive-mcp": [
+          "scan_live_mempool_tool",
+          "scan_fork_mempool_tool",
+          "get_fork_reserves_tool",
+          "builder_sim_dry_run",
+          "run_offensive_pipeline_tool"
+        ],
+        "defi-dex-mcp": [
+          "check_dex_liquidity"
+        ],
+        "evm-rpc-mcp": [
+          "eth_call_read",
+          "rpc_chain_id"
+        ]
+      },
+      "workflows": {
+        "live_offensive": [
+          "scan_live_mempool_tool",
+          "get_fork_reserves_tool",
+          "builder_sim_dry_run"
+        ],
+        "full_pipeline": [
+          "run_offensive_pipeline_tool"
+        ]
+      },
+      "constraints": ["MEV_SANDBOX_ONLY=1", "no-mainnet-submit", "BUILDER_SIM_ONLY=1"]
+    }
+  }
+}
