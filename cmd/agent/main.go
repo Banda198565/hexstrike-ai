@@ -37,6 +37,26 @@ func main() {
 			os.Exit(1)
 		}
 		os.Exit(code)
+	case "watch":
+		once := false
+		for _, a := range args[1:] {
+			if a == "--once" {
+				once = true
+			}
+		}
+		code, err := runWatch(once)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		os.Exit(code)
+	case "watch-dry-run":
+		code, err := runWatchDryRun()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		os.Exit(code)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", args[0])
 		printUsage()
@@ -45,13 +65,17 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Println(`HexStrike Battle Agent — autonomous sandbox red-team orchestrator
+	fmt.Println(`HexStrike Battle Agent — sandbox red-team + mainnet watch
 
 Usage:
   hexstrike-agent battle [-v] [-d /path/to/hexstrike-ai]
+  hexstrike-agent watch [--once]
+  hexstrike-agent watch-dry-run
   hexstrike-agent version
 
 Commands:
-  battle    Run the 7-attack sandbox battle suite
-  version   Print agent version`)
+  battle          Run the 7-attack sandbox battle suite
+  watch           Mainnet rescue watch loop (Go orchestrator)
+  watch-dry-run   Single DRY_RUN poll cycle
+  version         Print agent version`)
 }

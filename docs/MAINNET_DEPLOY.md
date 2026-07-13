@@ -61,4 +61,15 @@ cd cmd/agent && go build -o ../../bin/hexstrike-agent .
 ./bin/hexstrike-agent battle -v   # Anvil sandbox only, not mainnet watch loop
 ```
 
-Mainnet **rescue watch loop** = `dummy_bot.py` + `.env` above.
+Mainnet **rescue watch loop** (default since 2026-07-13):
+
+```bash
+./scripts/sandbox/build-agent.sh          # → bin/hexstrike-agent
+./scripts/sandbox/deploy-mainnet.sh dry-run   # Go engine, DRY_RUN
+./scripts/sandbox/deploy-mainnet.sh start     # Go engine daemon
+RESCUE_ENGINE=python ./scripts/sandbox/deploy-mainnet.sh start  # legacy dummy_bot.py
+```
+
+Go path uses: `PrepareRescue` → EIP-1559 sign → Puissant + public fallback → receipt watcher + dedup.
+
+Legacy Python loop = `dummy_bot.py` + `.env` (cast send).

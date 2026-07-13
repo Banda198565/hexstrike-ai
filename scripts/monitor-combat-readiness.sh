@@ -91,6 +91,37 @@ print("IR trigger cases: OK")
 PY
 ok "is_hot_wallet_outflow() — from-only EOA + contract calls"
 
+# 4b. Hot wallet IR classification (offline)
+echo ""
+echo "--- Hot wallet IR classification (offline) ---"
+python3 << 'PY'
+import sys
+sys.path.insert(0, "scripts")
+from hot_wallet_ir import classify_hot_wallet_outflow, load_allowlist
+
+hw = "0x4943f5e7f4e450d48ae82026163ecde8a52c53da"
+usdt = "0x55d398326f99059ff775485246999027b3197955"
+allow = load_allowlist()
+# Unknown ERC20 recipient → high score / IR
+tx_unknown = {
+    "from": hw,
+    "to": usdt,
+    "value": "0x0",
+    "input": "0xa9059cbb" + "0"*24 + "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef" + hex(10**18)[2:].zfill(64),
+    "hash": "0x1",
+}
+c1 = classify_hot_wallet_outflow(tx_unknown, hw, allow)
+assert c1["ir_trigger"] is True, c1
+assert c1["risk_score"] >= 70, c1
+# Authorized recipient in allowlist → low score
+allow2 = dict(allow)
+allow2["authorized_recipients"] = ["0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"]
+c2 = classify_hot_wallet_outflow(tx_unknown, hw, allow2)
+assert c2["ir_trigger"] is False, c2
+print("Hot wallet IR classification: OK")
+PY
+ok "classify_hot_wallet_outflow() — allowlist + ERC20 decode"
+
 # 5. Sample live monitor run (--duration exits cleanly; no GNU timeout needed for macOS)
 echo ""
 echo "--- Live sample (${SAMPLE_SEC}s) ---"

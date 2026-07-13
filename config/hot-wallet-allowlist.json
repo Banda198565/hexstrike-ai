@@ -1,0 +1,8 @@
+{
+  "hot_wallet": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+  "authorized_recipients": [],
+  "authorized_contracts": [
+    "0x55d398326f99059ff775485246999027b3197955"
+  ],
+  "notes": "Add known payroll recipients to authorized_recipients to suppress false IR on authorized outflows. USDT BSC contract is always allowed as token rail."
+}

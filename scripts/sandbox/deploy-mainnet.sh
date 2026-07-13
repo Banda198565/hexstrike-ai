@@ -10,10 +10,29 @@ ENV_DST="${MAINNET_ENV:-$ROOT/.env}"
 LOG_DIR="$ROOT/logs"
 LOG_FILE="$LOG_DIR/mainnet-prod.log"
 PID_FILE="$LOG_DIR/mainnet-prod.pid"
+AGENT_BIN="${HEXSTRIKE_AGENT:-$ROOT/bin/hexstrike-agent}"
+RESCUE_ENGINE="${RESCUE_ENGINE:-go}"
 
 usage() {
-  echo "Usage: $0 {setup|dry-run|start|status|logs|stop}"
+  echo "Usage: $0 {setup|build|dry-run|start|status|logs|stop}"
+  echo "  RESCUE_ENGINE=go|python (default: go when binary exists)"
   exit 1
+}
+
+resolve_engine() {
+  if [[ "$RESCUE_ENGINE" == "python" ]]; then
+    echo "python"
+    return
+  fi
+  if [[ -x "$AGENT_BIN" ]] || [[ "$RESCUE_ENGINE" == "go" ]]; then
+    echo "go"
+    return
+  fi
+  echo "python"
+}
+
+cmd_build() {
+  bash "$SANDBOX/build-agent.sh" "$AGENT_BIN"
 }
 
 require_env() {
@@ -64,9 +83,22 @@ cmd_dry_run() {
   require_env
   export DRY_RUN=true
   export SANDBOX_ENV="$ENV_DST"
-  echo "[dry-run] single poll cycle"
-  python3 "$SANDBOX/dummy_bot.py" --once --dry-run
-  echo "[OK] dry-run complete — check for [CORE] Engine started (DRY_RUN)"
+  engine="$(resolve_engine)"
+  if [[ "$engine" == "go" ]]; then
+    if [[ ! -x "$AGENT_BIN" ]]; then
+      cmd_build
+    fi
+    echo "[dry-run] Go engine single poll"
+    # shellcheck disable=SC1090
+    set -a && source "$ENV_DST" && set +a
+    export DRY_RUN=true
+    "$AGENT_BIN" watch-dry-run
+    echo "[OK] dry-run complete — check artifacts/sandbox/go-watch-events.jsonl"
+  else
+    echo "[dry-run] Python dummy_bot single poll"
+    python3 "$SANDBOX/dummy_bot.py" --once --dry-run
+    echo "[OK] dry-run complete — check for [CORE] Engine started (DRY_RUN)"
+  fi
 }
 
 cmd_start() {
@@ -79,8 +111,17 @@ cmd_start() {
   export SANDBOX_ENV="$ENV_DST"
   # shellcheck disable=SC1090
   set -a && source "$ENV_DST" && set +a
-  echo "[start] DRY_RUN=${DRY_RUN:-false} → $LOG_FILE"
-  nohup python3 "$SANDBOX/dummy_bot.py" >>"$LOG_FILE" 2>&1 &
+  engine="$(resolve_engine)"
+  if [[ "$engine" == "go" ]]; then
+    if [[ ! -x "$AGENT_BIN" ]]; then
+      cmd_build
+    fi
+    echo "[start] Go engine DRY_RUN=${DRY_RUN:-false} → $LOG_FILE"
+    nohup "$AGENT_BIN" watch >>"$LOG_FILE" 2>&1 &
+  else
+    echo "[start] Python DRY_RUN=${DRY_RUN:-false} → $LOG_FILE"
+    nohup python3 "$SANDBOX/dummy_bot.py" >>"$LOG_FILE" 2>&1 &
+  fi
   echo $! >"$PID_FILE"
   sleep 2
   if ! kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
@@ -117,6 +158,7 @@ cmd_stop() {
 
 case "${1:-}" in
   setup) cmd_setup ;;
+  build) cmd_build ;;
   dry-run) cmd_dry_run ;;
   start) cmd_start ;;
   status) cmd_status ;;

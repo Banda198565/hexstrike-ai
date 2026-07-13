@@ -41,6 +41,7 @@ from rag_core import (
     is_false_positive_pattern,
     search_history,
 )
+from hot_wallet_ir import classify_hot_wallet_outflow, load_allowlist
 
 # Agent instruction protocol — base system prompt for monitor client
 MONITOR_AGENT_ID = "core.monitor"
@@ -433,27 +434,61 @@ def is_hot_wallet_outflow(tx: dict[str, Any]) -> bool:
     return _tx_outflow_value_wei(tx) > 0 or _tx_has_contract_call(tx)
 
 
+def count_hot_wallet_pending(content: dict[str, Any]) -> tuple[int, int]:
+    """Return (total hot pending, ir_trigger pending)."""
+    allow = load_allowlist()
+    total = 0
+    ir = 0
+    for tx in iter_txpool_txs(content):
+        if not is_hot_wallet_outflow(tx):
+            continue
+        total += 1
+        cls = classify_hot_wallet_outflow(tx, HOT_WALLET, allow)
+        if cls.get("ir_trigger"):
+            ir += 1
+    return total, ir
+
+
 def process_transaction(
     tx: dict[str, Any],
     watched: set[str],
     sinks: set[str],
     rpc_url: str,
     ignored_hashes: set[str] | None = None,
+    allowlist: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     tx_hash = (tx.get("hash") or "").lower()
     if ignored_hashes and tx_hash in ignored_hashes:
         return None
 
     if is_hot_wallet_outflow(tx):
+        allowlist = allowlist or load_allowlist()
+        cls = classify_hot_wallet_outflow(tx, HOT_WALLET, allowlist, sinks)
+        severity = SEVERITY_CRITICAL if cls["ir_trigger"] else (
+            SEVERITY_WARN if cls["risk_level"] == "WARN" else SEVERITY_INFO
+        )
+        alert_type = "HOT_WALLET_OUTFLOW" if cls["ir_trigger"] else "HOT_WALLET_OUTFLOW_AUTHORIZED"
+        msg = (
+            f"IR TRIGGER: pending outflow from hot wallet {HOT_WALLET} "
+            f"-> {cls.get('effective_to') or tx.get('to')} "
+            f"(score={cls['risk_score']}; {', '.join(cls['risk_reasons'])})"
+            if cls["ir_trigger"]
+            else (
+                f"Authorized/lower-risk hot wallet outflow -> {cls.get('effective_to') or tx.get('to')} "
+                f"(score={cls['risk_score']}; audit only)"
+            )
+        )
         return {
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "alert_type": "HOT_WALLET_OUTFLOW",
-            "severity": SEVERITY_CRITICAL,
-            "ir_trigger": True,
-            "message": (
-                f"IR TRIGGER: pending outflow from hot wallet {HOT_WALLET} "
-                f"-> {tx.get('to')} (review immediately; possible unauthorized signing)"
-            ),
+            "alert_type": alert_type,
+            "severity": severity,
+            "ir_trigger": cls["ir_trigger"],
+            "risk_score": cls["risk_score"],
+            "risk_level": cls["risk_level"],
+            "risk_reasons": cls["risk_reasons"],
+            "effective_to": cls.get("effective_to"),
+            "erc20_recipient": cls.get("erc20_recipient"),
+            "message": msg,
             "rpc": rpc_url,
             "pool": tx.get("pool", "pending"),
             "hash": tx.get("hash"),
@@ -461,9 +496,9 @@ def process_transaction(
             "to": tx.get("to"),
             "value": tx.get("value"),
             "context_hits": [f"from:{HOT_WALLET}"],
-            "high_risk": True,
-            "risk_reason": "hot_wallet_pending_outflow",
-            "unknown_pattern": True,
+            "high_risk": cls["ir_trigger"],
+            "risk_reason": cls["risk_reasons"][0] if cls["risk_reasons"] else "hot_wallet_pending_outflow",
+            "unknown_pattern": cls["ir_trigger"],
             "rag_hits": [],
         }
 
@@ -581,6 +616,7 @@ def run_monitor(
     seen_hashes: set[str] = set(state.get("seen_hashes", []))
     last_indexer_run = float(state.get("last_indexer_run", 0))
     dedup_pairs: dict[str, float] = dict(state.get("dedup_pairs", {}))
+    allowlist = load_allowlist()
 
     print(f"[monitor] RPC primary: {cfg['primary']}")
     print(f"[agent] {MONITOR_AGENT_ID} instructions loaded ({len(MONITOR_SYSTEM_PROMPT)} bytes from monitor.md)")
@@ -591,7 +627,8 @@ def run_monitor(
     print(f"[monitor] Desktop alert: {DESKTOP_ALERT}")
     stealth_on = os.environ.get("HEXSTRIKE_STEALTH", "1") != "0"
     print(f"[monitor] Stealth transport: {'on' if stealth_on else 'off'}")
-    print(f"[monitor] HOT_WALLET IR trigger: {HOT_WALLET}")
+    print(f"[monitor] HOT_WALLET IR trigger: {HOT_WALLET} (score>={os.environ.get('HOT_WALLET_IR_SCORE', '70')})")
+    print(f"[monitor] Allowlist recipients: {len(allowlist.get('authorized_recipients', []))}")
     print(f"[monitor] Heartbeat every {HEARTBEAT_EVERY_POLLS} polls | block-scan every {BLOCK_SCAN_EVERY_POLLS} polls")
 
     start = time.time()
@@ -622,9 +659,11 @@ def run_monitor(
             pending_n = sum(
                 1 for _ in iter_txpool_txs(content)
             )
+            hot_pending, hot_ir = count_hot_wallet_pending(content)
             print(
                 f"[heartbeat] poll={polls} rpc={active_rpc} "
                 f"latency_ms={poll_latency_ms} pending_txs={pending_n} "
+                f"hot_pending={hot_pending} hot_ir={hot_ir} "
                 f"seen_total={txs_seen} alerts={alerts_count}"
             )
 
@@ -641,8 +680,13 @@ def run_monitor(
             seen_hashes.add(tx_hash)
             txs_seen += 1
 
-            alert = process_transaction(tx, watched, sinks, active_rpc, ignored_hashes)
+            alert = process_transaction(tx, watched, sinks, active_rpc, ignored_hashes, allowlist)
             if not alert:
+                continue
+
+            # Authorized payroll path: log INFO only, skip critical alert pipeline
+            if alert.get("alert_type") == "HOT_WALLET_OUTFLOW_AUTHORIZED":
+                print(f"[audit] {alert['alert_type']} {tx_hash} score={alert.get('risk_score')}")
                 continue
 
             if is_deduped_pair(alert.get("from", ""), alert.get("to", ""), dedup_pairs):
