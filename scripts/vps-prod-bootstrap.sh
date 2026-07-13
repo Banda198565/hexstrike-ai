@@ -9,7 +9,7 @@
 set -euo pipefail
 
 INSTALL_DIR="${HEXSTRIKE_DIR:-/opt/hexstrike-ai}"
-BRANCH="${HEXSTRIKE_BRANCH:-cursor/go-watch-mempool-ir-58a3}"
+BRANCH="${HEXSTRIKE_BRANCH:-cursor/exploit-agent-orchestrator-58a3}"
 REPO="${HEXSTRIKE_REPO:-https://github.com/Banda198565/hexstrike-ai.git}"
 CLOUD_AGENT_PUBKEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIByufH4aDtJgrm/Udc3Vai4heLmGhT2N4xKdZ5bjZ0DH cursor-cloud-hexstrike"
 
@@ -67,6 +67,12 @@ bash scripts/vps-start-server.sh
 
 log "Combat readiness check"
 bash scripts/monitor-combat-readiness.sh || log "WARN: readiness had warnings"
+
+if [[ -f scripts/verify-exploit-integration.sh ]]; then
+  log "ExploitAgent integration check"
+  bash scripts/verify-exploit-integration.sh "$INSTALL_DIR" || \
+    log "WARN: ExploitAgent not integrated — run: bash scripts/vps-sync-exploit-to-opt.sh"
+fi
 
 echo ""
 echo "════════════════════════════════════════════════════════"

@@ -9,7 +9,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VPS_HOST="${VPS_HOST:-78.27.235.70}"
 VPS_USER="${VPS_USER:-root}"
-BRANCH="${HEXSTRIKE_BRANCH:-cursor/go-watch-mempool-ir-58a3}"
+BRANCH="${HEXSTRIKE_BRANCH:-cursor/exploit-agent-orchestrator-58a3}"
 
 SSH_OPTS=(-o StrictHostKeyChecking=accept-new)
 [[ -n "${VPS_SSH_KEY:-}" && -f "$VPS_SSH_KEY" ]] && SSH_OPTS+=(-i "$VPS_SSH_KEY")
