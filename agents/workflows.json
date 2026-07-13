@@ -58,6 +58,21 @@
       ],
       "note": "Read-only. hot_wallet, authority, hub, puissant, infra_correlated_wallet from desktop reports."
     },
+    "field-targets-6": {
+      "description": "Sweep contracts cluster: bytecode forensics → fork → recon → conclusion",
+      "env": {
+        "WALLETS_FILE": "scripts/sandbox/field-targets-6.json",
+        "WALLETS_ONLY": "1"
+      },
+      "steps": [
+        {"agent": "Agent-Battle-07", "task": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "target-fork-setup", "depends_on": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "multi-wallet-recon", "depends_on": "target-fork-setup"},
+        {"agent": "Agent-Battle-07", "task": "generate-target-conclusion", "depends_on": "multi-wallet-recon"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "generate-target-conclusion"}
+      ],
+      "note": "Read-only. sweep routers + EIP-7702 impl + Rhino.fi hub from recon Phase A outflow analysis."
+    },
     "multi-wallet-conclusions": {
       "description": "All seed wallets: profile → fork → multi recon → conclusion report",
       "steps": [
