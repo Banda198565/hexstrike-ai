@@ -81,6 +81,22 @@
       ],
       "note": "Read-only. Signature policy audit on impl 0x314C01e7... + hub USDT state + LEA pack."
     },
+    "field-targets-7": {
+      "description": "Cross-chain Phase-3: multichain targets BSC+Base via agent pipeline",
+      "env": {
+        "WALLETS_FILE": "scripts/sandbox/field-targets-7.json",
+        "WALLETS_ONLY": "1"
+      },
+      "steps": [
+        {"agent": "Agent-Battle-07", "task": "generate-target-profile"},
+        {"agent": "Agent-OSINT-03", "task": "blockscan-cluster", "depends_on": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "multichain-target-recon", "depends_on": "blockscan-cluster"},
+        {"agent": "Agent-Battle-07", "task": "crosschain-rhino-correlate", "depends_on": "multichain-target-recon"},
+        {"agent": "Agent-Battle-07", "task": "generate-target-conclusion", "depends_on": "crosschain-rhino-correlate"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "generate-target-conclusion"}
+      ],
+      "note": "Read-only. hot_wallet BSC+Base, Rhino hub, sweep delegate, EIP-7702 impl."
+    },
     "multi-wallet-conclusions": {
       "description": "All seed wallets: profile → fork → multi recon → conclusion report",
       "steps": [
