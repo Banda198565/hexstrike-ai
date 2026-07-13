@@ -28,6 +28,8 @@ def enqueue_llm_task(fn) -> None:
 
     threading.Thread(target=fn, daemon=True, name="hexstrike-llm-async").start()
 
+
+def ollama_request_options() -> dict[str, int]:
     """Runtime options for deepseek-r1 — tune via OLLAMA_NUM_THREAD / OLLAMA_NUM_PREDICT."""
     return {
         "num_thread": int(os.environ.get("OLLAMA_NUM_THREAD", DEFAULT_NUM_THREAD)),
