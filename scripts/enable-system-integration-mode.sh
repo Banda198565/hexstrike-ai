@@ -7,7 +7,7 @@ cd "$ROOT"
 
 LOCAL_HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"
 LOCAL_BASE="${LOCAL_HOST%/}/v1"
-MODEL="${OLLAMA_MODEL:-deepseek-r1:1.5b}"
+MODEL="${OLLAMA_MODEL:-qwen2.5-coder:7b}"
 SETTINGS="$ROOT/.cursor/settings.json"
 ENV_FILE="$ROOT/.env"
 
@@ -20,11 +20,11 @@ if ! curl -sf --max-time 3 "${LOCAL_HOST}/api/tags" >/dev/null 2>&1; then
 fi
 
 TAGS="$(curl -sf --max-time 5 "${LOCAL_HOST}/api/tags")"
-if ! echo "$TAGS" | grep -qi 'deepseek-r1'; then
-  echo "[WARN] deepseek-r1 not in manifest — run: ollama pull deepseek-r1"
+if ! echo "$TAGS" | grep -qi 'qwen2.5-coder'; then
+  echo "[WARN] qwen2.5-coder not in manifest — run: ollama pull qwen2.5-coder:7b"
   echo "       Available: $(echo "$TAGS" | python3 -c "import sys,json; d=json.load(sys.stdin); print([m.get('name') for m in d.get('models',[])])" 2>/dev/null || echo '?')"
 else
-  echo "[OK]   deepseek-r1 present in local model manifest"
+  echo "[OK]   qwen2.5-coder present in local model manifest"
 fi
 
 touch "$ENV_FILE"

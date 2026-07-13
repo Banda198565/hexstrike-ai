@@ -396,7 +396,7 @@ def main() -> int:
     ops_p.add_argument("--target-ip", default="51.250.97.223")
     ops_p.add_argument("--wallet", default="0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a")
 
-    llm_p = sub.add_parser("llm-handshake", help="Verify local Ollama hook + latency diagnostic")
+    llm_p = sub.add_parser("llm-handshake", help="Verify Ollama hook + latency diagnostic (local or cloud)")
     llm_p.add_argument("--probe", choices=("models", "chat", "both"), default="both")
 
     args = parser.parse_args()
@@ -482,7 +482,9 @@ def main() -> int:
             "latency": {p: orch.llm.measure_hook_latency(probe=p) for p in probes},
         }
         print(json.dumps(report, indent=2))
-        return 0 if report["llm"].get("local_inference") else 1
+        llm = report["llm"]
+        ok = llm.get("endpoint_reachable") or llm.get("local_inference")
+        return 0 if ok else 1
 
     return 1
 
