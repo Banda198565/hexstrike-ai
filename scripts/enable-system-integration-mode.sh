@@ -30,11 +30,23 @@ fi
 touch "$ENV_FILE"
 set_env() {
   local key="$1" val="$2"
-  if grep -q "^${key}=" "$ENV_FILE" 2>/dev/null; then
-    sed -i.bak "s|^${key}=.*|${key}=${val}|" "$ENV_FILE"
-  else
-    echo "${key}=${val}" >> "$ENV_FILE"
-  fi
+  python3 - "$ENV_FILE" "$key" "$val" <<'PY'
+import sys
+from pathlib import Path
+p = Path(sys.argv[1])
+key, val = sys.argv[2], sys.argv[3]
+lines = p.read_text(encoding="utf-8").splitlines() if p.is_file() else []
+out, found = [], False
+for line in lines:
+    if line.startswith(f"{key}="):
+        out.append(f"{key}={val}")
+        found = True
+    else:
+        out.append(line)
+if not found:
+    out.append(f"{key}={val}")
+p.write_text("\n".join(out) + ("\n" if out else ""), encoding="utf-8")
+PY
 }
 
 set_env "OLLAMA_HOST" "$LOCAL_HOST"

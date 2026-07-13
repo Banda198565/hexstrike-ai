@@ -6,13 +6,20 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 echo "[1/5] Setting OLLAMA_HOST in .env"
-grep -q '^OLLAMA_HOST=' "$ROOT/.env" 2>/dev/null && \
-  sed -i.bak 's|^OLLAMA_HOST=.*|OLLAMA_HOST=http://127.0.0.1:11434|' "$ROOT/.env" || \
-  echo 'OLLAMA_HOST=http://127.0.0.1:11434' >> "$ROOT/.env"
-
-if ! grep -q '^OLLAMA_ORIGINS=' "$ROOT/.env" 2>/dev/null; then
-  echo 'OLLAMA_ORIGINS=*' >> "$ROOT/.env"
-fi
+python3 - "$ROOT/.env" <<'PY'
+import sys
+from pathlib import Path
+p = Path(sys.argv[1])
+pairs = {"OLLAMA_HOST": "http://127.0.0.1:11434", "OLLAMA_ORIGINS": "*"}
+existing = {}
+if p.is_file():
+    for line in p.read_text(encoding="utf-8").splitlines():
+        if "=" in line and not line.strip().startswith("#"):
+            k, _, v = line.partition("=")
+            existing[k.strip()] = v.strip()
+existing.update(pairs)
+p.write_text("\n".join(f"{k}={v}" for k, v in existing.items()) + "\n", encoding="utf-8")
+PY
 
 export OLLAMA_HOST=http://127.0.0.1:11434
 export OLLAMA_ORIGINS=*
