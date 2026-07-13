@@ -48,6 +48,7 @@ MONITOR_AGENT_ID = "core.monitor"
 MONITOR_SYSTEM_PROMPT = load_instruction(MONITOR_AGENT_ID)
 
 DEFAULT_CONFIG = ROOT / "config" / "rpc_config.json"
+SINKS_CONFIG = ROOT / "config" / "monitor-sinks.json"
 ALERTS_LOG = ROOT / "artifacts" / "alerts.log"
 FEEDBACK_FILE = ROOT / "artifacts" / "alerts_feedback.txt"
 DESKTOP_ALERT = Path.home() / "Desktop" / "on-chain-forensics" / "latest-alert.json"
@@ -205,11 +206,27 @@ def extract_addresses(obj: Any, found: dict[str, set[str]] | None = None, label:
     return found
 
 
+def load_sink_policy() -> dict[str, set[str]]:
+    """Bridge sinks vs token contracts (USDT must never be flagged as sink)."""
+    bridge: set[str] = set()
+    never_sink: set[str] = set()
+    if SINKS_CONFIG.is_file():
+        raw = json.loads(SINKS_CONFIG.read_text(encoding="utf-8"))
+        bridge = {normalize_addr(a) for a in raw.get("bridge_sinks", [])}
+        never_sink = {normalize_addr(a) for a in raw.get("token_contracts_never_sinks", [])}
+    else:
+        bridge = {normalize_addr("0xb80a582fa430645a043bb4f6135321ee01005fef")}
+        never_sink = {normalize_addr("0x55d398326f99059ff775485246999027b3197955")}
+    return {"bridge_sinks": bridge, "never_sinks": never_sink}
+
+
 def load_watched_addresses(config: dict[str, Any]) -> dict[str, Any]:
     """Build watchlist from master_context.json + rpc_config monitoring targets."""
     watched: set[str] = set()
     sinks: set[str] = set()
     sources: list[str] = []
+    policy = load_sink_policy()
+    never_sinks = policy["never_sinks"]
 
     ctx = fetch_context_via_api(config) or load_master_context()
     if ctx:
@@ -218,22 +235,25 @@ def load_watched_addresses(config: dict[str, Any]) -> dict[str, Any]:
             data = entry.get("data", entry)
             extracted = extract_addresses(data)
             watched.update(extracted["all"])
-            sinks.update(extracted["labeled"])
+            for addr in extracted["labeled"]:
+                if addr not in never_sinks:
+                    sinks.add(addr)
 
     mon = config.get("monitoring", {})
     for addr in mon.get("target_contracts", []):
         watched.add(normalize_addr(addr))
         sources.append("rpc_config.monitoring.target_contracts")
 
-    # Explicit sinks from forensics knowledge base
-    for addr in (
-        "0xb80a582fa430645a043bb4f6135321ee01005fef",  # Rhino.fi
-        "0x4943f5e7f4e450d48ae82026163ecde8a52c53da",  # hot wallet
-        "0x730ea0231808f42a20f8921ba7fbc788226768f5",  # authority
-    ):
+    for addr in policy["bridge_sinks"]:
         norm = normalize_addr(addr)
         watched.add(norm)
         sinks.add(norm)
+
+    for addr in (HOT_WALLET, "0x730ea0231808f42a20f8921ba7fbc788226768f5"):
+        watched.add(normalize_addr(addr))
+
+    sinks -= never_sinks
+    sinks.discard(normalize_addr(HOT_WALLET))
 
     return {
         "watched": watched,
@@ -256,6 +276,9 @@ def tx_context_hits(tx: dict[str, Any], watched: set[str]) -> list[str]:
 def is_high_risk(tx: dict[str, Any], sinks: set[str]) -> tuple[bool, str]:
     frm = normalize_addr(tx.get("from"))
     to = normalize_addr(tx.get("to"))
+    policy = load_sink_policy()
+    if to in policy["never_sinks"]:
+        return False, ""
     if to in sinks:
         return True, "interaction_with_known_sink"
     if frm in sinks:

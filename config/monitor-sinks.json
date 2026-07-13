@@ -1,0 +1,11 @@
+{
+  "bridge_sinks": [
+    "0xb80a582fa430645a043bb4f6135321ee01005fef"
+  ],
+  "token_contracts_never_sinks": [
+    "0x55d398326f99059ff775485246999027b3197955",
+    "0x8ac76a51cc950d9822bd4b54b943d0c4e3588205",
+    "0xbb4cdb9cbd5b3d42159d0339557da9544e3588205"
+  ],
+  "notes": "USDT/USDC/WBNB are payroll rails — not bridge sinks. Rhino.fi hub is a real sink."
+}

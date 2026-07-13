@@ -122,6 +122,33 @@ print("Hot wallet IR classification: OK")
 PY
 ok "classify_hot_wallet_outflow() — allowlist + ERC20 decode"
 
+# 4c. USDT must not be a sink (alert noise fix)
+echo ""
+echo "--- Sink policy (offline) ---"
+python3 << 'PY'
+import sys
+sys.path.insert(0, "scripts")
+from autonomous_monitor import load_sink_policy, load_watched_addresses, is_high_risk, load_config
+
+usdt = "0x55d398326f99059ff775485246999027b3197955"
+rhino = "0xb80a582fa430645a043bb4f6135321ee01005fef"
+policy = load_sink_policy()
+assert usdt in policy["never_sinks"]
+assert rhino in policy["bridge_sinks"]
+cfg = load_config("config/rpc_config.json")
+watch = load_watched_addresses(cfg)
+assert usdt not in watch["sinks"], "USDT must not be in sinks"
+assert rhino in watch["sinks"], "Rhino bridge must remain sink"
+tx = {"from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da", "to": usdt, "value": "0x0"}
+high, reason = is_high_risk(tx, watch["sinks"])
+assert not high, f"USDT transfer should not be sink alert: {reason}"
+tx2 = {"from": "0x4943f5e7f4e450d48ae82026163ecde8a52c53da", "to": rhino, "value": "0x1"}
+high2, _ = is_high_risk(tx2, watch["sinks"])
+assert high2, "Rhino interaction should stay high risk"
+print("Sink policy: OK")
+PY
+ok "USDT excluded from sinks; Rhino.fi bridge retained"
+
 # 5. Sample live monitor run (--duration exits cleanly; no GNU timeout needed for macOS)
 echo ""
 echo "--- Live sample (${SAMPLE_SEC}s) ---"
