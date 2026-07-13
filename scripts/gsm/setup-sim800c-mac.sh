@@ -58,6 +58,8 @@ if ! ls /dev/cu.usb* /dev/cu.SLAB* /dev/cu.wch* /dev/cu.usbserial* /dev/cu.usbmo
   5. Тест: подключите ТОЛЬКО USB-UART без SIM800C → ls /dev/cu.*
 
 DRV
+else
+  echo "$USB_CU_PORTS"
 fi
 
 # ── 3. Python + pyserial ───────────────────────────────────────
