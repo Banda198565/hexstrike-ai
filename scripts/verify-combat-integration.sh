@@ -27,6 +27,7 @@ for f in \
   scripts/fastmcp_live_cycle.sh \
   scripts/fastmcp_verify.sh \
   scripts/vps-almalinux-fastmcp-bootstrap.sh \
+  scripts/vps-fastmcp-ops.sh \
   scripts/tx_control.sh; do
   [[ -f "$ROOT/$f" ]] && ok "$f" || bad "missing $f"
 done

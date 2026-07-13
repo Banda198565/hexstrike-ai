@@ -91,6 +91,25 @@ TARGET_ADDRESS=0xPAYROLL SKIP_DNF=1 SKIP_VENV=1 \
 
 The Alma script **refuses** `HEXSTRIKE_TX_LIVE=1` and uses a lab vault key only.
 
+### VPS recurring ops + systemd
+
+```bash
+# One-shot ops (verify + pipeline dry-run)
+bash scripts/vps-fastmcp-ops.sh          # standard
+bash scripts/vps-fastmcp-ops.sh --quick  # vault + nonce + verify
+bash scripts/vps-fastmcp-ops.sh --full   # + combat verify + readiness
+
+# Install timers (pipeline 15m + FastMCP ops 30m)
+sudo bash scripts/install-pipeline-systemd.sh /opt/hexstrike-ai
+```
+
+### Full VPS bootstrap (Alma or Ubuntu)
+
+```bash
+cd /opt/hexstrike-ai && git pull
+sudo bash scripts/vps-prod-bootstrap.sh
+```
+
 ### Mac live (operator)
 
 ```bash
