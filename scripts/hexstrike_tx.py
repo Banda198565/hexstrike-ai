@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""HexStrike tx CLI — send / sign / broadcast / status (BSC/EVM, gated broadcast)."""
+"""HexStrike tx CLI — send / sign / broadcast / status / rescue (BSC/EVM, gated broadcast)."""
 from __future__ import annotations
 
 import argparse
@@ -42,62 +42,104 @@ def _from_address() -> str:
     return addr.lower() if addr.startswith("0x") else f"0x{addr.lower()}"
 
 
-def _private_key() -> str:
-    key = os.environ.get("BOT_PRIVATE_KEY", "").strip()
+def _addr_env(name: str) -> str:
+    v = os.environ.get(name, "").strip()
+    if not v:
+        raise SystemExit(f"Set {name} in .env")
+    return v if v.startswith("0x") else f"0x{v}"
+
+
+def _private_key(env_name: str = "BOT_PRIVATE_KEY") -> str:
+    key = os.environ.get(env_name, "").strip()
+    if not key and env_name == "BOT_PRIVATE_KEY":
+        key = os.environ.get("SAFE_PRIVATE_KEY", "").strip()
     if not key:
-        raise SystemExit("BOT_PRIVATE_KEY not set — signing disabled (watch-only mode)")
-    if not key.startswith("0x"):
-        key = "0x" + key
-    return key
+        raise SystemExit(f"{env_name} not set — signing disabled (watch-only mode)")
+    return key if key.startswith("0x") else f"0x{key}"
 
 
 def parse_value(raw: str) -> int:
-    """Parse 0.001bnb / 0.001eth / 1000000000000000 / 0.001 (default native 18 dec)."""
     s = raw.strip().lower().replace("_", "")
     for suffix, dec in (("bnb", 18), ("eth", 18), ("wei", 0)):
         if s.endswith(suffix):
-            num = s[: -len(suffix)].strip()
-            return int(Decimal(num) * (Decimal(10) ** dec))
+            return int(Decimal(s[: -len(suffix)].strip()) * (Decimal(10) ** dec))
     if s.startswith("0x"):
         return int(s, 16)
     try:
-        if "." in s:
-            return int(Decimal(s) * Decimal(10**18))
-        return int(s)
+        return int(Decimal(s) * Decimal(10**18)) if "." in s else int(s)
     except InvalidOperation as exc:
         raise SystemExit(f"Invalid --value: {raw}") from exc
 
 
-def cmd_send(args: argparse.Namespace) -> int:
-    rpc = _rpc_url()
-    from_addr = _from_address()
-    to_addr = args.target if args.target.startswith("0x") else f"0x{args.target}"
-    value_wei = parse_value(args.value)
-    chain_id = _chain_id(rpc)
-    nonce = int(rpc_call(rpc, "eth_getTransactionCount", [from_addr, "pending"])["result"], 16)
+def _build_tx(*, from_addr: str, to_addr: str, value_wei: int, gas: int, rpc: str) -> dict[str, Any]:
     gas_price = int(rpc_call(rpc, "eth_gasPrice", [])["result"], 16)
-
-    tx: dict[str, Any] = {
-        "chainId": chain_id,
+    return {
+        "chainId": _chain_id(rpc),
         "from": from_addr,
         "to": to_addr,
         "value": hex(value_wei),
-        "nonce": nonce,
-        "gas": hex(21000),
+        "nonce": int(rpc_call(rpc, "eth_getTransactionCount", [from_addr, "pending"])["result"], 16),
+        "gas": hex(gas),
         "maxFeePerGas": hex(gas_price * 2),
         "maxPriorityFeePerGas": hex(gas_price),
         "type": 2,
     }
 
-    bus = ContextBus()
-    bc = ExecutionBroadcaster(bus=bus, config_path=RPC_CONFIG)
-    pre = bc.preflight(tx)
 
-    out = {
+def _sign_tx_dict(tx: dict[str, Any], *, key_env: str, rpc: str) -> dict[str, Any]:
+    try:
+        from eth_account import Account  # type: ignore[import-untyped]
+    except ImportError as exc:
+        raise SystemExit("pip install eth-account") from exc
+
+    acct = Account.from_key(_private_key(key_env))
+    norm: dict[str, Any] = {}
+    for k, v in tx.items():
+        if k in ("from", "privateKey"):
+            continue
+        if k in ("value", "gas", "maxFeePerGas", "maxPriorityFeePerGas", "gasPrice") and isinstance(v, str):
+            norm[k] = int(v, 16) if str(v).startswith("0x") else int(v)
+        elif k == "chainId" and isinstance(v, str) and v.startswith("0x"):
+            norm[k] = int(v, 16)
+        else:
+            norm[k] = v
+    if "chainId" not in norm:
+        norm["chainId"] = _chain_id(rpc)
+    if "nonce" not in norm:
+        norm["nonce"] = int(
+            rpc_call(rpc, "eth_getTransactionCount", [acct.address, "pending"])["result"], 16
+        )
+    signed = acct.sign_transaction(norm)
+    raw_hex = signed.raw_transaction.hex()
+    if not raw_hex.startswith("0x"):
+        raw_hex = "0x" + raw_hex
+    return {
+        "from": acct.address,
+        "raw": raw_hex,
+        "hash": signed.hash.hex() if hasattr(signed, "hash") else None,
+    }
+
+
+def cmd_send(args: argparse.Namespace) -> int:
+    rpc = _rpc_url()
+    to_addr = args.target if args.target.startswith("0x") else f"0x{args.target}"
+    tx = _build_tx(
+        from_addr=_from_address(),
+        to_addr=to_addr,
+        value_wei=parse_value(args.value),
+        gas=int(args.gas),
+        rpc=rpc,
+    )
+    pre = ExecutionBroadcaster(bus=ContextBus(), config_path=RPC_CONFIG).preflight(tx)
+    out_path = Path(args.out) if args.out else ROOT / "artifacts" / "tx" / "raw_tx.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    out: dict[str, Any] = {
         "command": "send",
         "dry_run": args.dry_run,
         "rpc": rpc,
         "transaction": tx,
+        "raw_tx_path": str(out_path),
         "preflight": {
             "ok": pre.ok,
             "gas_estimate": pre.gas_estimate,
@@ -106,17 +148,15 @@ def cmd_send(args: argparse.Namespace) -> int:
             "warnings": pre.warnings,
         },
     }
-
     if args.dry_run:
+        out_path.write_text(json.dumps({"transaction": tx}, indent=2) + "\n", encoding="utf-8")
         out["result"] = "ok"
         out["note"] = "Dry-run — not signed or broadcast"
         print(json.dumps(out, indent=2))
-        if args.out:
-            Path(args.out).write_text(json.dumps(tx, indent=2) + "\n", encoding="utf-8")
         return 0
 
-    queued = bc.queue_for_approval(tx, reason="hexstrike tx send")
-    out["queued"] = queued
+    bc = ExecutionBroadcaster(bus=ContextBus(), config_path=RPC_CONFIG)
+    out["queued"] = bc.queue_for_approval(tx, reason="hexstrike tx send")
     out["pending_action"] = str(PENDING_ACTION)
     print(json.dumps(out, indent=2))
     return 0 if pre.ok else 1
@@ -124,56 +164,12 @@ def cmd_send(args: argparse.Namespace) -> int:
 
 def cmd_sign(args: argparse.Namespace) -> int:
     raw_path = Path(args.raw_tx)
-    if not raw_path.is_file():
-        raise SystemExit(f"Missing file: {raw_path}")
-
     data = json.loads(raw_path.read_text(encoding="utf-8"))
     tx = data.get("transaction", data)
     rpc = _rpc_url()
-
     if args.debug:
-        dbg = {k: v for k, v in tx.items() if k not in ("privateKey",)}
-        dbg["from_env"] = _from_address()
-        print(json.dumps({"debug": dbg, "rpc": rpc}, indent=2), file=sys.stderr)
-
-    try:
-        from eth_account import Account  # type: ignore[import-untyped]
-    except ImportError as exc:
-        raise SystemExit("pip install eth-account") from exc
-
-    key = _private_key()
-    acct = Account.from_key(key)
-
-    # Normalize hex fields for eth_account
-    norm: dict[str, Any] = {}
-    for k, v in tx.items():
-        if k in ("from", "privateKey"):
-            continue
-        if k in ("value", "gas", "maxFeePerGas", "maxPriorityFeePerGas", "gasPrice") and isinstance(v, str):
-            norm[k] = int(v, 16) if v.startswith("0x") else int(v)
-        elif k == "chainId" and isinstance(v, str) and v.startswith("0x"):
-            norm[k] = int(v, 16)
-        else:
-            norm[k] = v
-
-    if "chainId" not in norm:
-        norm["chainId"] = _chain_id(rpc)
-    if "nonce" not in norm:
-        norm["nonce"] = int(
-            rpc_call(rpc, "eth_getTransactionCount", [acct.address, "pending"])["result"], 16
-        )
-
-    signed = acct.sign_transaction(norm)
-    raw_hex = signed.raw_transaction.hex()
-    if not raw_hex.startswith("0x"):
-        raw_hex = "0x" + raw_hex
-
-    result = {
-        "command": "sign",
-        "from": acct.address,
-        "raw": raw_hex,
-        "hash": signed.hash.hex() if hasattr(signed, "hash") else None,
-    }
+        print(json.dumps({"debug": {k: v for k, v in tx.items() if k != "privateKey"}, "rpc": rpc}, indent=2), file=sys.stderr)
+    result = {"command": "sign", **_sign_tx_dict(tx, key_env="BOT_PRIVATE_KEY", rpc=rpc)}
     out_path = Path(args.out) if args.out else raw_path.with_name("signed_tx.json")
     out_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({**result, "output": str(out_path)}, indent=2))
@@ -181,28 +177,16 @@ def cmd_sign(args: argparse.Namespace) -> int:
 
 
 def cmd_broadcast(args: argparse.Namespace) -> int:
-    path = Path(args.signed_tx)
-    if not path.is_file():
-        raise SystemExit(f"Missing file: {path}")
-
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = json.loads(Path(args.signed_tx).read_text(encoding="utf-8"))
     raw_hex = data.get("raw") or data.get("signed_tx") or data.get("rawTransaction")
     if not raw_hex:
         raise SystemExit("signed_tx.json must contain 'raw' hex field")
-
     if args.force:
-        if PENDING_ACTION.is_file():
-            pending = json.loads(PENDING_ACTION.read_text(encoding="utf-8"))
-        else:
-            pending = {"status": "awaiting_operator_review", "action": "broadcast_tx"}
-        pending["status"] = "approved"
-        pending["approved_by"] = "hexstrike tx broadcast --force"
+        pending = json.loads(PENDING_ACTION.read_text(encoding="utf-8")) if PENDING_ACTION.is_file() else {}
+        pending.update({"status": "approved", "approved_by": "hexstrike tx broadcast --force", "action": "broadcast_tx"})
         PENDING_ACTION.parent.mkdir(parents=True, exist_ok=True)
         PENDING_ACTION.write_text(json.dumps(pending, indent=2) + "\n", encoding="utf-8")
-
-    bus = ContextBus()
-    bc = ExecutionBroadcaster(bus=bus, config_path=RPC_CONFIG)
-    result = bc.broadcast(raw_hex, approved=args.force)
+    result = ExecutionBroadcaster(bus=ContextBus(), config_path=RPC_CONFIG).broadcast(raw_hex, approved=args.force)
     print(json.dumps({"command": "broadcast", **result}, indent=2))
     return 0 if result.get("success") else 1
 
@@ -210,58 +194,102 @@ def cmd_broadcast(args: argparse.Namespace) -> int:
 def cmd_status(args: argparse.Namespace) -> int:
     rpc = _rpc_url()
     tx_hash = args.hash if args.hash.startswith("0x") else f"0x{args.hash}"
-    tx = rpc_call(rpc, "eth_getTransactionByHash", [tx_hash])
-    receipt = rpc_call(rpc, "eth_getTransactionReceipt", [tx_hash])
-    out = {
-        "command": "status",
-        "hash": tx_hash,
-        "rpc": rpc,
-        "transaction": tx.get("result"),
-        "receipt": receipt.get("result"),
-        "mined": receipt.get("result") is not None,
-    }
-    if args.json:
-        print(json.dumps(out, indent=2))
-    else:
-        r = out["receipt"]
-        if r:
-            print(f"mined block={int(r.get('blockNumber','0x0'),16)} status={int(r.get('status','0x0'),16)}")
-        else:
-            print("pending or not found")
+    receipt = rpc_call(rpc, "eth_getTransactionReceipt", [tx_hash]).get("result")
+    tx = rpc_call(rpc, "eth_getTransactionByHash", [tx_hash]).get("result")
+    state = "pending"
+    if receipt:
+        state = "success" if int(receipt.get("status", "0x0"), 16) == 1 else "fail"
+    out = {"command": "status", "hash": tx_hash, "state": state, "rpc": rpc, "transaction": tx, "receipt": receipt, "mined": receipt is not None}
+    print(json.dumps(out, indent=2) if args.json else json.dumps(out, indent=2))
     return 0
 
 
+def cmd_rescue(args: argparse.Namespace) -> int:
+    """SAFE → GAS_HOLDER native top-up (gas rescue)."""
+    rpc = _rpc_url()
+    safe = _addr_env("SAFE_ADDRESS")
+    target = args.target or os.environ.get("GAS_HOLDER_ADDRESS", "")
+    if not target:
+        raise SystemExit("Set GAS_HOLDER_ADDRESS or --target")
+    to_addr = target if target.startswith("0x") else f"0x{target}"
+    gas = int(args.gas)
+    value_wei = parse_value(args.value)
+    tx = _build_tx(from_addr=safe, to_addr=to_addr, value_wei=value_wei, gas=gas, rpc=rpc)
+    out_path = ROOT / "artifacts" / "tx" / "rescue_raw_tx.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    out: dict[str, Any] = {
+        "command": "rescue",
+        "dry_run": args.dry_run,
+        "from_safe": safe,
+        "to_gas_holder": to_addr,
+        "transaction": tx,
+        "raw_tx_path": str(out_path),
+    }
+    if args.dry_run:
+        out_path.write_text(json.dumps({"transaction": tx}, indent=2) + "\n", encoding="utf-8")
+        out["result"] = "ok"
+        out["note"] = "Rescue dry-run — SAFE top-up not broadcast"
+        print(json.dumps(out, indent=2))
+        return 0
+
+    signed = _sign_tx_dict(tx, key_env="SAFE_PRIVATE_KEY", rpc=rpc)
+    signed_path = ROOT / "artifacts" / "tx" / "rescue_signed_tx.json"
+    signed_path.write_text(json.dumps({"command": "rescue_sign", **signed}, indent=2) + "\n", encoding="utf-8")
+    if PENDING_ACTION.is_file():
+        pending = json.loads(PENDING_ACTION.read_text(encoding="utf-8"))
+    else:
+        pending = {}
+    pending.update({"status": "approved", "approved_by": "hexstrike tx rescue", "action": "broadcast_tx"})
+    PENDING_ACTION.write_text(json.dumps(pending, indent=2) + "\n", encoding="utf-8")
+    result = ExecutionBroadcaster(bus=ContextBus(), config_path=RPC_CONFIG).broadcast(signed["raw"], approved=True)
+    out["signed_path"] = str(signed_path)
+    out["broadcast"] = result
+    print(json.dumps(out, indent=2))
+    return 0 if result.get("success") else 1
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="hexstrike tx", description="HexStrike transaction CLI")
+    parser = argparse.ArgumentParser(prog="hexstrike tx")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    send_p = sub.add_parser("send", help="Build tx + preflight (default dry-run)")
-    send_p.add_argument("target", help="0x recipient")
-    send_p.add_argument("--value", required=True, help="e.g. 0.001bnb")
-    send_p.add_argument("--dry-run", action="store_true", default=False, help="Preflight only")
-    send_p.add_argument("--out", help="Write unsigned tx JSON")
+    send_p = sub.add_parser("send")
+    send_p.add_argument("target")
+    send_p.add_argument("--value", required=True)
+    send_p.add_argument("--gas", default="21000")
+    send_p.add_argument("--dry-run", action="store_true", default=False)
+    send_p.add_argument("--out")
     send_p.set_defaults(func=cmd_send)
 
-    sign_p = sub.add_parser("sign", help="Sign unsigned tx JSON")
-    sign_p.add_argument("raw_tx", help="raw_tx.json path")
+    sign_p = sub.add_parser("sign")
+    sign_p.add_argument("raw_tx")
     sign_p.add_argument("--debug", action="store_true")
-    sign_p.add_argument("--out", help="Output signed_tx.json path")
+    sign_p.add_argument("--out")
     sign_p.set_defaults(func=cmd_sign)
 
-    bc_p = sub.add_parser("broadcast", help="Broadcast signed raw tx (approval gate)")
-    bc_p.add_argument("signed_tx", help="signed_tx.json path")
-    bc_p.add_argument("--force", action="store_true", help="Auto-approve pending_action for this broadcast")
+    bc_p = sub.add_parser("broadcast")
+    bc_p.add_argument("signed_tx")
+    bc_p.add_argument("--force", action="store_true")
     bc_p.set_defaults(func=cmd_broadcast)
 
-    st_p = sub.add_parser("status", help="Tx / receipt status")
-    st_p.add_argument("hash", help="0x transaction hash")
-    st_p.add_argument("--json", action="store_true")
+    st_p = sub.add_parser("status")
+    st_p.add_argument("hash")
+    st_p.add_argument("--json", action="store_true", default=True)
     st_p.set_defaults(func=cmd_status)
 
+    rescue_p = sub.add_parser("rescue", help="SAFE → GAS_HOLDER top-up")
+    rescue_p.add_argument("--target", help="GAS_HOLDER address")
+    rescue_p.add_argument("--value", default="0.01bnb")
+    rescue_p.add_argument("--gas", default="21000")
+    rescue_p.add_argument("--dry-run", action="store_true", default=False)
+    rescue_p.set_defaults(func=cmd_rescue)
+
     args = parser.parse_args()
-    # Default send to dry-run unless LIVE=1
-    if args.cmd == "send" and not os.environ.get("HEXSTRIKE_TX_LIVE", "").lower() in ("1", "true", "yes"):
-        if not getattr(args, "dry_run", False) and "--dry-run" not in sys.argv:
+    if args.cmd == "send" and os.environ.get("HEXSTRIKE_TX_LIVE", "").lower() not in ("1", "true", "yes"):
+        if not args.dry_run and "--dry-run" not in sys.argv:
+            args.dry_run = True
+    if args.cmd == "rescue" and os.environ.get("HEXSTRIKE_TX_LIVE", "").lower() not in ("1", "true", "yes"):
+        if not args.dry_run and "--dry-run" not in sys.argv:
             args.dry_run = True
     return args.func(args)
 
