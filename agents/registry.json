@@ -325,7 +325,7 @@
           "constraints": ["requires-keys", "operator-mac-only"]
         }
       },
-      "mcp_tools": ["tx_dry_run", "tx_status"],
+      "mcp_tools": ["tx_build", "tx_sign", "tx_broadcast", "tx_status", "tx_log", "tx_dry_run"],
       "hexstrike_cli": ["hexstrike agent run transaction", "hexstrike tx send"]
     },
     "Agent-Rescue-01": {
@@ -343,7 +343,7 @@
           "constraints": ["dry-run-default"]
         }
       },
-      "mcp_tools": ["rescue_check"],
+      "mcp_tools": ["tx_rescue", "rescue_check"],
       "hexstrike_cli": ["hexstrike agent run rescue", "hexstrike tx rescue"]
     },
     "Agent-Discovery-01": {
@@ -361,7 +361,7 @@
           "constraints": ["read-only", "block-trace"]
         }
       },
-      "mcp_tools": ["discovery_scan", "discovery_trace"],
+      "mcp_tools": ["tx_discovery", "discovery_scan", "discovery_trace"],
       "hexstrike_cli": ["hexstrike agent run discovery --trace"]
     },
     "Agent-Forensics-01": {

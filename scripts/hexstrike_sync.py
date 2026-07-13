@@ -24,6 +24,15 @@ def sync_mcp() -> int:
         print(json.dumps(report, indent=2))
         return 1
 
+    tx_skills = ROOT / "mcp" / "tx-skills.json"
+    if tx_skills.is_file():
+        skills = list(json.loads(tx_skills.read_text(encoding="utf-8")).get("skills", {}).keys())
+        report["checks"].append({"mcp_tx_skills": "ok", "skills": skills})
+    else:
+        report["checks"].append({"mcp_tx_skills": "missing", "path": str(tx_skills)})
+        print(json.dumps(report, indent=2))
+        return 1
+
     if VERIFY.is_file():
         proc = subprocess.run(["bash", str(VERIFY), str(ROOT)], capture_output=True, text=True)
         report["checks"].append({

@@ -1,0 +1,127 @@
+{
+  "version": "1",
+  "description": "MCP transaction skills — granular tools for agent network operations",
+  "namespace": "mcp.tx",
+  "defaults": {
+    "dry_run": true,
+    "output": "json",
+    "gas": 21000,
+    "log_dir": "tx_logs"
+  },
+  "skills": {
+    "TransactionBuilder": {
+      "id": "tx_build",
+      "cli": "hexstrike mcp tx build",
+      "module": "scripts/mcp_tx.py",
+      "callable": "skill_build",
+      "description": "Form EIP-1559 raw payload (to, value, gas, optional data)",
+      "params": {
+        "target": {"type": "address", "required": true, "env": "TARGET_ADDRESS"},
+        "value": {"type": "amount", "default": "0.001bnb", "examples": ["0.001bnb", "1000000000000000wei"]},
+        "gas": {"type": "uint", "default": 21000},
+        "data": {"type": "hex", "default": "0x", "optional": true},
+        "dry_run": {"type": "bool", "default": true},
+        "out": {"type": "path", "default": "artifacts/tx/raw_tx.json"}
+      },
+      "output": {"transaction": "object", "raw_tx_path": "string", "preflight": "object"},
+      "constraints": ["preflight-required", "dry-run-default"],
+      "used_by": ["Agent-Transaction-01", "TransactionAgent"]
+    },
+    "TransactionSigner": {
+      "id": "tx_sign",
+      "cli": "hexstrike mcp tx sign",
+      "module": "scripts/mcp_tx.py",
+      "callable": "skill_sign",
+      "description": "Sign raw transaction with BOT_PRIVATE_KEY or SAFE_PRIVATE_KEY from .env",
+      "params": {
+        "raw_tx": {"type": "path", "required": true},
+        "key_env": {"type": "string", "default": "BOT_PRIVATE_KEY", "enum": ["BOT_PRIVATE_KEY", "SAFE_PRIVATE_KEY"]},
+        "out": {"type": "path", "default": "artifacts/tx/signed_tx.json"}
+      },
+      "output": {"raw": "hex", "hash": "hex", "from": "address", "output": "path"},
+      "constraints": ["keys-from-env-only", "operator-mac-only"],
+      "used_by": ["Agent-Transaction-01"]
+    },
+    "TransactionBroadcaster": {
+      "id": "tx_broadcast",
+      "cli": "hexstrike mcp tx broadcast",
+      "module": "scripts/mcp_tx.py",
+      "callable": "skill_broadcast",
+      "description": "Submit signed raw hex to RPC (gated unless --force or HEXSTRIKE_TX_LIVE=1)",
+      "params": {
+        "signed_tx": {"type": "path", "required": true},
+        "force": {"type": "bool", "default": false}
+      },
+      "output": {"success": "bool", "tx_hash": "hex", "rpc": "string"},
+      "constraints": ["approval-gate", "live-requires-HEXSTRIKE_TX_LIVE"],
+      "used_by": ["Agent-Transaction-01"]
+    },
+    "TransactionStatusChecker": {
+      "id": "tx_status",
+      "cli": "hexstrike mcp tx status",
+      "module": "scripts/mcp_tx.py",
+      "callable": "skill_status",
+      "description": "Poll tx hash — pending, success, or fail with receipt",
+      "params": {
+        "hash": {"type": "hash", "required": true},
+        "json": {"type": "bool", "default": true}
+      },
+      "output": {"state": "enum", "transaction": "object", "receipt": "object"},
+      "constraints": ["read-only"],
+      "used_by": ["Agent-Transaction-01", "TelemetryLogger"]
+    },
+    "RescueHandler": {
+      "id": "tx_rescue",
+      "cli": "hexstrike mcp tx rescue",
+      "module": "scripts/mcp_tx.py",
+      "callable": "skill_rescue",
+      "description": "SAFE wallet tops up GAS_HOLDER when balance is low",
+      "params": {
+        "target": {"type": "address", "env": "GAS_HOLDER_ADDRESS"},
+        "value": {"type": "amount", "default": "0.01bnb"},
+        "gas": {"type": "uint", "default": 21000},
+        "dry_run": {"type": "bool", "default": true}
+      },
+      "output": {"from_safe": "address", "to_gas_holder": "address", "broadcast": "object"},
+      "constraints": ["dry-run-default", "SAFE_PRIVATE_KEY-required-for-live"],
+      "used_by": ["Agent-Rescue-01", "RescueAgent"]
+    },
+    "TelemetryLogger": {
+      "id": "tx_log",
+      "cli": "hexstrike mcp tx log",
+      "module": "scripts/mcp_tx.py",
+      "callable": "skill_log",
+      "description": "Append structured tx step to tx_logs/ for forensics",
+      "params": {
+        "step": {"type": "string", "required": true, "examples": ["build", "sign", "broadcast", "status", "rescue"]},
+        "payload": {"type": "json", "optional": true},
+        "run_id": {"type": "string", "optional": true}
+      },
+      "output": {"log_path": "string", "run_id": "string"},
+      "constraints": ["append-only", "forensics-safe"],
+      "used_by": ["Agent-Transaction-01", "Agent-Forensics-01"]
+    },
+    "DiscoveryScanner": {
+      "id": "tx_discovery",
+      "cli": "hexstrike mcp tx discovery",
+      "module": "scripts/mcp_tx.py",
+      "callable": "skill_discovery",
+      "description": "Read-only scan of addresses/contracts linked to recent txs",
+      "params": {
+        "mode": {"type": "enum", "default": "trace", "values": ["scan", "trace"]},
+        "target": {"type": "address", "optional": true}
+      },
+      "output": {"findings": "array", "alerts": "array", "recent_tx_hashes": "array"},
+      "constraints": ["read-only", "defensive-heuristics"],
+      "used_by": ["Agent-Discovery-01", "DiscoveryAgent"]
+    }
+  },
+  "combat_cycle": [
+    {"step": 1, "skill": "tx_build", "example": "hexstrike mcp tx build --target=0xTARGET --value=0.001bnb --gas=21000 --dry-run"},
+    {"step": 2, "skill": "tx_sign", "example": "hexstrike mcp tx sign artifacts/tx/raw_tx.json"},
+    {"step": 3, "skill": "tx_broadcast", "example": "hexstrike mcp tx broadcast artifacts/tx/signed_tx.json"},
+    {"step": 4, "skill": "tx_status", "example": "hexstrike mcp tx status 0xHASH --json"},
+    {"step": 5, "skill": "tx_rescue", "example": "hexstrike mcp tx rescue --target=$GAS_HOLDER_ADDRESS --value=0.01bnb --dry-run"},
+    {"step": 6, "skill": "tx_discovery", "example": "hexstrike mcp tx discovery --trace"}
+  ]
+}

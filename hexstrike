@@ -5,10 +5,17 @@
 #   hexstrike agent run discovery --trace
 #   hexstrike logs transaction_agent --tail=100
 #   hexstrike orchestrator reload
+#   hexstrike mcp tx build --target=0xTARGET --value=0.001bnb --dry-run
 #   hexstrike tx send 0xTARGET --value 0.001bnb --dry-run
 ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 if [[ "${1:-}" == "sync" ]]; then shift; exec python3 "$ROOT/scripts/hexstrike_sync.py" "$@"; fi
 if [[ "${1:-}" == "tx" ]]; then shift; exec python3 "$ROOT/scripts/hexstrike_tx.py" "$@"; fi
+if [[ "${1:-}" == "mcp" ]]; then
+  shift
+  if [[ "${1:-}" == "tx" ]]; then shift; exec python3 "$ROOT/scripts/mcp_tx.py" "$@"; fi
+  echo "Usage: hexstrike mcp tx {build|sign|broadcast|status|rescue|log|discovery}" >&2
+  exit 1
+fi
 if [[ "${1:-}" == "agent" ]]; then shift; exec python3 "$ROOT/scripts/hexstrike_agent_run.py" "$@"; fi
 if [[ "${1:-}" == "logs" ]]; then shift; exec python3 "$ROOT/scripts/hexstrike_logs.py" "$@"; fi
 if [[ "${1:-}" == "orchestrator" ]]; then shift; exec python3 "$ROOT/scripts/hexstrike_orchestrator_cmd.py" "$@"; fi

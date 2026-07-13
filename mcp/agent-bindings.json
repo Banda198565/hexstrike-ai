@@ -25,16 +25,46 @@
     },
     "Agent-Transaction-01": {
       "script": "scripts/agents/agent_transaction.py",
+      "mcp_skills_file": "mcp/tx-skills.json",
       "tools": {
-        "tx_dry_run": {
-          "callable": "run",
-          "description": "Dry-run tx cycle via tx_control.sh",
-          "params": ["mode"],
-          "defaults": {"mode": "dry-run"}
+        "tx_build": {
+          "callable": "skill_build",
+          "module": "scripts/mcp_tx.py",
+          "description": "TransactionBuilder — EIP-1559 raw payload + preflight",
+          "params": ["target", "value", "gas", "dry_run"],
+          "defaults": {"value": "0.001bnb", "gas": 21000, "dry_run": true}
+        },
+        "tx_sign": {
+          "callable": "skill_sign",
+          "module": "scripts/mcp_tx.py",
+          "description": "TransactionSigner — sign with BOT_PRIVATE_KEY",
+          "params": ["raw_tx", "key_env"],
+          "defaults": {"key_env": "BOT_PRIVATE_KEY"}
+        },
+        "tx_broadcast": {
+          "callable": "skill_broadcast",
+          "module": "scripts/mcp_tx.py",
+          "description": "TransactionBroadcaster — gated RPC submit",
+          "params": ["signed_tx", "force"],
+          "defaults": {"force": false}
         },
         "tx_status": {
+          "callable": "skill_status",
+          "module": "scripts/mcp_tx.py",
+          "description": "TransactionStatusChecker — pending/success/fail",
+          "params": ["hash"],
+          "defaults": {}
+        },
+        "tx_log": {
+          "callable": "skill_log",
+          "module": "scripts/mcp_tx.py",
+          "description": "TelemetryLogger — append step to tx_logs/",
+          "params": ["step", "payload"],
+          "defaults": {}
+        },
+        "tx_dry_run": {
           "callable": "run",
-          "description": "Return last transaction agent result path",
+          "description": "Full dry-run tx cycle via tx_control.sh",
           "params": ["mode"],
           "defaults": {"mode": "dry-run"}
         }
@@ -47,7 +77,15 @@
     },
     "Agent-Rescue-01": {
       "script": "scripts/agents/agent_rescue.py",
+      "mcp_skills_file": "mcp/tx-skills.json",
       "tools": {
+        "tx_rescue": {
+          "callable": "skill_rescue",
+          "module": "scripts/mcp_tx.py",
+          "description": "RescueHandler — SAFE → GAS_HOLDER top-up",
+          "params": ["target", "value", "dry_run"],
+          "defaults": {"value": "0.01bnb", "dry_run": true}
+        },
         "rescue_check": {
           "callable": "run",
           "description": "Check GAS_HOLDER balance vs RESCUE_MIN_BNB",
@@ -63,7 +101,15 @@
     },
     "Agent-Discovery-01": {
       "script": "scripts/agents/agent_discovery.py",
+      "mcp_skills_file": "mcp/tx-skills.json",
       "tools": {
+        "tx_discovery": {
+          "callable": "skill_discovery",
+          "module": "scripts/mcp_tx.py",
+          "description": "DiscoveryScanner — read-only wallet/contract trace",
+          "params": ["mode", "target"],
+          "defaults": {"mode": "trace"}
+        },
         "discovery_scan": {
           "callable": "run",
           "description": "Read-only probe of rpc_config monitoring targets",

@@ -44,6 +44,33 @@ else
   bad "hexstrike wrapper missing combat routes"
 fi
 
+[[ -f "$ROOT/mcp/tx-skills.json" ]] && ok "mcp/tx-skills.json" || bad "missing mcp/tx-skills.json"
+[[ -f "$ROOT/scripts/mcp_tx.py" ]] && ok "scripts/mcp_tx.py" || bad "missing scripts/mcp_tx.py"
+
+if grep -q 'mcp tx' "$ROOT/hexstrike" 2>/dev/null; then
+  ok "hexstrike CLI routes mcp tx"
+else
+  bad "hexstrike wrapper missing mcp tx route"
+fi
+
+for skill in tx_build tx_sign tx_broadcast tx_status tx_rescue tx_log tx_discovery; do
+  grep -q "\"$skill\"" "$ROOT/mcp/agent-bindings.json" 2>/dev/null && ok "mcp binding: $skill" || bad "mcp binding missing $skill"
+done
+
+echo ""
+echo "── MCP tx skill smoke tests ──"
+if out="$(python3 "$ROOT/scripts/mcp_tx.py" build --target=0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA --value=0.001bnb --dry-run 2>&1)"; then
+  echo "$out" | grep -q '"skill_id": "tx_build"' && ok "mcp tx build" || bad "mcp tx build incomplete"
+else
+  bad "mcp tx build failed"
+fi
+
+if out="$(python3 "$ROOT/scripts/mcp_tx.py" discovery --trace 2>&1)"; then
+  echo "$out" | grep -q '"skill_id": "tx_discovery"' && ok "mcp tx discovery" || bad "mcp tx discovery incomplete"
+else
+  bad "mcp tx discovery failed"
+fi
+
 echo ""
 echo "── Runtime smoke tests ──"
 if python3 -m py_compile \
