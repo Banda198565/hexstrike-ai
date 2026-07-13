@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Unified HexStrike entrypoint — always runs from /opt/hexstrike-ai
+# Install on VPS: bash scripts/vps-install-hx-cli.sh
+set -euo pipefail
+
+HX_ROOT="${HEXSTRIKE_ROOT:-/opt/hexstrike-ai}"
+
+if [[ ! -d "$HX_ROOT" ]]; then
+  echo "hexstrike: $HX_ROOT not found" >&2
+  exit 1
+fi
+
+cd "$HX_ROOT"
+
+if [[ $# -eq 0 ]]; then
+  cat <<EOF
+HexStrike prod: $HX_ROOT
+
+Usage:
+  hx status          — orchestrator status + API health
+  hx manifest        — update project manifest
+  hx exploit-test    — Agent-Exploit-07 dry-run
+  hx forensics TRX   — run trx-drainer-forensics workflow
+  hx server          — start/restart hexstrike-server
+  hx monitor         — monitor process status
+  hx cd              — print path (use: cd \$(hx cd))
+
+Wrong dir? You are NOT in hiddify-manager — use hx from anywhere.
+EOF
+  exit 0
+fi
+
+cmd="$1"; shift
+
+case "$cmd" in
+  status)
+    curl -sf --max-time 3 http://127.0.0.1:8888/health | python3 -m json.tool 2>/dev/null | head -20 || echo "API: down"
+    echo "---"
+    python3 hexstrike_orchestrator.py status 2>/dev/null | python3 -m json.tool | head -30
+    ;;
+  manifest)
+    python3 hexstrike_orchestrator.py manifest
+    ;;
+  agents)
+    python3 hexstrike_orchestrator.py agents
+    ;;
+  exploit-test)
+    python3 hexstrike_orchestrator.py --goal exploit-test
+    ;;
+  forensics)
+    wf="${1:-trx-drainer-forensics}"
+    python3 scripts/hexstrike-orchestrator.py run "$wf"
+    ;;
+  workflows)
+    python3 scripts/hexstrike-orchestrator.py workflows
+    ;;
+  server)
+    bash scripts/vps-start-server.sh
+    ;;
+  monitor)
+    pgrep -af autonomous_monitor || echo "monitor not running"
+    tail -3 /var/log/hexstrike/hot-wallet-monitor.log 2>/dev/null || true
+    ;;
+  cd)
+    echo "$HX_ROOT"
+    ;;
+  *)
+    # passthrough to main orchestrator
+    python3 hexstrike_orchestrator.py "$cmd" "$@"
+    ;;
+esac
