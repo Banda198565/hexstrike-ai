@@ -36,21 +36,49 @@ PROBE_COMMANDS = (
 
 
 def find_candidate_ports() -> list[str]:
+    import platform
     patterns = (
         "/dev/ttyUSB*",
         "/dev/ttyACM*",
         "/dev/cu.usbserial*",
         "/dev/cu.SLAB_USBtoUART*",
         "/dev/cu.wchusbserial*",
+        "/dev/cu.usbmodem*",
+        "/dev/cu.usb*",
     )
+    skip = ("bluetooth", "debug-console", "jbl", "bose", "airpods", "beats")
     found: list[str] = []
     for pattern in patterns:
-        found.extend(sorted(glob.glob(pattern)))
+        for path in sorted(glob.glob(pattern)):
+            if any(s in path.lower() for s in skip):
+                continue
+            if path not in found:
+                found.append(path)
+
+    # macOS: scan all cu.* if nothing matched yet
+    if platform.system() == "Darwin" and not found:
+        for path in sorted(glob.glob("/dev/cu.*")):
+            base = path.lower()
+            if any(s in base for s in skip):
+                continue
+            if path not in found:
+                found.append(path)
+
     for port in list_ports.comports():
+        dev = port.device
+        if dev.startswith("/dev/tty.") and platform.system() == "Darwin":
+            dev = dev.replace("/dev/tty.", "/dev/cu.", 1)
         desc = (port.description or "").lower()
-        if any(k in desc for k in ("ch340", "cp210", "ftdi", "usb serial", "uart")):
-            if port.device not in found:
-                found.append(port.device)
+        hwid = (port.hwid or "").lower()
+        if any(k in desc or k in hwid for k in (
+            "ch340", "cp210", "ftdi", "usb serial", "uart", "wch", "serial", "usbmodem"
+        )):
+            if dev not in found:
+                found.append(dev)
+        elif platform.system() == "Darwin" and port.vid is not None:
+            # Any USB serial adapter with VID/PID
+            if dev not in found and not any(s in dev.lower() for s in skip):
+                found.append(dev)
     return found
 
 

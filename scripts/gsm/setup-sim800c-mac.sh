@@ -42,17 +42,20 @@ system_profiler SPUSBDataType 2>/dev/null | \
   grep -B1 -A5 -iE 'CH340|CP210|FTDI|USB Serial|UART|wch.cn|Silicon Labs' || \
   warn "USB-UART адаптер не найден в system_profiler"
 
-if ! ls /dev/cu.usb* /dev/cu.SLAB* /dev/cu.wch* /dev/cu.usbserial* 2>/dev/null; then
-  warn "Serial-порты не найдены."
+if ! ls /dev/cu.usb* /dev/cu.SLAB* /dev/cu.wch* /dev/cu.usbserial* /dev/cu.usbmodem* 2>/dev/null; then
+  warn "Serial-порты USB не найдены."
+  log "Запуск глубокой USB-диагностики..."
+  bash "$ROOT/scripts/gsm/mac-usb-deep-scan.sh" || true
   cat <<'DRV'
 
-Драйверы для Mac (если порт не появляется):
-  CH340:  https://github.com/WCHSoftGroup/ch34xser_mac
-  CP2102: https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers
-  FTDI:   https://ftdichip.com/drivers/vcp-drivers/
-
-После установки: отключите/подключите USB, проверьте:
-  ls /dev/cu.*
+Если /dev/cu.* пустой — проблема НЕ в SIM800C, а в USB/драйвере:
+  1. Замените USB-кабель (многие только для зарядки!)
+  2. Подключите адаптер в другой порт iMac
+  3. Установите драйвер:
+     CH340:  https://github.com/WCHSoftGroup/ch34xser_mac
+     CP2102: https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers
+  4. System Settings → Privacy & Security → Allow (драйвер)
+  5. Тест: подключите ТОЛЬКО USB-UART без SIM800C → ls /dev/cu.*
 
 DRV
 fi
