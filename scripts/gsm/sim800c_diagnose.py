@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+"""SIM800C auto-detect + AT diagnostic (run on machine with USB-UART attached)."""
+
+from __future__ import annotations
+
+import argparse
+import glob
+import json
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+try:
+    import serial
+    from serial.tools import list_ports
+except ImportError:
+    print("ERROR: pyserial not installed. Run: pip install pyserial", file=sys.stderr)
+    sys.exit(2)
+
+ROOT = Path(__file__).resolve().parents[2]
+ARTIFACT = ROOT / "artifacts" / "gsm"
+ARTIFACT.mkdir(parents=True, exist_ok=True)
+
+BAUD_RATES = (115200, 9600, 57600, 38400, 19200)
+PROBE_COMMANDS = (
+    ("AT", "basic"),
+    ("ATE0", "echo_off"),
+    ("AT+CPIN?", "sim_pin"),
+    ("AT+CSQ", "signal"),
+    ("AT+CREG?", "network_reg"),
+    ("AT+COPS?", "operator"),
+    ("AT+CGSN", "imei"),
+    ("AT+CCID", "iccid"),
+)
+
+
+def find_candidate_ports() -> list[str]:
+    patterns = (
+        "/dev/ttyUSB*",
+        "/dev/ttyACM*",
+        "/dev/cu.usbserial*",
+        "/dev/cu.SLAB_USBtoUART*",
+        "/dev/cu.wchusbserial*",
+    )
+    found: list[str] = []
+    for pattern in patterns:
+        found.extend(sorted(glob.glob(pattern)))
+    for port in list_ports.comports():
+        desc = (port.description or "").lower()
+        if any(k in desc for k in ("ch340", "cp210", "ftdi", "usb serial", "uart")):
+            if port.device not in found:
+                found.append(port.device)
+    return found
+
+
+def send_at(ser: serial.Serial, cmd: str, timeout: float = 2.0) -> str:
+    ser.reset_input_buffer()
+    ser.write((cmd + "\r\n").encode())
+    deadline = time.time() + timeout
+    chunks: list[str] = []
+    while time.time() < deadline:
+        waiting = ser.in_waiting
+        if waiting:
+            chunks.append(ser.read(waiting).decode(errors="replace"))
+            if "OK" in chunks[-1] or "ERROR" in chunks[-1]:
+                break
+        else:
+            time.sleep(0.05)
+    return "".join(chunks).strip()
+
+
+def probe_port(port: str, baud: int) -> dict | None:
+    try:
+        with serial.Serial(port, baudrate=baud, timeout=1) as ser:
+            time.sleep(0.3)
+            resp = send_at(ser, "AT", timeout=1.5)
+            if "OK" not in resp.upper():
+                return None
+            results = {"port": port, "baud": baud, "at_ok": True, "commands": {}}
+            for cmd, key in PROBE_COMMANDS[1:]:
+                results["commands"][key] = send_at(ser, cmd)
+            return results
+    except (serial.SerialException, OSError):
+        return None
+
+
+def diagnose(explicit_port: str | None, explicit_baud: int | None) -> dict:
+    ports = [explicit_port] if explicit_port else find_candidate_ports()
+    report: dict = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "ports_scanned": ports,
+        "modem": None,
+        "errors": [],
+    }
+
+    if not ports:
+        report["errors"].append("No serial ports found. Check USB cable, driver, permissions.")
+        return report
+
+    if explicit_port and explicit_baud:
+        hit = probe_port(explicit_port, explicit_baud)
+        if hit:
+            report["modem"] = hit
+        else:
+            report["errors"].append(f"No AT OK on {explicit_port} @ {explicit_baud}")
+        return report
+
+    for port in ports:
+        for baud in BAUD_RATES:
+            hit = probe_port(port, baud)
+            if hit:
+                report["modem"] = hit
+                return report
+        report["errors"].append(f"No AT response on {port} (tried {BAUD_RATES})")
+
+    return report
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="SIM800C UART diagnostic")
+    parser.add_argument("--port", help="Serial port, e.g. /dev/ttyUSB0 or /dev/cu.usbserial-*")
+    parser.add_argument("--baud", type=int, default=None, help="Baud rate (default: auto)")
+    parser.add_argument("--json-out", type=Path, default=ARTIFACT / "sim800c-diagnose.json")
+    args = parser.parse_args()
+
+    report = diagnose(args.port, args.baud)
+    args.json_out.parent.mkdir(parents=True, exist_ok=True)
+    args.json_out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
+
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    if report.get("modem"):
+        m = report["modem"]
+        print(f"\n[OK] SIM800C found: {m['port']} @ {m['baud']} baud")
+        return 0
+    print("\n[FAIL] SIM800C not detected. See errors above.", file=sys.stderr)
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
