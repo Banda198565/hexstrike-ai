@@ -30,6 +30,7 @@ for f in \
   scripts/vps-fastmcp-ops.sh \
   scripts/vps-pull-and-ops.sh \
   scripts/mac-fastmcp-live.sh \
+  scripts/fastmcp_status.sh \
   scripts/tx_control.sh; do
   [[ -f "$ROOT/$f" ]] && ok "$f" || bad "missing $f"
 done
@@ -39,6 +40,7 @@ for agent in Agent-Transaction-01 Agent-Rescue-01 Agent-Discovery-01; do
 done
 
 grep -q '"transaction-discovery"' "$ROOT/agents/workflows.json" 2>/dev/null && ok "workflows: transaction-discovery" || bad "workflows missing transaction-discovery"
+grep -q '"fastmcp-vps-ops"' "$ROOT/agents/workflows.json" 2>/dev/null && ok "workflows: fastmcp-vps-ops" || bad "workflows missing fastmcp-vps-ops"
 
 for agent in Agent-Transaction-01 Agent-Rescue-01 Agent-Discovery-01; do
   grep -q "$agent" "$ROOT/mcp/agent-bindings.json" 2>/dev/null && ok "mcp: $agent" || bad "mcp missing $agent"

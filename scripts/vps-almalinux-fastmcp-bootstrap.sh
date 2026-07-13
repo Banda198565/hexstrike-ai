@@ -47,6 +47,7 @@ if [[ "${HEXSTRIKE_TX_LIVE:-}" == "1" ]]; then
 fi
 unset HEXSTRIKE_TX_LIVE || true
 export DRY_RUN=true
+export HEXSTRIKE_HOST_ROLE=vps
 
 # ── OS detect ──
 if [[ -f /etc/os-release ]]; then
@@ -116,6 +117,7 @@ TARGET_WALLET=${TARGET}
 BOT_ADDRESS=${BOT_ADDRESS:-0x85dB346BE1d9d5D8ec4F57acf0067FbE53a6E846}
 DRY_RUN=true
 HEXSTRIKE_TX_LIVE=
+HEXSTRIKE_HOST_ROLE=vps
 ENV
   chmod 600 .env
 fi

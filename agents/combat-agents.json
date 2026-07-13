@@ -37,6 +37,17 @@
       "sequential_after": [
         {"agent": "rescue", "mode": "check"}
       ]
+    },
+    "fastmcp-vps-ops": {
+      "description": "VPS FastMCP dry-run ops (no live broadcast)",
+      "host_role": "vps",
+      "parallel": [
+        {"agent": "transaction", "mode": "dry-run"},
+        {"agent": "discovery", "mode": "trace"}
+      ],
+      "sequential_after": [
+        {"agent": "rescue", "mode": "check"}
+      ]
     }
   }
 }

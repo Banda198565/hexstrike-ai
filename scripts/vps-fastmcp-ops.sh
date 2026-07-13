@@ -29,6 +29,7 @@ if [[ "${HEXSTRIKE_TX_LIVE:-}" == "1" ]]; then
 fi
 unset HEXSTRIKE_TX_LIVE || true
 export DRY_RUN=true
+export HEXSTRIKE_HOST_ROLE="${HEXSTRIKE_HOST_ROLE:-vps}"
 
 if [[ -f "${ROOT}/.env" ]]; then
   set -a

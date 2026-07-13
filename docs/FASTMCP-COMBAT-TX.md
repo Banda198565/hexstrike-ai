@@ -115,10 +115,13 @@ sudo bash scripts/vps-prod-bootstrap.sh
 ```bash
 # VPS
 ./hexstrike ops --quick
+./hexstrike fastmcp status
 ./hexstrike fastmcp verify --target 0xPAYROLL --run-dry-run
 ./hexstrike fastmcp pull-ops --standard
+./hexstrike agent run pipeline --pipeline fastmcp-vps-ops
 
 # Mac
+./hexstrike fastmcp status
 ./hexstrike fastmcp live --target 0xPAYROLL --dry-run
 CONFIRM=YES HEXSTRIKE_TX_LIVE=1 ./hexstrike fastmcp live --target 0xPAYROLL --live
 ```

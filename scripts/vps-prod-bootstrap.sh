@@ -28,6 +28,7 @@ if [[ "${HEXSTRIKE_TX_LIVE:-}" == "1" ]]; then
 fi
 unset HEXSTRIKE_TX_LIVE || true
 export DRY_RUN=true
+export HEXSTRIKE_HOST_ROLE=vps
 
 OS_ID="unknown"
 if [[ -f /etc/os-release ]]; then
@@ -94,6 +95,7 @@ LLM_MODEL=deepseek-r1:1.5b
 CURSOR_INTEGRATION_MODE=OFFLINE_PRIMARY
 DRY_RUN=true
 HEXSTRIKE_TX_LIVE=
+HEXSTRIKE_HOST_ROLE=vps
 ENV
   chmod 600 .env
 fi

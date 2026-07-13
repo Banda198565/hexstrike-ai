@@ -228,6 +228,22 @@
       ],
       "note": "Run: bash scripts/pipeline_transaction_discovery.sh | hexstrike agent run pipeline --pipeline transaction-discovery"
     },
+    "fastmcp-vps-ops": {
+      "description": "Alma/VPS FastMCP dry-run ops: verify + pipeline + rescue (no live broadcast)",
+      "mode": "combat",
+      "env": {
+        "HEXSTRIKE_HOST_ROLE": "vps",
+        "DRY_RUN": "true",
+        "HEXSTRIKE_TX_LIVE": "",
+        "TARGET_ADDRESS": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA"
+      },
+      "steps": [
+        {"agent": "Agent-Transaction-01", "task": "dry-run", "parallel_group": "combat"},
+        {"agent": "Agent-Discovery-01", "task": "trace", "parallel_group": "combat"},
+        {"agent": "Agent-Rescue-01", "task": "check", "depends_on": "combat"}
+      ],
+      "note": "Preferred VPS entry: bash scripts/vps-fastmcp-ops.sh | hexstrike ops --standard | hexstrike agent run pipeline --pipeline fastmcp-vps-ops"
+    },
     "exploit-test": {
       "description": "Agent-Exploit-07 dry-run lab validation (127.0.0.1:8080 default)",
       "mode": "defensive-lab",
