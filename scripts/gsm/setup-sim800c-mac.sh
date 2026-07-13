@@ -73,7 +73,12 @@ pip install -q pyserial
 
 # ── 4. Показать порты (на Mac используйте /dev/cu.*, не /dev/tty.*) ──
 log "Доступные serial-порты (используйте cu.*):"
-ls -la /dev/cu.* 2>/dev/null | grep -vE 'Bluetooth|debug-console|JBL|Bose|AirPods' || true
+CU_LIST=$(ls /dev/cu.* 2>/dev/null | grep -vE 'Bluetooth|debug-console|JBL|Bose|AirPods' || true)
+if [[ -z "$CU_LIST" ]]; then
+  warn "Нет ни одного /dev/cu.* (кроме Bluetooth) — USB-UART не определяется macOS"
+else
+  echo "$CU_LIST"
+fi
 
 # ── 5. AT-диагностика ──────────────────────────────────────────
 log "Запуск AT-диагностики..."
