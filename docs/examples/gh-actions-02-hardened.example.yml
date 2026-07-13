@@ -1,0 +1,62 @@
+# ✅ HARDENED PATTERN — reference for new workflows (HexStrike)
+# Copy ideas into real workflows after security review.
+# Safe for PRs from forks: no pull_request_target, no secrets, no OIDC on PR path.
+
+name: Hardened-Example-Reference
+
+on:
+  # ✅ Standard PR — fork workflows do NOT receive base repo secrets
+  pull_request:
+    paths:
+      - 'cmd/agent/**'
+      - 'scripts/**'
+  push:
+    branches: [master, main]
+
+# ✅ Default least privilege
+permissions:
+  contents: read
+
+jobs:
+  # ── Job 1: untrusted PR code (no secrets, no OIDC) ──────────────────
+  test-fork-safe:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        # ✅ Default merge ref / PR merge commit — not arbitrary attacker scripts with secrets
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Unit tests only
+        run: go test ./cmd/agent/... -count=1
+
+      # ✅ If you must reference PR metadata — use env, never inline in run for shell metacharacters
+      - name: Log PR number (safe)
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: echo "PR number=$PR_NUMBER"
+
+  # ── Job 2: trusted branch only (optional secrets / OIDC) ───────────
+  deploy-trusted:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # ✅ only on trusted push, not on fork PR
+    environment: production   # ✅ GitHub Environment protection rules
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/go-build
+          # ✅ Cache scoped to branch + lockfile
+          key: go-${{ runner.os }}-${{ github.ref }}-${{ hashFiles('cmd/agent/go.sum') }}
+
+      - name: Build agent (no signing keys in CI)
+        run: bash scripts/sandbox/build-agent.sh
+
+      # ✅ Signing keys stay off-node — not in GitHub Secrets for public repos

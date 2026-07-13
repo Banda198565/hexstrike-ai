@@ -1,0 +1,51 @@
+# ⚠️ ANTI-PATTERN — DO NOT COPY TO .github/workflows/
+# Educational threat-model reference for GitHub Actions (HexStrike CI security).
+# Simulates what attackers target in fork-to-base + cache + injection chains.
+# Never enable this file as a real workflow.
+
+name: VULNERABLE-EXAMPLE-DO-NOT-USE
+
+on:
+  # ❌ Fork PR runs with base-repo token context (Grafana-style class of issues)
+  pull_request_target:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  id-token: write   # ❌ OIDC enabled — widen blast radius if step is compromised
+
+jobs:
+  poison-and-run:
+    runs-on: ubuntu-latest
+    steps:
+      # ❌ Checks out untrusted PR head by default in many templates
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      # ❌ Cache key not scoped to ref — fork can poison cache for main
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/build
+          key: build-cache-global
+
+      # ❌ Expression injection: PR title executed by shell
+      - name: Echo PR title (CWE-94)
+        run: echo "${{ github.event.pull_request.title }}"
+
+      # ❌ PR body in run — same class
+      - name: Echo PR body
+        run: |
+          echo "Review: ${{ github.event.pull_request.body }}"
+
+      # ❌ Secrets visible to pull_request_target jobs from same repo config
+      - name: Use signing secret (never do this on PR workflows)
+        env:
+          BOT_PRIVATE_KEY: ${{ secrets.BOT_PRIVATE_KEY }}
+        run: |
+          echo "secret length=${#BOT_PRIVATE_KEY}"
+
+      # ❌ OIDC request surface — malicious step could exfiltrate JWT (simulation only)
+      - name: OIDC-enabled step placeholder
+        run: |
+          echo "If this job were malicious, id-token could be requested for cloud assume-role"
