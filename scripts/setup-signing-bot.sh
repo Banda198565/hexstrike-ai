@@ -48,8 +48,10 @@ else
   log ".env exists"
 fi
 
-chmod +x scripts/sandbox/deploy-mainnet.sh
+chmod +x scripts/sandbox/deploy-mainnet.sh scripts/sandbox/rescue.sh
 ./scripts/sandbox/deploy-mainnet.sh dry-run
+log "SAFE→GAS_HOLDER rescue dry-run"
+bash scripts/sandbox/rescue.sh --dry-run || true
 
 if [[ "$START" -eq 1 ]]; then
   # shellcheck source=/dev/null
