@@ -14,9 +14,12 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
-sys.path.insert(0, str(ROOT / "scripts" / "agents"))
+
+from scripts.agents.agent_exploit import dry_run as exploit_dry_run
+from scripts.agents.agent_exploit import run as exploit_run
 
 from hexstrike.agent_manager import AgentManager
 from hexstrike.bus.context_bus import ContextBus
@@ -47,27 +50,6 @@ from hexstrike.skills.vulnerability_scanner import VulnerabilityScanner
 # Monitor agent system prompt (instruction protocol)
 MONITOR_AGENT_ID = "core.monitor"
 MONITOR_SYSTEM_PROMPT = load_instruction(MONITOR_AGENT_ID)
-
-
-def run_goal(
-    goal: str,
-    *,
-    target: str = "127.0.0.1",
-    port: int = 8080,
-    payload: str = "test_rce",
-) -> dict[str, Any]:
-    """Dispatch predefined goals without full orchestrator subcommand routing."""
-    if goal == "exploit-test":
-        from agent_exploit import dry_run as exploit_dry_run
-
-        result = exploit_dry_run(target, port, payload)
-        print(json.dumps(result, indent=2))
-        return result
-
-    known = ["exploit-test"]
-    err = {"success": False, "error": f"Unknown goal: {goal}", "known_goals": known}
-    print(json.dumps(err, indent=2))
-    return err
 
 
 def _bootstrap_llm_env() -> LlmConfig:
@@ -382,6 +364,48 @@ class HexStrikeOrchestrator:
         }
 
 
+def run_goal(
+    goal: str,
+    *,
+    target: str = "127.0.0.1",
+    port: int = 8080,
+    payload: str = "test_rce",
+    config_path: Path | None = None,
+    address: str | None = None,
+    recon_limit: int = 3,
+) -> dict[str, Any]:
+    """Dispatch predefined goals (--goal) without subcommand routing."""
+    # ExploitAgent goal
+    if goal == "exploit-test":
+        result = exploit_dry_run(target, port, payload)
+        print(json.dumps(result, indent=2))
+        return result
+
+    cfg = config_path or RPC_CONFIG
+    orch = HexStrikeOrchestrator(config_path=cfg)
+
+    if goal == "recon":
+        result = orch.run_recon(limit=recon_limit)
+        print(json.dumps(result, indent=2))
+        return {"success": True, "goal": goal, "data": result}
+
+    if goal == "forensics":
+        addr = address or "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA"
+        result = orch.run_analyze(addr)
+        print(json.dumps(result, indent=2))
+        return {"success": True, "goal": goal, "data": result}
+
+    if goal == "timing":
+        result = orch.run_timing()
+        print(json.dumps(result, indent=2))
+        return {"success": True, "goal": goal, "data": result}
+
+    known = ["exploit-test", "recon", "forensics", "timing"]
+    err = {"success": False, "error": f"Unknown goal: {goal}", "known_goals": known}
+    print(json.dumps(err, indent=2))
+    return err
+
+
 def main() -> int:
     from api_auth import load_dotenv
 
@@ -396,6 +420,11 @@ def main() -> int:
     parser.add_argument("--target", default="127.0.0.1", help="Goal target host (exploit-test)")
     parser.add_argument("--port", type=int, default=8080, help="Goal target port (exploit-test)")
     parser.add_argument("--payload", default="test_rce", help="Goal payload label (exploit-test)")
+    parser.add_argument(
+        "--address",
+        default=None,
+        help="Forensics address for --goal forensics (default: hot wallet)",
+    )
     sub = parser.add_subparsers(dest="command", required=False)
 
     sub.add_parser("status", help="Show component status")
@@ -448,7 +477,14 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.goal:
-        result = run_goal(args.goal, target=args.target, port=args.port, payload=args.payload)
+        result = run_goal(
+            args.goal,
+            target=args.target,
+            port=args.port,
+            payload=args.payload,
+            config_path=Path(args.config),
+            address=getattr(args, "address", None),
+        )
         ok = result.get("result") in ("ok", "executed") or result.get("success") is True
         return 0 if ok else 1
 
