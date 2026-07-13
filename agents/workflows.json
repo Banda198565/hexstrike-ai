@@ -73,6 +73,14 @@
       ],
       "note": "Read-only. sweep routers + EIP-7702 impl + Rhino.fi hub from recon Phase A outflow analysis."
     },
+    "sweep-phase-2": {
+      "description": "Phase-2: EIP-7702 impl bytecode audit + Rhino.fi hub trace + exchange forensics",
+      "steps": [
+        {"agent": "Agent-Battle-07", "task": "sweep-phase2-audit"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "sweep-phase2-audit"}
+      ],
+      "note": "Read-only. Signature policy audit on impl 0x314C01e7... + hub USDT state + LEA pack."
+    },
     "multi-wallet-conclusions": {
       "description": "All seed wallets: profile → fork → multi recon → conclusion report",
       "steps": [

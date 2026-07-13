@@ -189,6 +189,11 @@
           "script": "scripts/sandbox/setup-real-target-fork.sh",
           "output": "artifacts/sandbox/target-fork-status.json",
           "constraints": ["local-fork-only"]
+        },
+        "sweep-phase2-audit": {
+          "script": "scripts/sandbox/sweep-phase2-audit.py",
+          "output": "docs/recon/SWEEP-PHASE2-AUDIT-20260713.json",
+          "constraints": ["read-only", "no-remote-exploit"]
         }
       },
       "cli": "./bin/hexstrike-agent",
