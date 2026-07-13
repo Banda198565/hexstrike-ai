@@ -93,13 +93,18 @@ def skill_sign(
     *,
     raw_tx: str,
     key_env: str = "BOT_PRIVATE_KEY",
+    module: str | None = None,
+    vault_key: str | None = None,
     out: str | None = None,
 ) -> dict[str, Any]:
     raw_path = Path(raw_tx)
     data = json.loads(raw_path.read_text(encoding="utf-8"))
     tx_dict = data.get("transaction", data)
     rpc = tx._rpc_url()
-    signed = tx._sign_tx_dict(tx_dict, key_env=key_env, rpc=rpc)
+    mod_name = module or ("KeyVaultSigner" if os.environ.get("VAULT_PASSPHRASE") else "EnvSigner")
+    mod_name, pk = tx._resolve_signer_module(mod_name, vault_key=vault_key or key_env if mod_name == "KeyVaultSigner" else None)
+    signed = tx._sign_tx_dict(tx_dict, private_key=pk, rpc=rpc)
+    signed["signer_module"] = mod_name
     out_path = Path(out) if out else raw_path.with_name("signed_tx.json")
     out_path.write_text(json.dumps({"command": "sign", **signed}, indent=2) + "\n", encoding="utf-8")
     result = {
@@ -110,7 +115,7 @@ def skill_sign(
         "hash": signed.get("hash"),
         "raw": signed.get("raw"),
         "output": str(out_path),
-        "key_env": key_env,
+        "signer_module": mod_name,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     skill_log(step="sign", payload={"hash": result.get("hash"), "output": result["output"]})
@@ -257,7 +262,8 @@ def main() -> int:
 
     s = sub.add_parser("sign", help="TransactionSigner")
     s.add_argument("raw_tx")
-    s.add_argument("--key-env", default="BOT_PRIVATE_KEY")
+    s.add_argument("--module", default=os.environ.get("TX_SIGN_MODULE", "EnvSigner"))
+    s.add_argument("--vault-key")
     s.add_argument("--out")
 
     bc = sub.add_parser("broadcast", help="TransactionBroadcaster")
@@ -298,7 +304,7 @@ def main() -> int:
             out=args.out,
         ))
     if args.cmd == "sign":
-        return _emit(skill_sign(raw_tx=args.raw_tx, key_env=args.key_env, out=args.out))
+        return _emit(skill_sign(raw_tx=args.raw_tx, module=args.module, vault_key=args.vault_key, out=args.out))
     if args.cmd == "broadcast":
         return _emit(skill_broadcast(signed_tx=args.signed_tx, force=args.force))
     if args.cmd == "status":

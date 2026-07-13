@@ -90,9 +90,9 @@ fi
 
 # === SIGN ===
 echo "=== SIGN ==="
-echo "[SIGN] Формирование raw-payload (dry-run preflight)..."
-SEND_JSON=$("$HEXSTRIKE" tx send "$TARGET" --value "$VALUE" --gas "$GAS" --dry-run --out "$RAW")
-echo "$SEND_JSON"
+echo "[SIGN] Формирование raw-payload..."
+BUILD_JSON=$("$HEXSTRIKE" tx build --target="$TARGET" --value "$VALUE" --gas "$GAS" --out "$RAW")
+echo "$BUILD_JSON"
 
 if [[ "$DRY_ONLY" -eq 1 ]]; then
   echo "[SIGN] Dry-run only — broadcast skipped"
@@ -115,8 +115,12 @@ if [[ -z "${BOT_PRIVATE_KEY:-}" && -z "${SAFE_PRIVATE_KEY:-}" ]]; then
   exit 1
 fi
 
-echo "[SIGN] Подпись транзакции..."
-SIGN_JSON=$("$HEXSTRIKE" tx sign "$RAW" --debug --out "$SIGNED")
+SIGN_MODULE="${TX_SIGN_MODULE:-EnvSigner}"
+if [[ -n "${VAULT_PASSPHRASE:-}" ]]; then
+  SIGN_MODULE="${TX_SIGN_MODULE:-KeyVaultSigner}"
+fi
+echo "[SIGN] Подпись транзакции (module=${SIGN_MODULE})..."
+SIGN_JSON=$("$HEXSTRIKE" tx sign "$RAW" --module="$SIGN_MODULE" --debug --out "$SIGNED")
 echo "$SIGN_JSON"
 
 # === BROADCAST ===

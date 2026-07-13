@@ -59,6 +59,12 @@ done
 
 echo ""
 echo "── MCP tx skill smoke tests ──"
+if out="$(./hexstrike tx build --target=0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA --value=0.001bnb --gas=21000 2>&1)"; then
+  echo "$out" | grep -q '"command": "build"' && ok "hexstrike tx build" || bad "hexstrike tx build incomplete"
+else
+  bad "hexstrike tx build failed"
+fi
+
 if out="$(python3 "$ROOT/scripts/mcp_tx.py" build --target=0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA --value=0.001bnb --dry-run 2>&1)"; then
   echo "$out" | grep -q '"skill_id": "tx_build"' && ok "mcp tx build" || bad "mcp tx build incomplete"
 else

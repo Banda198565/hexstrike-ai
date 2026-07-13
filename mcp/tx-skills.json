@@ -11,7 +11,7 @@
   "skills": {
     "TransactionBuilder": {
       "id": "tx_build",
-      "cli": "hexstrike mcp tx build",
+      "cli": "hexstrike tx build",
       "module": "scripts/mcp_tx.py",
       "callable": "skill_build",
       "description": "Form EIP-1559 raw payload (to, value, gas, optional data)",
@@ -29,13 +29,14 @@
     },
     "TransactionSigner": {
       "id": "tx_sign",
-      "cli": "hexstrike mcp tx sign",
+      "cli": "hexstrike tx sign",
       "module": "scripts/mcp_tx.py",
       "callable": "skill_sign",
       "description": "Sign raw transaction with BOT_PRIVATE_KEY or SAFE_PRIVATE_KEY from .env",
       "params": {
         "raw_tx": {"type": "path", "required": true},
-        "key_env": {"type": "string", "default": "BOT_PRIVATE_KEY", "enum": ["BOT_PRIVATE_KEY", "SAFE_PRIVATE_KEY"]},
+        "module": {"type": "enum", "default": "EnvSigner", "values": ["EnvSigner", "KeyVaultSigner", "SafeSigner"]},
+        "vault_key": {"type": "string", "optional": true, "env": "VAULT_KEY_NAME"},
         "out": {"type": "path", "default": "artifacts/tx/signed_tx.json"}
       },
       "output": {"raw": "hex", "hash": "hex", "from": "address", "output": "path"},
@@ -44,7 +45,7 @@
     },
     "TransactionBroadcaster": {
       "id": "tx_broadcast",
-      "cli": "hexstrike mcp tx broadcast",
+      "cli": "hexstrike tx broadcast",
       "module": "scripts/mcp_tx.py",
       "callable": "skill_broadcast",
       "description": "Submit signed raw hex to RPC (gated unless --force or HEXSTRIKE_TX_LIVE=1)",
@@ -58,7 +59,7 @@
     },
     "TransactionStatusChecker": {
       "id": "tx_status",
-      "cli": "hexstrike mcp tx status",
+      "cli": "hexstrike tx status",
       "module": "scripts/mcp_tx.py",
       "callable": "skill_status",
       "description": "Poll tx hash — pending, success, or fail with receipt",
@@ -72,7 +73,7 @@
     },
     "RescueHandler": {
       "id": "tx_rescue",
-      "cli": "hexstrike mcp tx rescue",
+      "cli": "hexstrike tx rescue",
       "module": "scripts/mcp_tx.py",
       "callable": "skill_rescue",
       "description": "SAFE wallet tops up GAS_HOLDER when balance is low",
@@ -117,11 +118,11 @@
     }
   },
   "combat_cycle": [
-    {"step": 1, "skill": "tx_build", "example": "hexstrike mcp tx build --target=0xTARGET --value=0.001bnb --gas=21000 --dry-run"},
-    {"step": 2, "skill": "tx_sign", "example": "hexstrike mcp tx sign artifacts/tx/raw_tx.json"},
-    {"step": 3, "skill": "tx_broadcast", "example": "hexstrike mcp tx broadcast artifacts/tx/signed_tx.json"},
-    {"step": 4, "skill": "tx_status", "example": "hexstrike mcp tx status 0xHASH --json"},
-    {"step": 5, "skill": "tx_rescue", "example": "hexstrike mcp tx rescue --target=$GAS_HOLDER_ADDRESS --value=0.01bnb --dry-run"},
+    {"step": 1, "skill": "tx_build", "example": "hexstrike tx build --target=0xTARGET --value=0.001bnb --gas=21000"},
+    {"step": 2, "skill": "tx_sign", "example": "hexstrike tx sign raw_tx.json --module=KeyVaultSigner"},
+    {"step": 3, "skill": "tx_broadcast", "example": "hexstrike tx broadcast signed_tx.json"},
+    {"step": 4, "skill": "tx_status", "example": "hexstrike tx status 0xHASH --json"},
+    {"step": 5, "skill": "tx_rescue", "example": "hexstrike tx rescue --target=$GAS_HOLDER_ADDRESS --value=0.01bnb"},
     {"step": 6, "skill": "tx_discovery", "example": "hexstrike mcp tx discovery --trace"}
   ]
 }

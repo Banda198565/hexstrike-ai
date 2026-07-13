@@ -37,9 +37,9 @@
         "tx_sign": {
           "callable": "skill_sign",
           "module": "scripts/mcp_tx.py",
-          "description": "TransactionSigner — sign with BOT_PRIVATE_KEY",
-          "params": ["raw_tx", "key_env"],
-          "defaults": {"key_env": "BOT_PRIVATE_KEY"}
+          "description": "TransactionSigner — EnvSigner, KeyVaultSigner, or SafeSigner",
+          "params": ["raw_tx", "module", "vault_key"],
+          "defaults": {"module": "EnvSigner"}
         },
         "tx_broadcast": {
           "callable": "skill_broadcast",

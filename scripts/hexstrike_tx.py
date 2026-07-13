@@ -18,6 +18,7 @@ from api_auth import load_dotenv
 from crypto_rpc_orchestrator import load_config, rpc_call
 from hexstrike.bus.context_bus import ContextBus
 from hexstrike.core.execution.broadcaster import ExecutionBroadcaster
+from hexstrike.core.vault.keyvault_signer import KeyVaultSigner
 from hexstrike.paths import PENDING_ACTION, RPC_CONFIG
 
 load_dotenv(ROOT / ".env")
@@ -86,13 +87,31 @@ def _build_tx(*, from_addr: str, to_addr: str, value_wei: int, gas: int, rpc: st
     }
 
 
-def _sign_tx_dict(tx: dict[str, Any], *, key_env: str, rpc: str) -> dict[str, Any]:
+def _live_enabled() -> bool:
+    return os.environ.get("HEXSTRIKE_TX_LIVE", "").lower() in ("1", "true", "yes")
+
+
+def _resolve_signer_module(module: str, *, vault_key: str | None = None) -> tuple[str, str]:
+    """Return (module_name, private_key_hex)."""
+    mod = module or os.environ.get("TX_SIGN_MODULE", "EnvSigner")
+    if mod == "KeyVaultSigner":
+        signer = KeyVaultSigner(key_name=vault_key)
+        return mod, signer.private_key_hex()
+    if mod == "SafeSigner":
+        return mod, _private_key("SAFE_PRIVATE_KEY")
+    if mod in ("EnvSigner", "DefaultSigner", ""):
+        return "EnvSigner", _private_key("BOT_PRIVATE_KEY")
+    raise SystemExit(f"Unknown sign module: {mod} (use EnvSigner, KeyVaultSigner, SafeSigner)")
+
+
+def _sign_tx_dict(tx: dict[str, Any], *, private_key: str, rpc: str) -> dict[str, Any]:
     try:
         from eth_account import Account  # type: ignore[import-untyped]
     except ImportError as exc:
         raise SystemExit("pip install eth-account") from exc
 
-    acct = Account.from_key(_private_key(key_env))
+    key = private_key if private_key.startswith("0x") else f"0x{private_key}"
+    acct = Account.from_key(key)
     norm: dict[str, Any] = {}
     for k, v in tx.items():
         if k in ("from", "privateKey"):
@@ -117,12 +136,16 @@ def _sign_tx_dict(tx: dict[str, Any], *, key_env: str, rpc: str) -> dict[str, An
         "from": acct.address,
         "raw": raw_hex,
         "hash": signed.hash.hex() if hasattr(signed, "hash") else None,
+        "signer_module": None,
     }
 
 
-def cmd_send(args: argparse.Namespace) -> int:
+def _cmd_build_or_send(args: argparse.Namespace, *, command: str) -> int:
     rpc = _rpc_url()
-    to_addr = args.target if args.target.startswith("0x") else f"0x{args.target}"
+    target = getattr(args, "target", None)
+    if not target:
+        raise SystemExit("--target required")
+    to_addr = target if target.startswith("0x") else f"0x{target}"
     tx = _build_tx(
         from_addr=_from_address(),
         to_addr=to_addr,
@@ -130,12 +153,15 @@ def cmd_send(args: argparse.Namespace) -> int:
         gas=int(args.gas),
         rpc=rpc,
     )
+    data = getattr(args, "data", None)
+    if data and data != "0x":
+        tx["data"] = data if data.startswith("0x") else f"0x{data}"
     pre = ExecutionBroadcaster(bus=ContextBus(), config_path=RPC_CONFIG).preflight(tx)
     out_path = Path(args.out) if args.out else ROOT / "artifacts" / "tx" / "raw_tx.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     out: dict[str, Any] = {
-        "command": "send",
+        "command": command,
         "dry_run": args.dry_run,
         "rpc": rpc,
         "transaction": tx,
@@ -148,18 +174,27 @@ def cmd_send(args: argparse.Namespace) -> int:
             "warnings": pre.warnings,
         },
     }
-    if args.dry_run:
+    if args.dry_run or command == "build":
         out_path.write_text(json.dumps({"transaction": tx}, indent=2) + "\n", encoding="utf-8")
         out["result"] = "ok"
-        out["note"] = "Dry-run — not signed or broadcast"
+        out["note"] = "Dry-run — not signed or broadcast" if args.dry_run else "Built — sign with hexstrike tx sign"
         print(json.dumps(out, indent=2))
-        return 0
+        return 0 if pre.ok else 1
 
     bc = ExecutionBroadcaster(bus=ContextBus(), config_path=RPC_CONFIG)
-    out["queued"] = bc.queue_for_approval(tx, reason="hexstrike tx send")
+    out["queued"] = bc.queue_for_approval(tx, reason=f"hexstrike tx {command}")
     out["pending_action"] = str(PENDING_ACTION)
     print(json.dumps(out, indent=2))
     return 0 if pre.ok else 1
+
+
+def cmd_build(args: argparse.Namespace) -> int:
+    args.dry_run = True
+    return _cmd_build_or_send(args, command="build")
+
+
+def cmd_send(args: argparse.Namespace) -> int:
+    return _cmd_build_or_send(args, command="send")
 
 
 def cmd_sign(args: argparse.Namespace) -> int:
@@ -167,9 +202,14 @@ def cmd_sign(args: argparse.Namespace) -> int:
     data = json.loads(raw_path.read_text(encoding="utf-8"))
     tx = data.get("transaction", data)
     rpc = _rpc_url()
+    module = getattr(args, "module", None) or "EnvSigner"
+    vault_key = getattr(args, "vault_key", None)
     if args.debug:
-        print(json.dumps({"debug": {k: v for k, v in tx.items() if k != "privateKey"}, "rpc": rpc}, indent=2), file=sys.stderr)
-    result = {"command": "sign", **_sign_tx_dict(tx, key_env="BOT_PRIVATE_KEY", rpc=rpc)}
+        print(json.dumps({"debug": {k: v for k, v in tx.items() if k != "privateKey"}, "rpc": rpc, "module": module}, indent=2), file=sys.stderr)
+    mod_name, pk = _resolve_signer_module(module, vault_key=vault_key)
+    signed = _sign_tx_dict(tx, private_key=pk, rpc=rpc)
+    signed["signer_module"] = mod_name
+    result = {"command": "sign", **signed}
     out_path = Path(args.out) if args.out else raw_path.with_name("signed_tx.json")
     out_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({**result, "output": str(out_path)}, indent=2))
@@ -181,12 +221,17 @@ def cmd_broadcast(args: argparse.Namespace) -> int:
     raw_hex = data.get("raw") or data.get("signed_tx") or data.get("rawTransaction")
     if not raw_hex:
         raise SystemExit("signed_tx.json must contain 'raw' hex field")
-    if args.force:
+    approved = args.force or _live_enabled()
+    if approved:
         pending = json.loads(PENDING_ACTION.read_text(encoding="utf-8")) if PENDING_ACTION.is_file() else {}
-        pending.update({"status": "approved", "approved_by": "hexstrike tx broadcast --force", "action": "broadcast_tx"})
+        pending.update({
+            "status": "approved",
+            "approved_by": "hexstrike tx broadcast" + (" --force" if args.force else " (HEXSTRIKE_TX_LIVE)"),
+            "action": "broadcast_tx",
+        })
         PENDING_ACTION.parent.mkdir(parents=True, exist_ok=True)
         PENDING_ACTION.write_text(json.dumps(pending, indent=2) + "\n", encoding="utf-8")
-    result = ExecutionBroadcaster(bus=ContextBus(), config_path=RPC_CONFIG).broadcast(raw_hex, approved=args.force)
+    result = ExecutionBroadcaster(bus=ContextBus(), config_path=RPC_CONFIG).broadcast(raw_hex, approved=approved)
     print(json.dumps({"command": "broadcast", **result}, indent=2))
     return 0 if result.get("success") else 1
 
@@ -233,7 +278,8 @@ def cmd_rescue(args: argparse.Namespace) -> int:
         print(json.dumps(out, indent=2))
         return 0
 
-    signed = _sign_tx_dict(tx, key_env="SAFE_PRIVATE_KEY", rpc=rpc)
+    signed = _sign_tx_dict(tx, private_key=_private_key("SAFE_PRIVATE_KEY"), rpc=rpc)
+    signed["signer_module"] = "SafeSigner"
     signed_path = ROOT / "artifacts" / "tx" / "rescue_signed_tx.json"
     signed_path.write_text(json.dumps({"command": "rescue_sign", **signed}, indent=2) + "\n", encoding="utf-8")
     if PENDING_ACTION.is_file():
@@ -253,7 +299,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="hexstrike tx")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    send_p = sub.add_parser("send")
+    build_p = sub.add_parser("build", help="Build raw tx payload (always saves raw_tx.json)")
+    build_p.add_argument("--target", required=True)
+    build_p.add_argument("--value", required=True)
+    build_p.add_argument("--gas", default="21000")
+    build_p.add_argument("--data", default="0x")
+    build_p.add_argument("--out")
+    build_p.set_defaults(func=cmd_build)
+
+    send_p = sub.add_parser("send", help="Legacy: build/send (prefer tx build)")
     send_p.add_argument("target")
     send_p.add_argument("--value", required=True)
     send_p.add_argument("--gas", default="21000")
@@ -263,6 +317,9 @@ def main() -> int:
 
     sign_p = sub.add_parser("sign")
     sign_p.add_argument("raw_tx")
+    sign_p.add_argument("--module", default=os.environ.get("TX_SIGN_MODULE", "EnvSigner"),
+                        help="EnvSigner | KeyVaultSigner | SafeSigner")
+    sign_p.add_argument("--vault-key", help="Key name when --module=KeyVaultSigner")
     sign_p.add_argument("--debug", action="store_true")
     sign_p.add_argument("--out")
     sign_p.set_defaults(func=cmd_sign)
@@ -285,10 +342,10 @@ def main() -> int:
     rescue_p.set_defaults(func=cmd_rescue)
 
     args = parser.parse_args()
-    if args.cmd == "send" and os.environ.get("HEXSTRIKE_TX_LIVE", "").lower() not in ("1", "true", "yes"):
+    if args.cmd == "send" and not _live_enabled():
         if not args.dry_run and "--dry-run" not in sys.argv:
             args.dry_run = True
-    if args.cmd == "rescue" and os.environ.get("HEXSTRIKE_TX_LIVE", "").lower() not in ("1", "true", "yes"):
+    if args.cmd == "rescue" and not _live_enabled():
         if not args.dry_run and "--dry-run" not in sys.argv:
             args.dry_run = True
     return args.func(args)
