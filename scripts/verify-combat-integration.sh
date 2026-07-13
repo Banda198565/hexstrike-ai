@@ -28,6 +28,8 @@ for f in \
   scripts/fastmcp_verify.sh \
   scripts/vps-almalinux-fastmcp-bootstrap.sh \
   scripts/vps-fastmcp-ops.sh \
+  scripts/vps-pull-and-ops.sh \
+  scripts/mac-fastmcp-live.sh \
   scripts/tx_control.sh; do
   [[ -f "$ROOT/$f" ]] && ok "$f" || bad "missing $f"
 done
@@ -46,6 +48,12 @@ if grep -q 'agent run' "$ROOT/hexstrike" 2>/dev/null; then
   ok "hexstrike CLI routes agent/logs/orchestrator"
 else
   bad "hexstrike wrapper missing combat routes"
+fi
+
+if grep -q 'fastmcp' "$ROOT/hexstrike" 2>/dev/null && grep -q 'ops' "$ROOT/hexstrike" 2>/dev/null; then
+  ok "hexstrike CLI routes ops/fastmcp"
+else
+  bad "hexstrike wrapper missing ops/fastmcp routes"
 fi
 
 [[ -f "$ROOT/mcp/tx-skills.json" ]] && ok "mcp/tx-skills.json" || bad "missing mcp/tx-skills.json"

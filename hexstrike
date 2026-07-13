@@ -11,10 +11,41 @@
 #   hexstrike tx status 0xHASH --json
 #   hexstrike tx rescue --target=$GAS_HOLDER_ADDRESS --value=0.01bnb
 #   hexstrike mcp tx build ...  (alias layer)
+#   hexstrike ops [--quick|--standard|--full]
+#   hexstrike fastmcp verify --target 0xPAYROLL [--run-dry-run]
+#   hexstrike fastmcp live --target 0xPAYROLL [--dry-run|--live]
 ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 if [[ "${1:-}" == "sync" ]]; then shift; exec python3 "$ROOT/scripts/hexstrike_sync.py" "$@"; fi
 if [[ "${1:-}" == "tx" ]]; then shift; exec python3 "$ROOT/scripts/hexstrike_tx.py" "$@"; fi
 if [[ "${1:-}" == "vault" ]]; then shift; exec python3 "$ROOT/scripts/hexstrike_vault.py" "$@"; fi
+if [[ "${1:-}" == "ops" ]]; then
+  shift
+  exec bash "$ROOT/scripts/vps-fastmcp-ops.sh" "${1:---standard}"
+fi
+if [[ "${1:-}" == "fastmcp" ]]; then
+  shift
+  case "${1:-}" in
+    verify)
+      shift
+      exec bash "$ROOT/scripts/fastmcp_verify.sh" "$@"
+      ;;
+    live|cycle)
+      shift
+      if [[ -x "$ROOT/scripts/mac-fastmcp-live.sh" ]] && [[ "$(uname -s)" == "Darwin" || "${FORCE_MAC_LIVE:-}" == "1" ]]; then
+        exec bash "$ROOT/scripts/mac-fastmcp-live.sh" "$@"
+      fi
+      exec bash "$ROOT/scripts/fastmcp_live_cycle.sh" "$@"
+      ;;
+    pull-ops)
+      shift
+      exec bash "$ROOT/scripts/vps-pull-and-ops.sh" "${1:---standard}"
+      ;;
+    *)
+      echo "Usage: hexstrike fastmcp {verify|live|cycle|pull-ops} [args...]" >&2
+      exit 1
+      ;;
+  esac
+fi
 if [[ "${1:-}" == "mcp" ]]; then
   shift
   if [[ "${1:-}" == "tx" ]]; then shift; exec python3 "$ROOT/scripts/mcp_tx.py" "$@"; fi

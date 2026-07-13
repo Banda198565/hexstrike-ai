@@ -315,6 +315,11 @@ elif [[ "$LIVE_FLAG" == "1" ]]; then
   echo "RESULT: ✅ LIVE MODE ACTIVE — verify broadcast.hash on BscScan"
   exit 0
 else
-  echo "RESULT: ✅ READY FOR LIVE — export HEXSTRIKE_TX_LIVE=1 when operator confirms"
+  # Soft hint: VPS paths should not broadcast
+  if [[ "${HEXSTRIKE_HOST_ROLE:-}" == "vps" || "$ROOT" == "/opt/hexstrike-ai" || "$(uname -s 2>/dev/null)" == "Linux" ]]; then
+    echo "RESULT: ✅ VPS DRY-RUN OK — live broadcast remains Mac-only"
+  else
+    echo "RESULT: ✅ READY FOR LIVE — export HEXSTRIKE_TX_LIVE=1 when operator confirms"
+  fi
   exit 0
 fi

@@ -110,6 +110,25 @@ cd /opt/hexstrike-ai && git pull
 sudo bash scripts/vps-prod-bootstrap.sh
 ```
 
+### CLI shortcuts
+
+```bash
+# VPS
+./hexstrike ops --quick
+./hexstrike fastmcp verify --target 0xPAYROLL --run-dry-run
+./hexstrike fastmcp pull-ops --standard
+
+# Mac
+./hexstrike fastmcp live --target 0xPAYROLL --dry-run
+CONFIRM=YES HEXSTRIKE_TX_LIVE=1 ./hexstrike fastmcp live --target 0xPAYROLL --live
+```
+
+### Mac → VPS sync FastMCP bundle
+
+```bash
+VPS_HOST=x.x.x.x bash scripts/mac-vps-sync-fastmcp.sh
+```
+
 ### Mac live (operator)
 
 ```bash
