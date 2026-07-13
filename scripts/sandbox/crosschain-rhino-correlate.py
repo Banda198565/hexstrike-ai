@@ -29,6 +29,10 @@ def wallet_by_role(bundle: dict, role: str) -> dict | None:
     return None
 
 
+def fmt_amt(val: float | None, default: str = "N/A") -> str:
+    return f"{val:,.2f}" if val is not None else default
+
+
 def main() -> int:
     bundle = load(BUNDLE)
     if not bundle.get("wallets"):
@@ -110,10 +114,10 @@ def main() -> int:
 
 | Chain | Token | Balance |
 |-------|-------|---------|
-| BSC | USDT | **{bsc_usdt:,.2f}** |
-| Base | USDC | **{base_usdc:,.2f}** |
-| **Combined** | — | **${total_usd:,.2f}** |
-| Rhino hub (BSC) | USDT float | {hub_usdt:,.2f} |
+| BSC | USDT | **{fmt_amt(bsc_usdt)}** |
+| Base | USDC | **{fmt_amt(base_usdc)}** |
+| **Combined** | — | **${fmt_amt(total_usd if total_usd else None)}** |
+| Rhino hub (BSC) | USDT float | {fmt_amt(hub_usdt)} |
 
 ## Activity
 
@@ -128,7 +132,7 @@ Base nonce significantly higher — parallel high-activity treasury rail.
 
 ```
 BSC:  hot → EIP-7702 sweeps → impl → Rhino hub → cross-chain
-Base: hot → USDC treasury (parallel rail, ~{base_usdc:,.0f} USDC)
+Base: hot → USDC treasury (parallel rail, ~{fmt_amt(base_usdc)} USDC)
 ```
 
 ## Correlation verdict
@@ -136,7 +140,7 @@ Base: hot → USDC treasury (parallel rail, ~{base_usdc:,.0f} USDC)
 - Rhino.fi hub = BSC exit sink (confirmed Phase-2)
 - Base USDC = parallel treasury, **not** direct CEX in sample window
 - Entity: **UNIDENTIFIED**
-- Combined stable exposure: **${total_usd:,.2f}**
+- Combined stable exposure: **${fmt_amt(total_usd if total_usd else None)}**
 
 ## Base USDC top outflows (sample)
 

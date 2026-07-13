@@ -21,6 +21,7 @@ CHAIN_RPC = {
     56: os.environ.get("BSC_RPC", "https://bsc-dataseed.binance.org"),
     8453: os.environ.get("BASE_RPC", "https://mainnet.base.org"),
 }
+BSC_FALLBACK = os.environ.get("BSC_RPC_FALLBACK", "https://bsc-dataseed1.binance.org")
 
 TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
@@ -38,13 +39,20 @@ def wei_to_eth(wei: str) -> str:
 
 
 def token_balance(token: str, holder: str, rpc: str, decimals: int) -> float | None:
-    raw = cast_val(["call", token, "balanceOf(address)(uint256)", holder, "--rpc-url", rpc])
-    if raw in ("ERROR", ""):
-        return None
-    try:
-        return int(raw.split()[0]) / (10**decimals)
-    except (ValueError, IndexError):
-        return None
+    for url in (rpc, BSC_FALLBACK if rpc == CHAIN_RPC[56] else None):
+        if not url:
+            continue
+        raw = cast_val(["call", token, "balanceOf(address)(uint256)", holder, "--rpc-url", url])
+        if raw in ("ERROR", ""):
+            continue
+        try:
+            val_str = raw.split()[0].strip("[]")
+            if "e" in val_str.lower() or "E" in val_str:
+                return float(val_str) / (10**decimals)
+            return int(val_str) / (10**decimals)
+        except (ValueError, IndexError):
+            continue
+    return None
 
 
 def recon_wallet(address: str, rpc: str, chain_id: int, source: str) -> dict:
@@ -196,9 +204,12 @@ def main() -> int:
         live = recon_wallet(addr, rpc, chain_id, f"live_chain_{chain_id}")
         token_bal = token_balance(token, addr, rpc, decimals) if token else None
         outflows = []
-        if role.startswith("hot_wallet") and token:
+        if token and role.startswith("hot_wallet"):
             outflows = sample_outflows(addr, token, rpc, decimals)
-            print(f"  token={token_bal:,.2f} outflows_sampled={len(outflows)}")
+        if token:
+            tb = f"{token_bal:,.2f}" if token_bal is not None else "?"
+            extra = f" outflows_sampled={len(outflows)}" if outflows is not None else ""
+            print(f"  token={tb}{extra}")
 
         print(f"  bal={live['balance_eth']} ETH nonce={live['nonce']} contract={live['is_contract']}")
 
