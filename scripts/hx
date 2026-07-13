@@ -61,6 +61,9 @@ case "$cmd" in
     pgrep -af autonomous_monitor || echo "monitor not running"
     tail -3 /var/log/hexstrike/hot-wallet-monitor.log 2>/dev/null || true
     ;;
+  tx)
+    python3 scripts/hexstrike_tx.py "$@"
+    ;;
   cd)
     echo "$HX_ROOT"
     ;;
