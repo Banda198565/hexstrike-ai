@@ -4,7 +4,7 @@
 #   hexstrike tx sign raw_tx.json --debug
 #   hexstrike tx broadcast signed_tx.json --force
 #   hexstrike tx status 0xHASH --json
-ROOT="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 if [[ "${1:-}" == "tx" ]]; then
   shift
   exec python3 "$ROOT/scripts/hexstrike_tx.py" "$@"
