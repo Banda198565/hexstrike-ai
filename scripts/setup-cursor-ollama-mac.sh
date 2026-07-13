@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup-cursor-ollama-mac.sh — operator Mac: Ollama + Cursor deepseek-r1 integration
+# setup-cursor-ollama-mac.sh — operator Mac: Ollama + Cursor Qwen2.5-Coder integration
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,9 +23,9 @@ if ! command -v ollama &>/dev/null; then
   exit 1
 fi
 
-echo "[3/5] Pull deepseek-r1:1.5b if missing"
-if ! ollama list 2>/dev/null | grep -q 'deepseek-r1:1.5b'; then
-  ollama pull deepseek-r1:1.5b
+echo "[3/5] Pull qwen2.5-coder:7b if missing"
+if ! ollama list 2>/dev/null | grep -q 'qwen2.5-coder:7b'; then
+  ollama pull qwen2.5-coder:7b
 fi
 
 echo "[4/5] Ensure ollama serve is running"

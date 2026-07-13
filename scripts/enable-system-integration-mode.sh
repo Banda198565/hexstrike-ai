@@ -63,9 +63,33 @@ settings_path = Path(sys.argv[1])
 base_url = sys.argv[2]
 model = sys.argv[3]
 
+OLLAMA_MODELS = [
+    ("qwen2.5-coder:7b", "Qwen2.5 Coder 7B (Ollama)", {"num_thread": 16, "num_predict": 512, "num_ctx": 32768}),
+    ("qwen2.5-coder:14b", "Qwen2.5 Coder 14B (Ollama)", {"num_thread": 16, "num_predict": 512, "num_ctx": 32768}),
+    ("qwen2.5-coder:32b", "Qwen2.5 Coder 32B (Ollama)", {"num_thread": 16, "num_predict": 512, "num_ctx": 32768}),
+    ("qwen3-coder:480b-cloud", "Qwen3 Coder 480B Cloud (Ollama)", None),
+]
+
+custom = []
+for mid, label, opts in OLLAMA_MODELS:
+    entry = {
+        "id": mid,
+        "name": label,
+        "provider": "openai-compatible",
+        "model_type": "openai_compatible",
+        "baseUrl": base_url,
+        "apiKey": "ollama",
+        "supportsChainOfThought": False,
+    }
+    if opts:
+        entry["options"] = opts
+    if mid.endswith("-cloud"):
+        entry["cloud"] = True
+    custom.append(entry)
+
 settings = {
     "$schema": "https://cursor.com/schemas/settings.json",
-    "_comment": "System Integration Mode — localhost-first, OFFLINE_PRIMARY for reasoning",
+    "_comment": "Ollama + Qwen2.5-Coder — localhost OpenAI-compatible models",
     "systemIntegrationMode": "OFFLINE_PRIMARY",
     "AUTHORIZED_OPERATOR_MODE": False,
     "ollama": {
@@ -73,6 +97,11 @@ settings = {
         "model": model,
         "openai_compatible_base": base_url,
         "api_key_placeholder": "ollama",
+        "pull_commands": [
+            "ollama pull qwen2.5-coder:7b",
+            "ollama pull qwen2.5-coder:14b",
+        ],
+        "options": {"num_thread": 16, "num_predict": 512, "num_ctx": 32768},
     },
     "cursor": {
         "chat": {
@@ -86,24 +115,12 @@ settings = {
             "model_type": "openai_compatible",
         },
         "maxMode": {
-            "defaultModel": model,
+            "defaultModel": "qwen2.5-coder:14b",
             "preferHighReasoning": True,
             "routeToLocal": True,
             "model_type": "openai_compatible",
         },
-        "models": {
-            "custom": [
-                {
-                    "id": model,
-                    "name": model,
-                    "provider": "openai-compatible",
-                    "model_type": "openai_compatible",
-                    "baseUrl": base_url,
-                    "supportsChainOfThought": True,
-                }
-            ],
-            "disabled": [],
-        },
+        "models": {"custom": custom, "disabled": []},
         "openai": {
             "overrideBaseUrl": True,
             "baseUrl": base_url,
@@ -125,12 +142,15 @@ settings = {
         "LLM_PROVIDER": "ollama-local",
         "LLM_BASE_URL": base_url,
         "LLM_MODEL": model,
+        "OLLAMA_NUM_THREAD": "16",
+        "OLLAMA_NUM_PREDICT": "512",
+        "OLLAMA_NUM_CTX": "32768",
         "CURSOR_INTEGRATION_MODE": "OFFLINE_PRIMARY",
     },
 }
 
 settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
-print(f"[OK]   Wrote {settings_path}")
+print(f"[OK]   Wrote {settings_path} ({len(custom)} Ollama models registered)")
 PY
 
 echo "[OK]   .env updated — localhost bypasses Cloud VM tunnel"
