@@ -14,6 +14,7 @@
 ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 if [[ "${1:-}" == "sync" ]]; then shift; exec python3 "$ROOT/scripts/hexstrike_sync.py" "$@"; fi
 if [[ "${1:-}" == "tx" ]]; then shift; exec python3 "$ROOT/scripts/hexstrike_tx.py" "$@"; fi
+if [[ "${1:-}" == "vault" ]]; then shift; exec python3 "$ROOT/scripts/hexstrike_vault.py" "$@"; fi
 if [[ "${1:-}" == "mcp" ]]; then
   shift
   if [[ "${1:-}" == "tx" ]]; then shift; exec python3 "$ROOT/scripts/mcp_tx.py" "$@"; fi

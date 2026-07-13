@@ -18,6 +18,11 @@ from api_auth import load_dotenv
 from crypto_rpc_orchestrator import load_config, rpc_call
 from hexstrike.bus.context_bus import ContextBus
 from hexstrike.core.execution.broadcaster import ExecutionBroadcaster
+from hexstrike.core.execution.erc20_build import build_erc20_tx_fields
+from hexstrike.core.execution.entity_gate import gate_transaction
+from hexstrike.core.execution.nonce_recovery import fetch_nonces, sync_recommendation
+from hexstrike.core.execution.receipt_watcher import ReceiptWatcher
+from hexstrike.core.relay.puissant_relay import RelayManager
 from hexstrike.core.vault.keyvault_signer import KeyVaultSigner
 from hexstrike.paths import PENDING_ACTION, RPC_CONFIG
 
@@ -146,13 +151,31 @@ def _cmd_build_or_send(args: argparse.Namespace, *, command: str) -> int:
     if not target:
         raise SystemExit("--target required")
     to_addr = target if target.startswith("0x") else f"0x{target}"
-    tx = _build_tx(
-        from_addr=_from_address(),
-        to_addr=to_addr,
-        value_wei=parse_value(args.value),
-        gas=int(args.gas),
-        rpc=rpc,
-    )
+    token = getattr(args, "token", None)
+    amount = getattr(args, "amount", None)
+    gas = int(args.gas)
+    if token:
+        amount_wei = parse_value(amount or args.value)
+        fields = build_erc20_tx_fields(token=token, recipient=to_addr, amount_wei=amount_wei)
+        tx = _build_tx(
+            from_addr=_from_address(),
+            to_addr=fields["to"],
+            value_wei=0,
+            gas=max(gas, 65000),
+            rpc=rpc,
+        )
+        tx["data"] = fields["data"]
+        tx["value"] = "0x0"
+        tx["erc20_recipient"] = to_addr
+        tx["erc20_amount_wei"] = amount_wei
+    else:
+        tx = _build_tx(
+            from_addr=_from_address(),
+            to_addr=to_addr,
+            value_wei=parse_value(args.value),
+            gas=gas,
+            rpc=rpc,
+        )
     data = getattr(args, "data", None)
     if data and data != "0x":
         tx["data"] = data if data.startswith("0x") else f"0x{data}"
@@ -206,10 +229,17 @@ def cmd_sign(args: argparse.Namespace) -> int:
     vault_key = getattr(args, "vault_key", None)
     if args.debug:
         print(json.dumps({"debug": {k: v for k, v in tx.items() if k != "privateKey"}, "rpc": rpc, "module": module}, indent=2), file=sys.stderr)
+    if not getattr(args, "skip_gate", False):
+        gate = gate_transaction(tx, from_addr=tx.get("from") or _from_address())
+        if not gate["allowed"]:
+            print(json.dumps({"command": "sign", "success": False, "error": "entity_gate_blocked", "gate": gate}, indent=2))
+            return 1
+    else:
+        gate = {"allowed": True, "skipped": True}
     mod_name, pk = _resolve_signer_module(module, vault_key=vault_key)
     signed = _sign_tx_dict(tx, private_key=pk, rpc=rpc)
     signed["signer_module"] = mod_name
-    result = {"command": "sign", **signed}
+    result = {"command": "sign", "gate": gate, **signed}
     out_path = Path(args.out) if args.out else raw_path.with_name("signed_tx.json")
     out_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({**result, "output": str(out_path)}, indent=2))
@@ -222,17 +252,37 @@ def cmd_broadcast(args: argparse.Namespace) -> int:
     if not raw_hex:
         raise SystemExit("signed_tx.json must contain 'raw' hex field")
     approved = args.force or _live_enabled()
-    if approved:
-        pending = json.loads(PENDING_ACTION.read_text(encoding="utf-8")) if PENDING_ACTION.is_file() else {}
-        pending.update({
-            "status": "approved",
-            "approved_by": "hexstrike tx broadcast" + (" --force" if args.force else " (HEXSTRIKE_TX_LIVE)"),
-            "action": "broadcast_tx",
-        })
-        PENDING_ACTION.parent.mkdir(parents=True, exist_ok=True)
-        PENDING_ACTION.write_text(json.dumps(pending, indent=2) + "\n", encoding="utf-8")
-    result = ExecutionBroadcaster(bus=ContextBus(), config_path=RPC_CONFIG).broadcast(raw_hex, approved=approved)
-    print(json.dumps({"command": "broadcast", **result}, indent=2))
+    strategy = getattr(args, "relay", "private_first")
+    if not approved:
+        print(json.dumps({"command": "broadcast", "success": False, "error": "HEXSTRIKE_TX_LIVE=1 or --force required"}, indent=2))
+        return 1
+    if strategy in ("private_first", "private_only", "public_only"):
+        relay_result = RelayManager().broadcast(raw_hex, strategy=strategy)
+        if relay_result.get("success"):
+            tx_hash = relay_result.get("hash") or data.get("hash")
+            out = {"command": "broadcast", **relay_result, "hash": tx_hash}
+            if args.watch and tx_hash:
+                watcher = ReceiptWatcher(rpc_call=rpc_call, timeout_sec=float(args.watch_timeout))
+                out["watch"] = watcher.watch(_rpc_url(), tx_hash)
+            print(json.dumps(out, indent=2))
+            return 0
+        if strategy in ("private_first", "private_only"):
+            print(json.dumps({"command": "broadcast", **relay_result}, indent=2))
+            return 1
+    pending = json.loads(PENDING_ACTION.read_text(encoding="utf-8")) if PENDING_ACTION.is_file() else {}
+    pending.update({
+        "status": "approved",
+        "approved_by": "hexstrike tx broadcast" + (" --force" if args.force else " (HEXSTRIKE_TX_LIVE)"),
+        "action": "broadcast_tx",
+    })
+    PENDING_ACTION.parent.mkdir(parents=True, exist_ok=True)
+    PENDING_ACTION.write_text(json.dumps(pending, indent=2) + "\n", encoding="utf-8")
+    result = ExecutionBroadcaster(bus=ContextBus(), config_path=RPC_CONFIG).broadcast(raw_hex, approved=True)
+    out = {"command": "broadcast", **result}
+    if args.watch and result.get("hash"):
+        watcher = ReceiptWatcher(rpc_call=rpc_call, timeout_sec=float(args.watch_timeout))
+        out["watch"] = watcher.watch(_rpc_url(), result["hash"])
+    print(json.dumps(out, indent=2))
     return 0 if result.get("success") else 1
 
 
@@ -246,6 +296,23 @@ def cmd_status(args: argparse.Namespace) -> int:
         state = "success" if int(receipt.get("status", "0x0"), 16) == 1 else "fail"
     out = {"command": "status", "hash": tx_hash, "state": state, "rpc": rpc, "transaction": tx, "receipt": receipt, "mined": receipt is not None}
     print(json.dumps(out, indent=2) if args.json else json.dumps(out, indent=2))
+    return 0
+
+
+def cmd_watch(args: argparse.Namespace) -> int:
+    rpc = _rpc_url()
+    watcher = ReceiptWatcher(rpc_call=rpc_call, timeout_sec=float(args.timeout), poll_interval_sec=float(args.interval))
+    result = watcher.watch(rpc, args.hash)
+    print(json.dumps({"command": "watch", **result, "rpc": rpc}, indent=2))
+    return 0 if result.get("success") else 1
+
+
+def cmd_nonce(args: argparse.Namespace) -> int:
+    rpc = _rpc_url()
+    addr = args.address or _from_address()
+    nonces = fetch_nonces(rpc_call, rpc, addr)
+    out = {"command": "nonce", **nonces, "recommendation": sync_recommendation(nonces), "rpc": rpc}
+    print(json.dumps(out, indent=2))
     return 0
 
 
@@ -304,8 +371,10 @@ def main() -> int:
     build_p.add_argument("--value", required=True)
     build_p.add_argument("--gas", default="21000")
     build_p.add_argument("--data", default="0x")
+    build_p.add_argument("--token", help="ERC20 contract address (BEP20)")
+    build_p.add_argument("--amount", help="Token amount when --token set")
     build_p.add_argument("--out")
-    build_p.set_defaults(func=cmd_build)
+    build_p.set_defaults(func=cmd_build, dry_run=True)
 
     send_p = sub.add_parser("send", help="Legacy: build/send (prefer tx build)")
     send_p.add_argument("target")
@@ -320,6 +389,7 @@ def main() -> int:
     sign_p.add_argument("--module", default=os.environ.get("TX_SIGN_MODULE", "EnvSigner"),
                         help="EnvSigner | KeyVaultSigner | SafeSigner")
     sign_p.add_argument("--vault-key", help="Key name when --module=KeyVaultSigner")
+    sign_p.add_argument("--skip-gate", action="store_true", help="Bypass allowlist entity gate")
     sign_p.add_argument("--debug", action="store_true")
     sign_p.add_argument("--out")
     sign_p.set_defaults(func=cmd_sign)
@@ -327,7 +397,21 @@ def main() -> int:
     bc_p = sub.add_parser("broadcast")
     bc_p.add_argument("signed_tx")
     bc_p.add_argument("--force", action="store_true")
+    bc_p.add_argument("--relay", default=os.environ.get("RELAY_STRATEGY", "private_first"),
+                      choices=["private_first", "private_only", "public_only"])
+    bc_p.add_argument("--watch", action="store_true", help="Wait for receipt after broadcast")
+    bc_p.add_argument("--watch-timeout", default="120")
     bc_p.set_defaults(func=cmd_broadcast)
+
+    watch_p = sub.add_parser("watch", help="Receipt watcher until mined/fail/timeout")
+    watch_p.add_argument("hash")
+    watch_p.add_argument("--timeout", default="120")
+    watch_p.add_argument("--interval", default="2")
+    watch_p.set_defaults(func=cmd_watch)
+
+    nonce_p = sub.add_parser("nonce", help="Nonce recovery / pending gap check")
+    nonce_p.add_argument("--address", help="Wallet address (default BOT_ADDRESS)")
+    nonce_p.set_defaults(func=cmd_nonce)
 
     st_p = sub.add_parser("status")
     st_p.add_argument("hash")

@@ -5425,6 +5425,19 @@ def setup_mcp_server(hexstrike_client: HexStrikeClient) -> FastMCP:
 
     return mcp
 
+def _register_local_tx_tools(mcp: FastMCP) -> None:
+    """Register live transaction MCP tools (TxBuilder, TxSigner, etc.)."""
+    try:
+        root = os.path.dirname(os.path.abspath(__file__))
+        src = os.path.join(root, "src")
+        if src not in sys.path:
+            sys.path.insert(0, src)
+        from hexstrike.mcp.tx_package import register_mcp_tx_tools
+        register_mcp_tx_tools(mcp)
+        logger.info("✅ Registered HexStrike tx FastMCP tools (build/sign/broadcast/watch/vault)")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"⚠️  Tx FastMCP tools not loaded: {exc}")
+
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Run the HexStrike AI MCP Client")
@@ -5469,6 +5482,7 @@ def main():
 
         # Set up and run the MCP server
         mcp = setup_mcp_server(hexstrike_client)
+        _register_local_tx_tools(mcp)
         logger.info("🚀 Starting HexStrike AI MCP server")
         logger.info("🤖 Ready to serve AI agents with enhanced cybersecurity capabilities")
         mcp.run()

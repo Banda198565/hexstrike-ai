@@ -65,6 +65,18 @@ else
   bad "hexstrike tx build failed"
 fi
 
+if out="$(./hexstrike tx nonce 2>&1)"; then
+  echo "$out" | grep -q '"command": "nonce"' && ok "hexstrike tx nonce" || bad "hexstrike tx nonce incomplete"
+else
+  bad "hexstrike tx nonce failed"
+fi
+
+if out="$(./hexstrike vault status 2>&1)"; then
+  echo "$out" | grep -q '"command": "vault_status"' && ok "hexstrike vault status" || bad "hexstrike vault status incomplete"
+else
+  bad "hexstrike vault status failed"
+fi
+
 if out="$(python3 "$ROOT/scripts/mcp_tx.py" build --target=0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA --value=0.001bnb --dry-run 2>&1)"; then
   echo "$out" | grep -q '"skill_id": "tx_build"' && ok "mcp tx build" || bad "mcp tx build incomplete"
 else
