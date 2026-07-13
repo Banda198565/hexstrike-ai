@@ -122,9 +122,24 @@ sudo bash scripts/vps-prod-bootstrap.sh
 
 # Mac
 ./hexstrike fastmcp status
+./hexstrike fastmcp gate --target 0xPAYROLL           # dry check
 ./hexstrike fastmcp live --target 0xPAYROLL --dry-run
 CONFIRM=YES HEXSTRIKE_TX_LIVE=1 ./hexstrike fastmcp live --target 0xPAYROLL --live
 ```
+
+## Security gate (fail-closed)
+
+`scripts/security_gate.sh` runs before every live broadcast in `mac-fastmcp-live.sh`. It refuses live when:
+
+- `HEXSTRIKE_HOST_ROLE=vps` or kernel is not Darwin
+- Vault missing `bot` key
+- **Signer address ≠ `KNOWN_BOT_ADDRESS`** (won't sign for non-owner)
+- Target not in `authorized_recipients`
+- Nonce `pending_gap` > 0
+- Open IR incidents in `artifacts/incidents/*.open`
+- Missing `HEXSTRIKE_TX_LIVE=1` or `CONFIRM=YES`
+
+Override `KNOWN_BOT_ADDRESS` via env when the operator wallet changes.
 
 ### Mac → VPS sync FastMCP bundle
 

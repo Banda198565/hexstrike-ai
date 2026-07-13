@@ -117,7 +117,12 @@ if [[ "${CONFIRM:-}" != "YES" ]]; then
   CONFIRM=YES HEXSTRIKE_TX_LIVE=1 bash scripts/mac-fastmcp-live.sh --target $TARGET --live"
 fi
 
+# Mandatory pre-live security gate — operator ownership check
 export HEXSTRIKE_TX_LIVE=1
+log "Pre-live security gate..."
+if ! bash scripts/security_gate.sh --target "$TARGET" --live; then
+  die "security_gate.sh refused live broadcast — see verdict above"
+fi
 log "LIVE broadcast starting..."
 bash scripts/fastmcp_live_cycle.sh \
   --target "$TARGET" \

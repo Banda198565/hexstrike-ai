@@ -40,12 +40,16 @@ if [[ "${1:-}" == "fastmcp" ]]; then
       fi
       exec bash "$ROOT/scripts/fastmcp_live_cycle.sh" "$@"
       ;;
+    gate|security-gate)
+      shift
+      exec bash "$ROOT/scripts/security_gate.sh" "$@"
+      ;;
     pull-ops)
       shift
       exec bash "$ROOT/scripts/vps-pull-and-ops.sh" "${1:---standard}"
       ;;
     *)
-      echo "Usage: hexstrike fastmcp {status|verify|live|cycle|pull-ops} [args...]" >&2
+      echo "Usage: hexstrike fastmcp {status|verify|live|cycle|gate|pull-ops} [args...]" >&2
       exit 1
       ;;
   esac

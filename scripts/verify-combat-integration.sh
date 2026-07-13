@@ -31,6 +31,7 @@ for f in \
   scripts/vps-pull-and-ops.sh \
   scripts/mac-fastmcp-live.sh \
   scripts/fastmcp_status.sh \
+  scripts/security_gate.sh \
   scripts/tx_control.sh; do
   [[ -f "$ROOT/$f" ]] && ok "$f" || bad "missing $f"
 done
