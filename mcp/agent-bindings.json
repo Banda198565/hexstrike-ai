@@ -1,0 +1,27 @@
+{
+  "version": "1",
+  "description": "MCP tool bindings for HexStrike script agents (read-only dispatch metadata)",
+  "agents": {
+    "Agent-Exploit-07": {
+      "script": "scripts/agents/agent_exploit.py",
+      "tools": {
+        "exploit_status": {
+          "callable": "status",
+          "description": "Return Agent-Exploit-07 readiness state"
+        },
+        "exploit_dry_run": {
+          "callable": "dry_run",
+          "description": "Dry-run authorized lab validation (no exploit payload)",
+          "params": ["target", "port", "payload"],
+          "defaults": {"target": "127.0.0.1", "port": 8080, "payload": "test_rce"}
+        }
+      },
+      "orchestrator": {
+        "entry": "hexstrike_orchestrator.py",
+        "goal": "exploit-test",
+        "workflow": "exploit-test"
+      },
+      "constraints": ["defensive-lab", "dry-run-default", "no-remote-exploit-without-authorization"]
+    }
+  }
+}

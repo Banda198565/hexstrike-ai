@@ -214,6 +214,20 @@
         {"agent": "Agent-Battle-07", "task": "generate-target-conclusion", "depends_on": "multi-wallet-recon"}
       ],
       "note": "Run: bash scripts/run-hot-wallet-ops.sh — includes dossier + mempool sample"
+    },
+    "exploit-test": {
+      "description": "Agent-Exploit-07 dry-run lab validation (127.0.0.1:8080 default)",
+      "mode": "defensive-lab",
+      "env": {
+        "TARGET": "127.0.0.1",
+        "PORT": "8080",
+        "PAYLOAD": "test_rce"
+      },
+      "steps": [
+        {"agent": "Agent-Exploit-07", "task": "status-check"},
+        {"agent": "Agent-Exploit-07", "task": "dry-run-test", "depends_on": "status-check"}
+      ],
+      "note": "Also: python3 hexstrike_orchestrator.py --goal exploit-test"
     }
   }
 }

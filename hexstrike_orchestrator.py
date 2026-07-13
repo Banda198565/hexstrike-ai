@@ -16,6 +16,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT / "scripts" / "agents"))
 
 from hexstrike.agent_manager import AgentManager
 from hexstrike.bus.context_bus import ContextBus
@@ -46,6 +47,27 @@ from hexstrike.skills.vulnerability_scanner import VulnerabilityScanner
 # Monitor agent system prompt (instruction protocol)
 MONITOR_AGENT_ID = "core.monitor"
 MONITOR_SYSTEM_PROMPT = load_instruction(MONITOR_AGENT_ID)
+
+
+def run_goal(
+    goal: str,
+    *,
+    target: str = "127.0.0.1",
+    port: int = 8080,
+    payload: str = "test_rce",
+) -> dict[str, Any]:
+    """Dispatch predefined goals without full orchestrator subcommand routing."""
+    if goal == "exploit-test":
+        from agent_exploit import dry_run as exploit_dry_run
+
+        result = exploit_dry_run(target, port, payload)
+        print(json.dumps(result, indent=2))
+        return result
+
+    known = ["exploit-test"]
+    err = {"success": False, "error": f"Unknown goal: {goal}", "known_goals": known}
+    print(json.dumps(err, indent=2))
+    return err
 
 
 def _bootstrap_llm_env() -> LlmConfig:
@@ -283,6 +305,16 @@ class HexStrikeOrchestrator:
         skill = IpForensicsSkill(bus=self.bus)
         return skill.run(target_ip, wallet, forensics_engine=self.forensics)
 
+    def run_exploit_test(
+        self,
+        *,
+        target: str = "127.0.0.1",
+        port: int = 8080,
+        payload: str = "test_rce",
+    ) -> dict[str, Any]:
+        """Authorized lab exploit validation via Agent-Exploit-07 (dry-run)."""
+        return run_goal("exploit-test", target=target, port=port, payload=payload)
+
     def run_ops_vectors(
         self,
         target_ip: str,
@@ -338,6 +370,13 @@ class HexStrikeOrchestrator:
                 "mcp_github_bridge",
             ],
             "agents": self.agent_manager.status(),
+            "script_agents": {
+                "Agent-Exploit-07": {
+                    "script": "scripts/agents/agent_exploit.py",
+                    "goals": ["exploit-test"],
+                    "mode": "defensive-lab",
+                },
+            },
             "pending_action": str(PENDING_ACTION),
             "manifest": str(MANIFEST_PATH),
         }
@@ -350,7 +389,14 @@ def main() -> int:
 
     parser = argparse.ArgumentParser(description="HexStrike-AI orchestrator")
     parser.add_argument("--config", default=str(RPC_CONFIG))
-    sub = parser.add_subparsers(dest="command", required=True)
+    parser.add_argument(
+        "--goal",
+        help="Run predefined goal (e.g. exploit-test) without subcommand",
+    )
+    parser.add_argument("--target", default="127.0.0.1", help="Goal target host (exploit-test)")
+    parser.add_argument("--port", type=int, default=8080, help="Goal target port (exploit-test)")
+    parser.add_argument("--payload", default="test_rce", help="Goal payload label (exploit-test)")
+    sub = parser.add_subparsers(dest="command", required=False)
 
     sub.add_parser("status", help="Show component status")
     sub.add_parser("health", help="Run health checks and update manifest")
@@ -400,6 +446,15 @@ def main() -> int:
     llm_p.add_argument("--probe", choices=("models", "chat", "both"), default="both")
 
     args = parser.parse_args()
+
+    if args.goal:
+        result = run_goal(args.goal, target=args.target, port=args.port, payload=args.payload)
+        ok = result.get("result") in ("ok", "executed") or result.get("success") is True
+        return 0 if ok else 1
+
+    if not args.command:
+        parser.error("provide --goal or a subcommand (status, health, …)")
+
     orch = HexStrikeOrchestrator(config_path=Path(args.config))
 
     if args.command == "status":

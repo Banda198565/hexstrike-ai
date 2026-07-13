@@ -36,8 +36,33 @@
         "Agent-Malware-10",
         "Agent-Malware-11",
         "Agent-Malware-12",
-        "Agent-Forensics-01"
+        "Agent-Forensics-01",
+        "Agent-Exploit-07"
       ]
+    },
+    "Agent-Exploit-07": {
+      "role": "authorized-pentest-lab",
+      "description": "Defensive exploit validation — dry-run default, lab hosts only",
+      "tasks": {
+        "status-check": {
+          "script": "scripts/agents/agent_exploit.py",
+          "output": "artifacts/exploit-agent-status.json",
+          "constraints": ["defensive-lab", "dry-run-default"]
+        },
+        "dry-run-test": {
+          "script": "scripts/agents/agent_exploit.py",
+          "output": "artifacts/exploit-test-result.json",
+          "constraints": ["defensive-lab", "no-remote-exploit", "lab-hosts-only"]
+        },
+        "exploit-test": {
+          "script": "scripts/agents/agent_exploit.py",
+          "output": "artifacts/exploit-test-result.json",
+          "constraints": ["defensive-lab", "dry-run-default"]
+        }
+      },
+      "mcp_tools": ["exploit_status", "exploit_dry_run"],
+      "orchestrator_goals": ["exploit-test"],
+      "hexstrike_api": ["/api/agents/exploit/status", "/api/agents/exploit/dry-run"]
     },
     "Agent-OSINT-03": {
       "role": "off-chain-intel",
