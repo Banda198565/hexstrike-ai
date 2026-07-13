@@ -1,0 +1,42 @@
+{
+  "version": "1",
+  "description": "Combat agents — transaction, rescue, discovery, forensics",
+  "agents": {
+    "transaction": {
+      "id": "Agent-Transaction-01",
+      "script": "scripts/agents/agent_transaction.py",
+      "log": "artifacts/agents/transaction_agent.log",
+      "modes": ["dry-run", "full", "sign-only"]
+    },
+    "rescue": {
+      "id": "Agent-Rescue-01",
+      "script": "scripts/agents/agent_rescue.py",
+      "log": "artifacts/agents/rescue_agent.log",
+      "modes": ["check", "dry-run", "full"]
+    },
+    "discovery": {
+      "id": "Agent-Discovery-01",
+      "script": "scripts/agents/agent_discovery.py",
+      "log": "artifacts/agents/discovery_agent.log",
+      "modes": ["scan", "trace"]
+    },
+    "forensics": {
+      "id": "Agent-Forensics-01",
+      "workflow": "trx-drainer-forensics",
+      "log": "artifacts/agents/forensics_agent.log",
+      "modes": ["quick", "full"]
+    }
+  },
+  "pipelines": {
+    "transaction-discovery": {
+      "description": "Parallel transaction cycle + discovery trace",
+      "parallel": [
+        {"agent": "transaction", "mode": "dry-run"},
+        {"agent": "discovery", "mode": "trace"}
+      ],
+      "sequential_after": [
+        {"agent": "rescue", "mode": "check"}
+      ]
+    }
+  }
+}

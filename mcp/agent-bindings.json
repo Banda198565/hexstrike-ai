@@ -22,6 +22,66 @@
         "workflow": "exploit-test"
       },
       "constraints": ["defensive-lab", "dry-run-default", "no-remote-exploit-without-authorization"]
+    },
+    "Agent-Transaction-01": {
+      "script": "scripts/agents/agent_transaction.py",
+      "tools": {
+        "tx_dry_run": {
+          "callable": "run",
+          "description": "Dry-run tx cycle via tx_control.sh",
+          "params": ["mode"],
+          "defaults": {"mode": "dry-run"}
+        },
+        "tx_status": {
+          "callable": "run",
+          "description": "Return last transaction agent result path",
+          "params": ["mode"],
+          "defaults": {"mode": "dry-run"}
+        }
+      },
+      "orchestrator": {
+        "workflow": "transaction-discovery",
+        "cli": "hexstrike agent run transaction"
+      },
+      "constraints": ["dry-run-default", "operator-mac-only-for-live"]
+    },
+    "Agent-Rescue-01": {
+      "script": "scripts/agents/agent_rescue.py",
+      "tools": {
+        "rescue_check": {
+          "callable": "run",
+          "description": "Check GAS_HOLDER balance vs RESCUE_MIN_BNB",
+          "params": ["mode"],
+          "defaults": {"mode": "check"}
+        }
+      },
+      "orchestrator": {
+        "workflow": "transaction-discovery",
+        "cli": "hexstrike agent run rescue"
+      },
+      "constraints": ["balance-read-only", "manual-approval-for-live-rescue"]
+    },
+    "Agent-Discovery-01": {
+      "script": "scripts/agents/agent_discovery.py",
+      "tools": {
+        "discovery_scan": {
+          "callable": "run",
+          "description": "Read-only probe of rpc_config monitoring targets",
+          "params": ["mode"],
+          "defaults": {"mode": "scan"}
+        },
+        "discovery_trace": {
+          "callable": "run",
+          "description": "Scan + recent block tx hash sample",
+          "params": ["mode"],
+          "defaults": {"mode": "trace"}
+        }
+      },
+      "orchestrator": {
+        "workflow": "transaction-discovery",
+        "cli": "hexstrike agent run discovery --trace"
+      },
+      "constraints": ["read-only", "defensive-heuristics-only"]
     }
   }
 }

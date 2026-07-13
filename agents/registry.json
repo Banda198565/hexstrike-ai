@@ -37,7 +37,10 @@
         "Agent-Malware-11",
         "Agent-Malware-12",
         "Agent-Forensics-01",
-        "Agent-Exploit-07"
+        "Agent-Exploit-07",
+        "Agent-Transaction-01",
+        "Agent-Rescue-01",
+        "Agent-Discovery-01"
       ]
     },
     "Agent-Exploit-07": {
@@ -306,6 +309,60 @@
           "constraints": ["forensics", "defensive-analysis"]
         }
       }
+    },
+    "Agent-Transaction-01": {
+      "role": "transaction-operator",
+      "description": "Form, sign, broadcast tx cycle via tx_control (dry-run default)",
+      "tasks": {
+        "dry-run": {
+          "script": "scripts/agents/agent_transaction.py",
+          "output": "artifacts/agents/transaction_result.json",
+          "constraints": ["requires-target", "dry-run-default"]
+        },
+        "full": {
+          "script": "scripts/agents/agent_transaction.py",
+          "output": "artifacts/agents/transaction_result.json",
+          "constraints": ["requires-keys", "operator-mac-only"]
+        }
+      },
+      "mcp_tools": ["tx_dry_run", "tx_status"],
+      "hexstrike_cli": ["hexstrike agent run transaction", "hexstrike tx send"]
+    },
+    "Agent-Rescue-01": {
+      "role": "gas-rescue",
+      "description": "Monitor GAS_HOLDER balance and trigger SAFE top-up when low",
+      "tasks": {
+        "check": {
+          "script": "scripts/agents/agent_rescue.py",
+          "output": "artifacts/agents/rescue_result.json",
+          "constraints": ["read-only-balance"]
+        },
+        "rescue-dry-run": {
+          "script": "scripts/agents/agent_rescue.py",
+          "output": "artifacts/agents/rescue_result.json",
+          "constraints": ["dry-run-default"]
+        }
+      },
+      "mcp_tools": ["rescue_check"],
+      "hexstrike_cli": ["hexstrike agent run rescue", "hexstrike tx rescue"]
+    },
+    "Agent-Discovery-01": {
+      "role": "blockchain-discovery",
+      "description": "Read-only wallet/contract probes and recent block trace",
+      "tasks": {
+        "scan": {
+          "script": "scripts/agents/agent_discovery.py",
+          "output": "artifacts/agents/discovery_findings.json",
+          "constraints": ["read-only", "defensive-heuristics"]
+        },
+        "trace": {
+          "script": "scripts/agents/agent_discovery.py",
+          "output": "artifacts/agents/discovery_findings.json",
+          "constraints": ["read-only", "block-trace"]
+        }
+      },
+      "mcp_tools": ["discovery_scan", "discovery_trace"],
+      "hexstrike_cli": ["hexstrike agent run discovery --trace"]
     },
     "Agent-Forensics-01": {
       "role": "forensics-analyzer",

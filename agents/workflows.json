@@ -215,6 +215,19 @@
       ],
       "note": "Run: bash scripts/run-hot-wallet-ops.sh — includes dossier + mempool sample"
     },
+    "transaction-discovery": {
+      "description": "Parallel transaction dry-run + discovery trace + rescue balance check",
+      "mode": "combat",
+      "env": {
+        "TARGET_ADDRESS": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA"
+      },
+      "steps": [
+        {"agent": "Agent-Transaction-01", "task": "dry-run", "parallel_group": "combat"},
+        {"agent": "Agent-Discovery-01", "task": "trace", "parallel_group": "combat"},
+        {"agent": "Agent-Rescue-01", "task": "check", "depends_on": "combat"}
+      ],
+      "note": "Run: bash scripts/pipeline_transaction_discovery.sh | hexstrike agent run pipeline --pipeline transaction-discovery"
+    },
     "exploit-test": {
       "description": "Agent-Exploit-07 dry-run lab validation (127.0.0.1:8080 default)",
       "mode": "defensive-lab",
