@@ -30,7 +30,21 @@ result = combat.execute_live_tx(
 # build → gate → sign → relay → watch → archive_logs
 ```
 
-Or run the example script:
+Or run the unified shell pipeline (recommended on Mac):
+
+```bash
+export VAULT_PASSPHRASE='...'
+export BOT_PRIVATE_KEY='0x...'
+
+# Dry-run (default — broadcast blocked)
+bash scripts/fastmcp_live_cycle.sh --target 0xPAYROLL --add-recipient 0xPAYROLL
+
+# Live broadcast
+export HEXSTRIKE_TX_LIVE=1
+bash scripts/fastmcp_live_cycle.sh --target 0xPAYROLL --live
+```
+
+Or the Python example directly:
 
 ```bash
 export VAULT_PASSPHRASE='...'
