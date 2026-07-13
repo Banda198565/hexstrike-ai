@@ -30,7 +30,7 @@ class EntityGate:
     def __init__(self, allowlist: AllowlistManager | None = None) -> None:
         self.allowlist = allowlist or AllowlistManager()
 
-    def evaluate(self, tx: dict[str, Any], *, from_addr: str) -> dict[str, Any]:
+    def evaluate(self, tx: dict[str, Any], *, from_addr: str, allow_unknown: bool | None = None) -> dict[str, Any]:
         data = self.allowlist.load()
         hot = normalize_addr(data.get("hot_wallet") or from_addr)
         classification = classify_hot_wallet_outflow(tx, hot, allowlist=data)
@@ -50,14 +50,19 @@ class EntityGate:
             reasons.append("blocked_unknown_erc20_recipient")
         elif _tx_value_wei(tx) == 0 and not erc20_to:
             reasons.append("empty_call_allowed_for_review")
-        elif os.environ.get("HEXSTRIKE_TX_ALLOW_UNKNOWN", "").lower() in ("1", "true", "yes"):
-            reasons.append("override_HEXSTRIKE_TX_ALLOW_UNKNOWN")
+        elif allow_unknown is True or os.environ.get("HEXSTRIKE_TX_ALLOW_UNKNOWN", "").lower() in ("1", "true", "yes"):
+            reasons.append("allow_unknown_override")
         else:
             allowed = False
             reasons.append("blocked_unknown_recipient")
 
         if classification.get("ir_trigger"):
             reasons.append("ir_trigger_classification")
+
+        if allow_unknown is True:
+            allowed = True
+            if "allow_unknown_override" not in reasons:
+                reasons.append("allow_unknown_override")
 
         return {
             "allowed": allowed,

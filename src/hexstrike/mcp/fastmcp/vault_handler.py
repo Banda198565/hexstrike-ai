@@ -60,6 +60,45 @@ class VaultHandler:
     def status(self) -> dict[str, Any]:
         return {"success": True, **self._vault().status()}
 
+    def bootstrap(self, *, import_env_keys: bool = True) -> dict[str, Any]:
+        """First-run: create vault if missing and import BOT/SAFE keys from env."""
+        vault = self._vault()
+        st = vault.status()
+        report: dict[str, Any] = {
+            "command": "vault_bootstrap",
+            "vault_existed": st.get("exists", False),
+            "actions": [],
+        }
+        pw = os.environ.get("VAULT_PASSPHRASE", "")
+        if not pw:
+            report["success"] = False
+            report["skipped"] = True
+            report["error"] = "VAULT_PASSPHRASE not set — bootstrap skipped"
+            return report
+
+        try:
+            vault.unlock(pw)
+            if not st.get("exists"):
+                vault._save(pw)
+                report["actions"].append("init_vault")
+            if import_env_keys:
+                for name, env_name in (("bot", "BOT_PRIVATE_KEY"), ("safe", "SAFE_PRIVATE_KEY")):
+                    raw = os.environ.get(env_name, "").strip()
+                    if not raw:
+                        continue
+                    if name in vault.list_key_names():
+                        report["actions"].append(f"skip_{name}_exists")
+                        continue
+                    key = raw if raw.startswith("0x") else f"0x{raw}"
+                    vault.store_key(name, key, pw)
+                    report["actions"].append(f"imported_{name}_from_env")
+            report["success"] = True
+            report.update(vault.status())
+            report["keys"] = vault.list_key_names()
+            return report
+        except VaultError as exc:
+            return {"success": False, "error": str(exc), **report}
+
     def signer_ready(self, vault_key: str = "bot") -> dict[str, Any]:
         try:
             self.retrieve_key(vault_key)

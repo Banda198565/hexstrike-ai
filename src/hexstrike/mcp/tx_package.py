@@ -71,11 +71,23 @@ def register_mcp_tx_tools(mcp: Any) -> None:
         vault_key: str = "bot",
         strategy: str = "private_first",
         dry_run: bool = True,
+        allow_unknown: bool = False,
     ) -> dict:
-        """TxPackage — full build → sign → broadcast → watch cycle."""
+        """TxPackage — full build → gate → sign → broadcast → watch cycle."""
         return combat.package.execute_cycle(
-            target, value, module=module, vault_key=vault_key, strategy=strategy, dry_run=dry_run
+            target,
+            value,
+            module=module,
+            vault_key=vault_key,
+            strategy=strategy,
+            dry_run=dry_run,
+            allow_unknown=allow_unknown,
         )
+
+    @mcp.tool()
+    def vault_bootstrap() -> dict:
+        """VaultHandler.bootstrap — init vault + import BOT/SAFE keys from env."""
+        return combat.bootstrap_vault()
 
     @mcp.tool()
     def tx_rescue_check() -> dict:

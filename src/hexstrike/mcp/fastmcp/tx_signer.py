@@ -32,6 +32,7 @@ class TxSigner:
         module: str = "EnvSigner",
         vault_key: str | None = None,
         skip_gate: bool = False,
+        allow_unknown: bool | None = None,
         out_path: Path | None = None,
     ) -> dict[str, Any]:
         if isinstance(raw_tx, (str, Path)):
@@ -44,7 +45,11 @@ class TxSigner:
 
         gate_result: dict[str, Any] = {"allowed": True, "skipped": True}
         if not skip_gate:
-            gate_result = self.gate.evaluate(tx_dict, from_addr=tx_dict.get("from") or tx._from_address())
+            gate_result = self.gate.evaluate(
+                tx_dict,
+                from_addr=tx_dict.get("from") or tx._from_address(),
+                allow_unknown=allow_unknown,
+            )
             if not gate_result["allowed"]:
                 return {"success": False, "error": "entity_gate_blocked", "gate": gate_result}
 

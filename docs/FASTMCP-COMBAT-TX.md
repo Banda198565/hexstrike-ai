@@ -18,8 +18,26 @@ Modular layout under `src/hexstrike/mcp/fastmcp/`:
 ```python
 from hexstrike.mcp.fastmcp import FastMCPCombat
 
-mcp = FastMCPCombat()
-result = mcp.execute_live_tx("0xTARGET", "0.001bnb")  # dry-run if HEXSTRIKE_TX_LIVE unset
+# Auto bootstrap: init vault + import BOT_PRIVATE_KEY on first run
+combat = FastMCPCombat(auto_bootstrap_vault=True)
+
+result = combat.execute_live_tx(
+    target="0xPAYROLL",
+    value="0.001bnb",
+    token=None,
+    allow_unknown=False,
+)
+# build → gate → sign → relay → watch → archive_logs
+```
+
+Or run the example script:
+
+```bash
+export VAULT_PASSPHRASE='...'
+export BOT_PRIVATE_KEY='0x...'
+python3 scripts/run_fastmcp_combat_live.py --target 0xPAYROLL --add-recipient 0xPAYROLL
+export HEXSTRIKE_TX_LIVE=1
+python3 scripts/run_fastmcp_combat_live.py --target 0xPAYROLL
 ```
 
 ## MCP tools (via hexstrike_mcp.py)

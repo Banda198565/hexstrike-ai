@@ -29,7 +29,7 @@ import hexstrike_tx as tx  # noqa: E402
 class TxPackage:
     """Combat FastMCP facade — full live transaction cycle."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, auto_bootstrap_vault: bool = False) -> None:
         self.allowlist = AllowlistManager()
         self.gate = EntityGate(self.allowlist)
         self.builder = TxBuilder()
@@ -38,6 +38,9 @@ class TxPackage:
         self.relay = RelayManager()
         self.vault = VaultHandler()
         self.run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        self.vault_bootstrap: dict[str, Any] | None = None
+        if auto_bootstrap_vault:
+            self.vault_bootstrap = self.vault.bootstrap()
 
     def execute_live_tx(
         self,
@@ -50,9 +53,11 @@ class TxPackage:
         token: str | None = None,
         amount: str | None = None,
         dry_run: bool | None = None,
+        allow_unknown: bool = False,
     ) -> dict[str, Any]:
-        """build → sign → broadcast → watch (dry-run stops before broadcast)."""
-        live = dry_run if dry_run is not None else not tx._live_enabled()
+        """build → gate → sign → broadcast → watch → archive."""
+        is_dry_run = dry_run if dry_run is not None else not tx._live_enabled()
+
         if token:
             built = self.builder.build_erc20(recipient=target, token=token, amount=amount or value)
         else:
@@ -60,22 +65,38 @@ class TxPackage:
         if not built.get("success"):
             return {"success": False, "step": "build", **built}
 
+        tx_dict = built["transaction"]
+        gate = self.gate.evaluate(
+            tx_dict,
+            from_addr=tx_dict.get("from") or tx._from_address(),
+            allow_unknown=allow_unknown,
+        )
+        if not gate["allowed"]:
+            out = {"success": False, "step": "gate", "gate": gate, "build": built}
+            self.archive_logs(out)
+            return out
+
         signed = self.signer.sign_raw(
-            built["transaction"],
+            tx_dict,
             module=module,
             vault_key=vault_key,
+            allow_unknown=allow_unknown,
         )
         if not signed.get("success"):
-            return {"success": False, "step": "sign", **signed}
+            return {"success": False, "step": "sign", "gate": gate, **signed}
 
         result: dict[str, Any] = {
             "success": True,
             "run_id": self.run_id,
+            "gate": gate,
             "build": built,
             "sign": {k: v for k, v in signed.items() if k != "raw"},
-            "dry_run": live,
+            "dry_run": is_dry_run,
         }
-        if live:
+        if self.vault_bootstrap:
+            result["vault_bootstrap"] = self.vault_bootstrap
+
+        if is_dry_run:
             result["note"] = "dry_run — broadcast skipped"
             self.archive_logs(result)
             return result
@@ -136,10 +157,10 @@ class TxPackage:
 
 
 class FastMCPCombat:
-    """Named facade matching operator docs."""
+    """Named facade — auto vault bootstrap on first init."""
 
-    def __init__(self) -> None:
-        self.package = TxPackage()
+    def __init__(self, *, auto_bootstrap_vault: bool = True) -> None:
+        self.package = TxPackage(auto_bootstrap_vault=auto_bootstrap_vault)
         self.builder = self.package.builder
         self.signer = self.package.signer
         self.watcher = self.package.watcher
@@ -147,6 +168,12 @@ class FastMCPCombat:
         self.vault = self.package.vault
         self.gate = self.package.gate
         self.allowlist = self.package.allowlist
+        self.vault_bootstrap = self.package.vault_bootstrap
 
-    def execute_live_tx(self, target: str, value: str) -> dict[str, Any]:
-        return self.package.execute_live_tx(target, value)
+    def execute_live_tx(self, target: str, value: str = "0.001bnb", **kwargs: Any) -> dict[str, Any]:
+        return self.package.execute_live_tx(target, value, **kwargs)
+
+    def bootstrap_vault(self, **kwargs: Any) -> dict[str, Any]:
+        self.vault_bootstrap = self.vault.bootstrap(**kwargs)
+        self.package.vault_bootstrap = self.vault_bootstrap
+        return self.vault_bootstrap
