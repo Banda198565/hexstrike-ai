@@ -79,6 +79,11 @@
           "output": "artifacts/found-targets-recon.json",
           "methods": ["ipinfo", "internetdb", "whois", "jenkins_fingerprint", "geth_rpc_probe", "wallet_correlation"],
           "constraints": ["read-only", "passive", "defensive-ir", "no-nmap"]
+        },
+        "arkham-label-propagate": {
+          "script": "scripts/agents/agent_osint_03_labels.py",
+          "output": "docs/recon/LABEL-PROPAGATION-PHASE4-20260713.json",
+          "constraints": ["read-only", "passive"]
         }
       },
       "mcp_tools": [],
@@ -203,6 +208,11 @@
         "crosschain-rhino-correlate": {
           "script": "scripts/sandbox/crosschain-rhino-correlate.py",
           "output": "docs/recon/CROSSCHAIN-PHASE3-20260713.json",
+          "constraints": ["read-only", "no-remote-exploit"]
+        },
+        "extended-outflow-trace": {
+          "script": "scripts/sandbox/extended-outflow-trace.py",
+          "output": "docs/recon/EXTENDED-OUTFLOW-PHASE4-20260713.json",
           "constraints": ["read-only", "no-remote-exploit"]
         }
       },
