@@ -44,6 +44,12 @@ export HEXSTRIKE_TX_LIVE=1
 bash scripts/fastmcp_live_cycle.sh --target 0xPAYROLL --live
 ```
 
+Verify readiness before live (Mac):
+
+```bash
+bash scripts/fastmcp_verify.sh --target 0xPAYROLL --run-dry-run
+```
+
 Or the Python example directly:
 
 ```bash

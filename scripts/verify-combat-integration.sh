@@ -25,6 +25,7 @@ for f in \
   scripts/hexstrike_orchestrator_cmd.py \
   scripts/pipeline_transaction_discovery.sh \
   scripts/fastmcp_live_cycle.sh \
+  scripts/fastmcp_verify.sh \
   scripts/tx_control.sh; do
   [[ -f "$ROOT/$f" ]] && ok "$f" || bad "missing $f"
 done
