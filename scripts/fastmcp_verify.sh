@@ -113,8 +113,8 @@ echo "════════════════════════�
 # ── 1. Env exports ──
 echo ""
 echo "[CHECK] Vault / Key / Live status:"
-echo "  VAULT: ${VAULT_PASSPHRASE:+SET}${VAULT_PASSPHRASE:-unset}"
-echo "  KEY:   ${BOT_PRIVATE_KEY:+SET}${BOT_PRIVATE_KEY:-unset}"
+echo "  VAULT: $( [[ -n "${VAULT_PASSPHRASE:-}" ]] && echo SET || echo unset )"
+echo "  KEY:   $( [[ -n "${BOT_PRIVATE_KEY:-}" ]] && echo SET || echo unset )"
 echo "  LIVE:  $LIVE_FLAG"
 echo "  BOT:   ${BOT_ADDR:-unset}"
 echo "  TARGET:${TARGET:-unset}"

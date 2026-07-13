@@ -70,8 +70,40 @@ Registered by `register_mcp_tx_tools()`:
 - `vault_status`, `vault_init`, `vault_signer_ready`
 - `relay_latency_probe`
 
+## Host roles
+
+| Host | OS | Role |
+|------|-----|------|
+| **VPS** | AlmaLinux / RHEL | dry-run, verify, monitor, discovery, pipeline — **no live broadcast** |
+| **Mac** | macOS | vault + KeyVaultSigner + **`HEXSTRIKE_TX_LIVE=1` broadcast** |
+
+### AlmaLinux VPS bootstrap
+
+```bash
+# On VPS (as root)
+cd /opt/hexstrike-ai
+bash scripts/vps-almalinux-fastmcp-bootstrap.sh
+
+# Or skip dnf/venv if already installed:
+TARGET_ADDRESS=0xPAYROLL SKIP_DNF=1 SKIP_VENV=1 \
+  bash scripts/vps-almalinux-fastmcp-bootstrap.sh
+```
+
+The Alma script **refuses** `HEXSTRIKE_TX_LIVE=1` and uses a lab vault key only.
+
+### Mac live (operator)
+
+```bash
+export VAULT_PASSPHRASE='...'
+export BOT_PRIVATE_KEY='0x...'
+bash scripts/fastmcp_verify.sh --target 0xPAYROLL --run-dry-run
+export HEXSTRIKE_TX_LIVE=1
+bash scripts/fastmcp_live_cycle.sh --target 0xPAYROLL --add-recipient 0xPAYROLL --live
+```
+
 ## Security
 
 - **EntityGate** blocks unknown recipients before sign (see `config/hot-wallet-allowlist.json`)
 - Override: `HEXSTRIKE_TX_ALLOW_UNKNOWN=1` (operator only)
-- Live broadcast: `HEXSTRIKE_TX_LIVE=1`
+- Live broadcast: `HEXSTRIKE_TX_LIVE=1` — **Mac only**, never Alma/VPS
+- VPS may hold lab vault keys for dry-run; never persist real operator keys on VPS
