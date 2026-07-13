@@ -53,36 +53,11 @@ env_path.write_text("\n".join(out) + "\n", encoding="utf-8")
 print(f"[ok] .env LLM keys → {env_path}")
 PY
 
-# ── Install Ollama if missing ───────────────────────────────────
-if ! command -v ollama >/dev/null 2>&1; then
-  log "Ollama not found — installing..."
-  if [[ "$(uname -s)" == "Darwin" ]]; then
-    if command -v brew >/dev/null 2>&1; then
-      brew install ollama
-    else
-      die "Install Homebrew first: https://brew.sh then re-run this script"
-    fi
-  else
-    curl -fsSL https://ollama.com/install.sh | sh
-  fi
-fi
+# ── Install / link Ollama CLI ───────────────────────────────────
+ensure_ollama_cli
 
-# ── Start Ollama ────────────────────────────────────────────────
-export OLLAMA_ORIGINS="*"
-launchctl setenv OLLAMA_ORIGINS "*" 2>/dev/null || true
-
-if [[ "$(uname -s)" == "Darwin" ]]; then
-  open -a Ollama 2>/dev/null || true
-fi
-
-if ! curl -sf --max-time 3 "${HOST}/api/tags" >/dev/null 2>&1; then
-  log "Starting ollama serve..."
-  nohup ollama serve >> "$ROOT/logs/ollama-serve.log" 2>&1 &
-  sleep 5
-fi
-
-curl -sf --max-time 10 "${HOST}/api/tags" >/dev/null \
-  || die "Ollama not responding at ${HOST} — open Ollama.app manually"
+# ── Start Ollama server ─────────────────────────────────────────
+start_ollama
 
 # ── Pull model ──────────────────────────────────────────────────
 if ! ollama list 2>/dev/null | grep -q 'deepseek-r1'; then
