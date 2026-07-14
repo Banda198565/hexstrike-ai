@@ -219,12 +219,49 @@ def main():
     subparsers.add_parser("cache-stats")
     subparsers.add_parser("cache-clear")
     subparsers.add_parser("telemetry")
+
+    llm = subparsers.add_parser("llm", help="Local LLM: llama-server (:8080) > ollama (:11434)")
+    llm_sub = llm.add_subparsers(dest="llm_cmd")
+    llm_sub.add_parser("connect", help="Detect LLM, write .env, defense handshake")
+    llm_sub.add_parser("status", help="Show provider status")
+    llm_hs = llm_sub.add_parser("handshake", help="Defense-prompted handshake")
+    llm_hs.add_argument("--probe", choices=("models", "chat", "both"), default="both")
     
     args = parser.parse_args()
     
     if not args.command:
         parser.print_help()
         return
+
+    # Local LLM routes (no HexStrike API server required)
+    if args.command == "llm":
+        root = os.path.dirname(os.path.abspath(__file__))
+        src = os.path.join(root, "src")
+        if src not in sys.path:
+            sys.path.insert(0, src)
+        from hexstrike.llm.provider import LocalLlmProvider, resolve_llm_config, write_env_llm_block
+
+        cfg = resolve_llm_config()
+        provider = LocalLlmProvider(cfg)
+        if args.llm_cmd == "status":
+            st = provider.status()
+            print(json.dumps(st, indent=2))
+            sys.exit(0 if st.get("selected_provider_reachable") else 1)
+        if args.llm_cmd == "connect":
+            from pathlib import Path as _Path
+            env_path = _Path(root) / ".env"
+            write_env_llm_block(env_path, cfg)
+            provider = LocalLlmProvider(resolve_llm_config())
+            report = provider.handshake(probe="both")
+            report["env_written"] = str(env_path)
+            print(json.dumps(report, indent=2))
+            sys.exit(0 if report.get("llm", {}).get("selected_provider_reachable") else 1)
+        if args.llm_cmd == "handshake":
+            report = provider.handshake(probe=getattr(args, "probe", "both"))
+            print(json.dumps(report, indent=2))
+            sys.exit(0 if report.get("llm", {}).get("selected_provider_reachable") else 1)
+        print("usage: hexstrike_cli.py llm {connect|status|handshake}", file=sys.stderr)
+        sys.exit(2)
     
     client = HexStrikeClient(args.server)
     result = None
