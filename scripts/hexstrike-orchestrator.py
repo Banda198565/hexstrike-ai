@@ -51,11 +51,51 @@ def log_run(record: dict) -> Path:
     return path
 
 
+def task_constraints(agent: str, task: str) -> dict:
+    reg = load_json(REGISTRY)
+    return reg.get("agents", {}).get(agent, {}).get("tasks", {}).get(task, {})
+
+
+def sandbox_enabled(env: dict) -> bool:
+    val = env.get("HEXSTRIKE_SANDBOX", "").lower()
+    return val in ("1", "true", "yes")
+
+
+def enforce_task_policy(agent: str, task: str, env: dict) -> str | None:
+    """Block offense/sandbox tasks when HEXSTRIKE_SANDBOX is not set."""
+    spec = task_constraints(agent, task)
+    constraints = spec.get("constraints") or []
+    if "sandbox-only" in constraints or "offense" in constraints:
+        if not sandbox_enabled(env):
+            return "Blocked: offense/sandbox task requires HEXSTRIKE_SANDBOX=1"
+    return None
+
+
 def run_agent(agent: str, task: str, env: dict | None = None) -> dict:
-    cmd = [sys.executable, str(AGENT_RUNNER), "--agent", agent, "--task", task]
     proc_env = os.environ.copy()
     if env:
         proc_env.update({k.upper() if k.islower() else k: str(v) for k, v in env.items()})
+
+    spec = task_constraints(agent, task)
+    for k, v in (spec.get("env") or {}).items():
+        proc_env[k.upper() if k.islower() else k] = str(v)
+
+    blocked = enforce_task_policy(agent, task, proc_env)
+    if blocked:
+        started = utc_now()
+        return {
+            "agent": agent,
+            "task": task,
+            "started_at": started,
+            "finished_at": utc_now(),
+            "exit_code": 2,
+            "stdout": "",
+            "stderr": blocked,
+            "success": False,
+            "blocked": True,
+        }
+
+    cmd = [sys.executable, str(AGENT_RUNNER), "--agent", agent, "--task", task]
     started = utc_now()
     proc = subprocess.run(cmd, cwd=str(ROOT), env=proc_env, capture_output=True, text=True)
     return {
@@ -171,6 +211,17 @@ def extract_highlights(path: Path, data: object) -> list[str]:
         s = data.get("summary", {})
         lines.append(f"Readiness: {s.get('readiness_score')}/100")
         lines.append(f"vuln={s.get('vuln_confirmed')} defended={s.get('defended')} inconclusive={s.get('inconclusive')}")
+
+    elif name.startswith("report-") and "dual-mode" in str(path):
+        lines.append(f"Mode: {data.get('mode')}")
+        lines.append(f"Risks: {data.get('risk_count', 0)}")
+        tools = data.get("tools_detected") or {}
+        installed = [k for k, v in tools.items() if v]
+        if installed:
+            lines.append(f"Tools: {', '.join(installed)}")
+        defense = data.get("defense", {})
+        for rec in (defense.get("remediation_priority") or [])[:3]:
+            lines.append(f"→ {rec}")
 
     elif name == "infra-targets.json":
         targets = data.get("infra_targets") or data.get("linked_ips") or []

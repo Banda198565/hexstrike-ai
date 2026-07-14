@@ -20,6 +20,7 @@ INSTRUCTION_FILES: dict[str, str] = {
     "skill.vanilla_drainer": "vanilla_drainer_forensics.md",
     "skill.permit_farming": "permit_farming_forensics.md",
     "skill.create2_drainer": "create2_drainer_forensics.md",
+    "skill.dual_mode": "dual_mode.md",
 }
 
 
