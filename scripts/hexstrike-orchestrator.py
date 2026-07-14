@@ -23,11 +23,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "src"))
 REGISTRY = ROOT / "agents/registry.json"
 WORKFLOWS = ROOT / "agents/workflows.json"
 AGENT_RUNNER = ROOT / "scripts/hexstrike-agent.py"
 QUEUE_DIR = ROOT / "agents/queue"
+from hexstrike.agent_controller import AgentController
+
 LOG_DIR = ROOT / "artifacts/orchestrator"
+CONTROLLER = AgentController()
 
 
 def utc_now() -> str:
@@ -71,7 +75,40 @@ def enforce_task_policy(agent: str, task: str, env: dict) -> str | None:
     return None
 
 
-def run_agent(agent: str, task: str, env: dict | None = None) -> dict:
+def run_agent(agent: str, task: str, env: dict | None = None, *, mode: str | None = None) -> dict:
+    ok_auth, auth_msg = CONTROLLER.check_authorization()
+    if not ok_auth:
+        started = utc_now()
+        return {
+            "agent": agent,
+            "task": task,
+            "started_at": started,
+            "finished_at": utc_now(),
+            "exit_code": 3,
+            "stdout": "",
+            "stderr": f"Authorization blocked: {auth_msg}",
+            "success": False,
+            "blocked": True,
+        }
+
+    agent_key = f"{agent}:{task}"
+    run_mode = mode or (env or {}).get("HEXSTRIKE_MODE") or os.environ.get("HEXSTRIKE_MODE")
+    try:
+        CONTROLLER.acquire(agent_key, mode=run_mode)
+    except RuntimeError as exc:
+        started = utc_now()
+        return {
+            "agent": agent,
+            "task": task,
+            "started_at": started,
+            "finished_at": utc_now(),
+            "exit_code": 4,
+            "stdout": "",
+            "stderr": str(exc),
+            "success": False,
+            "blocked": True,
+        }
+
     proc_env = os.environ.copy()
     if env:
         proc_env.update({k.upper() if k.islower() else k: str(v) for k, v in env.items()})
@@ -97,7 +134,10 @@ def run_agent(agent: str, task: str, env: dict | None = None) -> dict:
 
     cmd = [sys.executable, str(AGENT_RUNNER), "--agent", agent, "--task", task]
     started = utc_now()
-    proc = subprocess.run(cmd, cwd=str(ROOT), env=proc_env, capture_output=True, text=True)
+    try:
+        proc = subprocess.run(cmd, cwd=str(ROOT), env=proc_env, capture_output=True, text=True)
+    finally:
+        CONTROLLER.release(agent_key)
     return {
         "agent": agent,
         "task": task,
@@ -342,6 +382,10 @@ def run_workflow(name: str, env: dict | None = None, print_all: bool = True) -> 
     step_env["ORCHESTRATOR_WORKFLOW"] = name
 
     mode = wf.get("mode") or os.environ.get("HEXSTRIKE_MODE")
+    ok_auth, auth_msg = CONTROLLER.check_authorization()
+    if not ok_auth:
+        print(json.dumps({"success": False, "error": f"Authorization: {auth_msg}"}))
+        return 3
     mode_prefix = f"mode={mode} " if mode else ""
     print(f"▶ {mode_prefix}workflow={name} run_id={run_id} steps={len(wf.get('steps', []))}")
 
@@ -356,7 +400,7 @@ def run_workflow(name: str, env: dict | None = None, print_all: bool = True) -> 
             pass  # sequential order already enforces deps
 
         print(f"  [{i}/{len(wf['steps'])}] {agent} / {task}")
-        result = run_agent(agent, task, step_env)
+        result = run_agent(agent, task, step_env, mode=mode)
         steps_out.append(result)
         completed.add(task)
 

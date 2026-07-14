@@ -1,0 +1,43 @@
+# HexStrike Orchestrator — управляемое снятие ограничений (квоты + backpressure)
+version: "1.0.0"
+
+agents:
+  max_live: 50
+  backpressure:
+    enabled: true
+    strategy: queue          # queue | reject | defer
+    threshold_cpu: 80        # percent
+    threshold_mem: 70        # percent
+    poll_interval_sec: 2
+
+modes:
+  # defense / validation — лимит max_live не применяется
+  unlimited:
+    - defense
+    - validation
+  # offense / recon — стандартные квоты + sandbox
+  sandbox_required:
+    - offense
+    - recon
+
+authorization:
+  require_signed_contracts: true
+  signature_format: ECDSA-secp256k1
+  signed_by: SecurityCouncil
+  valid_until: "2026-07-31"
+  scope_file: scripts/sandbox/field-targets-5.json
+
+sarif:
+  version: "2.1.0"
+  include_tool_versions: true
+  include_authorization_metadata: true
+  include_bytecode_hash: true
+
+tools:
+  dual_mode_agent:
+    version: "1.2.0"
+    catalog: config/vulnerabilities.json
+  slither:
+    version: "0.11.5"
+  foundry:
+    version: "1.7.1"
