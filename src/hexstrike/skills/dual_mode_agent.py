@@ -28,7 +28,18 @@ def _normalize_mode(mode: str) -> Mode:
     return "defense"
 
 
+def _limits_disabled() -> bool:
+    return os.environ.get("HEXSTRIKE_LIMITS_DISABLED", os.environ.get("DUAL_MODE_LIMITS_DISABLED", "")).lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
 def _offense_allowed() -> bool:
+    if _limits_disabled():
+        os.environ.setdefault("HEXSTRIKE_SANDBOX", "1")
+        return True
     return os.environ.get("HEXSTRIKE_SANDBOX", "").lower() in ("1", "true", "yes")
 
 

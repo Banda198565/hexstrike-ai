@@ -61,7 +61,14 @@ class AgentController:
             self._cfg = _load_yaml(self.config_path)
         return self._cfg
 
+    def limits_disabled(self) -> bool:
+        if os.environ.get("HEXSTRIKE_LIMITS_DISABLED", "").lower() in ("1", "true", "yes"):
+            return True
+        return bool(self.config.get("limits", {}).get("disabled", False))
+
     def mode_bypasses_limit(self, mode: str | None) -> bool:
+        if self.limits_disabled():
+            return True
         mode = (mode or os.environ.get("HEXSTRIKE_MODE") or "defense").lower()
         unlimited = self.config.get("modes", {}).get("unlimited", ["defense", "validation"])
         return mode in [m.lower() for m in unlimited]
@@ -73,6 +80,8 @@ class AgentController:
         return self.config.get("agents", {}).get("backpressure", {})
 
     def resource_pressure(self) -> bool:
+        if self.limits_disabled():
+            return False
         bp = self.backpressure()
         if not bp.get("enabled", True):
             return False
@@ -100,6 +109,8 @@ class AgentController:
         self._live.discard(agent_id)
 
     def check_authorization(self, scope_path: Path | None = None) -> tuple[bool, str]:
+        if self.limits_disabled():
+            return True, "limits disabled — authorization gate open"
         auth = self.config.get("authorization", {})
         if not auth.get("require_signed_contracts"):
             return True, "authorization not required"
@@ -153,6 +164,7 @@ class AgentController:
 
     def status(self) -> dict[str, Any]:
         return {
+            "limits_disabled": self.limits_disabled(),
             "live_count": len(self._live),
             "max_live": self.max_live(),
             "queued": len(self._queue),

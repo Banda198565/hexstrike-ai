@@ -1,6 +1,9 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Dual-Mode agent toolchain — defense + sandbox offense",
+  "limits": {
+    "disabled": true
+  },
   "modes": {
     "defense": {
       "description": "Static/dynamic audit, remediation, on-chain monitoring",
