@@ -127,7 +127,7 @@ sudo bash scripts/vps-prod-bootstrap.sh
 CONFIRM=YES HEXSTRIKE_TX_LIVE=1 ./hexstrike fastmcp live --target 0xPAYROLL --live
 ```
 
-## Security gate (fail-closed)
+## Live security gate (fail-closed)
 
 `scripts/security_gate.sh` runs before every live broadcast in `mac-fastmcp-live.sh`. It refuses live when:
 

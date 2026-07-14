@@ -48,8 +48,29 @@ if [[ "${1:-}" == "fastmcp" ]]; then
       shift
       exec bash "$ROOT/scripts/vps-pull-and-ops.sh" "${1:---standard}"
       ;;
+    ollama)
+      shift
+      case "${1:-}" in
+        install)
+          shift
+          exec sudo bash "$ROOT/scripts/vps-ollama-install.sh" "$@"
+          ;;
+        check|status)
+          shift
+          exec bash "$ROOT/scripts/vps-ollama-install.sh" --check
+          ;;
+        tunnel)
+          shift
+          exec bash "$ROOT/scripts/mac-ollama-vps-tunnel.sh" "${1:---start}"
+          ;;
+        *)
+          echo "Usage: hexstrike fastmcp ollama {install|check|tunnel} [args]" >&2
+          exit 1
+          ;;
+      esac
+      ;;
     *)
-      echo "Usage: hexstrike fastmcp {status|verify|live|cycle|gate|pull-ops} [args...]" >&2
+      echo "Usage: hexstrike fastmcp {status|verify|live|cycle|gate|pull-ops|ollama} [args...]" >&2
       exit 1
       ;;
   esac
