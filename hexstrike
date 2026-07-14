@@ -20,6 +20,32 @@ if [[ "${1:-}" == "tx" ]]; then shift; exec python3 "$ROOT/scripts/hexstrike_tx.
 if [[ "${1:-}" == "vault" ]]; then shift; exec python3 "$ROOT/scripts/hexstrike_vault.py" "$@"; fi
 if [[ "${1:-}" == "sms" ]]; then shift; exec python3 "$ROOT/scripts/sms_alert.py" "$@"; fi
 if [[ "${1:-}" == "sim800c" ]]; then shift; exec python3 "$ROOT/scripts/sim800c_at.py" "$@"; fi
+if [[ "${1:-}" == "llm" ]]; then
+  shift
+  case "${1:-}" in
+    connect)
+      shift
+      exec bash "$ROOT/scripts/connect-llm-orchestrator.sh" "$@"
+      ;;
+    status)
+      shift
+      exec python3 -c "
+import sys, json
+sys.path.insert(0, '$ROOT/src')
+from hexstrike.llm.provider import LocalLlmProvider
+print(json.dumps(LocalLlmProvider().status(), indent=2))
+"
+      ;;
+    handshake)
+      shift
+      exec python3 "$ROOT/hexstrike_orchestrator.py" llm-handshake
+      ;;
+    *)
+      echo "Usage: hexstrike llm {connect|status|handshake}" >&2
+      exit 1
+      ;;
+  esac
+fi
 if [[ "${1:-}" == "ops" ]]; then
   shift
   exec bash "$ROOT/scripts/vps-fastmcp-ops.sh" "${1:---standard}"

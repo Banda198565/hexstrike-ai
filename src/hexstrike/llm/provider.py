@@ -16,6 +16,12 @@ DEFAULT_MODEL = "deepseek-r1:1.5b"
 DEFAULT_NUM_THREAD = 16
 DEFAULT_NUM_PREDICT = 256
 
+# llama-server (llama.cpp) default OpenAI-compatible endpoint
+LLAMA_SERVER_HOST = "http://127.0.0.1:8080"
+
+# Provider priority (first alive wins). Override with LLM_PROVIDER_PRIORITY.
+DEFAULT_PROVIDER_PRIORITY = ("llama-server", "ollama-local")
+
 
 def rescue_path_blocks_llm() -> bool:
     """When true, LLM must not run synchronously on PrepareRescue / signing hot path."""
@@ -62,6 +68,28 @@ def detect_local_ollama(host: str = DEFAULT_HOST, timeout: float = 3.0) -> bool:
         return False
 
 
+def detect_llama_server(host: str = LLAMA_SERVER_HOST, timeout: float = 3.0) -> bool:
+    """Return True when llama.cpp llama-server responds on the given host."""
+    url = f"{host.rstrip('/')}/v1/models"
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.status == 200
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return False
+
+
+def llama_server_models(host: str = LLAMA_SERVER_HOST, timeout: float = 5.0) -> list[str]:
+    url = f"{host.rstrip('/')}/v1/models"
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            payload = json.loads(resp.read().decode())
+        return [m.get("id", "") for m in payload.get("data", [])]
+    except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError):
+        return []
+
+
 def list_models(host: str = DEFAULT_HOST, timeout: float = 5.0) -> list[str]:
     url = f"{host.rstrip('/')}/api/tags"
     req = urllib.request.Request(url, method="GET")
@@ -75,25 +103,76 @@ def has_deepseek_r1(models: list[str]) -> bool:
 
 
 def resolve_llm_config() -> LlmConfig:
-    """Resolve LLM endpoint — localhost wins when local inference is available."""
-    host = os.environ.get("OLLAMA_HOST", DEFAULT_HOST)
-    model = os.environ.get("OLLAMA_MODEL", os.environ.get("LLM_MODEL", DEFAULT_MODEL))
-    integration_mode = os.environ.get("CURSOR_INTEGRATION_MODE", "SYSTEM_INTEGRATION")
-    local_ok = detect_local_ollama(host)
+    """Resolve LLM endpoint — llama-server on :8080 preferred, Ollama fallback.
 
+    Priority (first alive wins):
+      1. LLM_PROVIDER=llama-server (or auto-detect on LLAMA_SERVER_HOST)
+      2. LLM_PROVIDER=ollama-local (or auto-detect on OLLAMA_HOST)
+
+    Override auto-detect with:
+      LLM_PROVIDER=<name>          — force this provider
+      LLM_BASE_URL=http://…/v1     — force explicit URL
+      LLM_PROVIDER_PRIORITY=llama-server,ollama-local
+    """
+    integration_mode = os.environ.get("CURSOR_INTEGRATION_MODE", "SYSTEM_INTEGRATION")
+
+    priority_env = os.environ.get("LLM_PROVIDER_PRIORITY", "")
+    if priority_env:
+        priority = tuple(x.strip() for x in priority_env.split(",") if x.strip())
+    else:
+        priority = DEFAULT_PROVIDER_PRIORITY
+
+    llama_host = os.environ.get("LLAMA_SERVER_HOST", LLAMA_SERVER_HOST)
+    ollama_host = os.environ.get("OLLAMA_HOST", DEFAULT_HOST)
+
+    explicit_provider = os.environ.get("LLM_PROVIDER", "").strip()
+    explicit_base = os.environ.get("LLM_BASE_URL", "").strip()
+
+    def _pick(name: str) -> tuple[str, str, str] | None:
+        if name in ("llama-server", "llama.cpp", "openai-local"):
+            if detect_llama_server(llama_host):
+                models = llama_server_models(llama_host)
+                model = os.environ.get("LLM_MODEL") or (models[0] if models else "local")
+                base = f"{llama_host.rstrip('/')}/v1"
+                return name, base, model
+        elif name in ("ollama-local", "ollama"):
+            if detect_local_ollama(ollama_host):
+                model = os.environ.get("OLLAMA_MODEL", os.environ.get("LLM_MODEL", DEFAULT_MODEL))
+                base = _local_base_url(ollama_host)
+                return name, base, model
+        return None
+
+    picked: tuple[str, str, str] | None = None
+
+    # 1. explicit user choice
+    if explicit_provider:
+        picked = _pick(explicit_provider)
+
+    # 2. explicit base URL (skip detection)
+    if picked is None and explicit_base:
+        model = os.environ.get("LLM_MODEL", DEFAULT_MODEL)
+        picked = (explicit_provider or "custom", explicit_base, model)
+
+    # 3. priority scan
+    if picked is None:
+        for name in priority:
+            picked = _pick(name)
+            if picked is not None:
+                break
+
+    # 4. fallback (Ollama default, may be down — caller sees local_inference=False)
+    if picked is None:
+        model = os.environ.get("OLLAMA_MODEL", os.environ.get("LLM_MODEL", DEFAULT_MODEL))
+        picked = ("ollama-local", _local_base_url(ollama_host), model)
+
+    provider, base_url, model = picked
+
+    # bypass_tunnel: always true when talking to localhost
+    host = llama_host if provider.startswith(("llama", "openai-local")) else ollama_host
     bypass_tunnel = os.environ.get("OLLAMA_BYPASS_TUNNEL", "").lower() in ("1", "true", "yes")
-    if local_ok:
+    if base_url.startswith("http://127.0.0.1") or base_url.startswith("http://localhost"):
         bypass_tunnel = True
 
-    public = os.environ.get("OLLAMA_PUBLIC_BASE_URL", "").strip()
-    if bypass_tunnel or integration_mode == "OFFLINE_PRIMARY":
-        base_url = _local_base_url(host)
-    elif public:
-        base_url = public if public.endswith("/v1") else f"{public.rstrip('/')}/v1"
-    else:
-        base_url = _local_base_url(host)
-
-    provider = os.environ.get("LLM_PROVIDER", "ollama-local")
     return LlmConfig(
         provider=provider,
         host=host,
@@ -114,13 +193,20 @@ class LocalLlmProvider:
         os.environ.setdefault("LLM_MODEL", self.config.model)
 
     def status(self) -> dict[str, Any]:
-        local_ok = detect_local_ollama(self.config.host)
+        provider = self.config.provider
         models: list[str] = []
-        if local_ok:
-            try:
-                models = list_models(self.config.host)
-            except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError):
-                models = []
+        local_ok = False
+        if provider.startswith(("llama", "openai-local")):
+            local_ok = detect_llama_server(self.config.host)
+            if local_ok:
+                models = llama_server_models(self.config.host)
+        else:
+            local_ok = detect_local_ollama(self.config.host)
+            if local_ok:
+                try:
+                    models = list_models(self.config.host)
+                except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError):
+                    models = []
         return {
             "provider": self.config.provider,
             "host": self.config.host,
