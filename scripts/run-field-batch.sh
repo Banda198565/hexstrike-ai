@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGETS="${1:-${ROOT}/scripts/sandbox/field-targets-5-batch2.json}"
+TARGETS="${1:-${ROOT}/scripts/sandbox/field-targets-merged.json}"
 
 if [[ -f "${ROOT}/.venv-audit/bin/activate" ]]; then
   # shellcheck disable=SC1091

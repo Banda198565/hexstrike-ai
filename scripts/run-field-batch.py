@@ -185,14 +185,24 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
         "",
         "## Сводка",
         "",
-        "| Роль | Адрес | Тип | Приоритет | Оценка |",
-        "|------|-------|-----|-----------|--------|",
+        "| Роль | Адрес | Тип | Приоритет | Оценка | BNB |",
+        "|------|-------|-----|-----------|--------|-----|",
     ]
-    for r in report["results"]:
+    priority_rank = {"высокий": 0, "средний": 1, "низкий": 2, "информационный": 3}
+    sorted_results = sorted(
+        report["results"],
+        key=lambda x: (
+            priority_rank.get(str(x.get("priority")), 9),
+            -(x.get("risk_score_10") or 0),
+        ),
+    )
+    for r in sorted_results:
         cl = r.get("classification", {})
+        bal = ((r.get("deep_read") or {}).get("data") or {}).get("proxy", {}).get("balance_bnb")
+        bal_s = f"{bal:.2f}" if isinstance(bal, (int, float)) else "—"
         lines.append(
             f"| {r['role']} | `{r['address'][:10]}…` | {cl.get('type','?')} "
-            f"| {r.get('priority','—')} | {r.get('risk_score_10','—')} |"
+            f"| {r.get('priority','—')} | {r.get('risk_score_10','—')} | {bal_s} BNB |"
         )
     clusters = report.get("eip7702_clusters") or []
     if clusters:
