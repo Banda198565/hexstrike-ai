@@ -25,14 +25,75 @@ def load_json(path: str) -> dict:
     return {}
 
 
+def _arkham_lookup() -> dict:
+    key = (os.environ.get("ARKHAM_API_KEY") or "").strip()
+    if not key:
+        return {
+            "status": "manual_required",
+            "url": f"https://platform.arkhamintelligence.com/explorer/address/{HOT}",
+            "api_docs": "https://intel.arkm.com/api/docs",
+            "note": "No ARKHAM_API_KEY — request at arkm.com/api, then bash scripts/arkham-probe.sh",
+        }
+
+    try:
+        from arkham_client import (
+            ArkhamError,
+            get_address_balances,
+            get_address_enriched,
+            summarize_balances,
+            summarize_intel,
+        )
+    except ImportError as e:
+        return {"status": "error", "error": f"arkham_client import failed: {e}"}
+
+    chain = os.environ.get("ARKHAM_CHAIN", "bsc")
+    chains = os.environ.get("ARKHAM_CHAINS", "ethereum,bsc,polygon,base,arbitrum")
+    result: dict = {"status": "ok", "chain": chain, "chains": chains}
+
+    try:
+        intel = get_address_enriched(HOT, chain)
+        result["enriched"] = summarize_intel(intel)
+    except ArkhamError as e:
+        result["enriched_error"] = str(e)
+
+    try:
+        bal = get_address_balances(HOT, chains)
+        result["balances"] = summarize_balances(bal)
+    except ArkhamError as e:
+        result["balances_error"] = str(e)
+
+    enriched = result.get("enriched") or {}
+    if enriched.get("entity_name"):
+        result["status"] = "resolved"
+        result["entity"] = {
+            "name": enriched.get("entity_name"),
+            "id": enriched.get("entity_id"),
+            "type": enriched.get("entity_type"),
+            "label": enriched.get("label"),
+            "tags": enriched.get("tags"),
+        }
+    elif "enriched_error" not in result:
+        result["status"] = "unlabeled"
+        result["note"] = "Arkham returned no entity attribution for this address"
+
+    return result
+
+
 def main() -> int:
     out_path = os.environ.get("OUTPUT", DEFAULT_OUT)
     graph = load_json(GRAPH)
     recon = load_json(RECON)
     infra = load_json(INFRA)
+    arkham = _arkham_lookup()
 
     top_in = graph.get("top_sources") or []
     primary_inflow = next((x for x in top_in if x.get("total_usdt", 0) >= 1000), None)
+
+    entity_status = "UNIDENTIFIED"
+    entity_confidence = "low"
+    if arkham.get("status") == "resolved":
+        entity_status = arkham["entity"]["name"]
+        entity_confidence = "medium"
 
     report = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -41,11 +102,7 @@ def main() -> int:
         "mode": "read-only_passive",
         "target": HOT,
         "methods": {
-            "arkham_intelligence": {
-                "status": "manual_required",
-                "url": f"https://platform.arkhamintelligence.com/explorer/address/{HOT}",
-                "note": "No API key in environment; use Arkham UI for cluster labels",
-            },
+            "arkham_intelligence": arkham,
             "first_funder_analysis": {
                 "status": "done",
                 "primary_inflow": {
@@ -91,8 +148,9 @@ def main() -> int:
             "confidence_infra_to_hot": "LOW — no direct DNS/domain proof",
         },
         "entity_resolution": {
-            "status": "UNIDENTIFIED",
-            "confidence": "low",
+            "status": entity_status,
+            "confidence": entity_confidence,
+            "arkham_entity": arkham.get("entity"),
             "candidate_entities": [
                 {
                     "rank": 1,
