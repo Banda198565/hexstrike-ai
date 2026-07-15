@@ -38,6 +38,8 @@ from arkham_client import (
     ArkhamError,
     get_address_balances,
     get_address_enriched,
+    get_credit_periods,
+    health_check,
     summarize_balances,
     summarize_intel,
 )
@@ -54,6 +56,12 @@ def bad(name, detail):
     global fail
     print(f"[FAIL] {name} — {detail}")
     fail += 1
+
+healthy, health_msg = health_check()
+if healthy:
+    ok("health", health_msg)
+else:
+    bad("health", f"{health_msg} — Arkham API may be down (502/timeout); retry in a few minutes")
 
 try:
     intel = get_address_enriched(target, chain)
@@ -72,6 +80,16 @@ try:
     ok("balances", json.dumps(sb, ensure_ascii=False))
 except ArkhamError as e:
     bad("balances", str(e))
+
+try:
+    periods = get_credit_periods()
+    current = next((p for p in periods if p.get("status") == "current"), periods[0] if periods else None)
+    if current:
+        ok("credit_periods", f"current: used={current.get('creditsUsed')}/{current.get('creditsIncluded')} extra={current.get('extraCredits')}")
+    else:
+        ok("credit_periods", f"{len(periods)} periods returned")
+except ArkhamError as e:
+    bad("credit_periods", str(e))
 
 print("")
 print(f"=== Summary: failures={fail} ===")

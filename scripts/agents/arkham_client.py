@@ -54,6 +54,28 @@ def get_address_balances(address: str, chains: str | None = None) -> dict[str, A
     return _request(f"/balances/address/{addr}", params or None)
 
 
+def get_credit_periods() -> list[dict[str, Any]]:
+    """GET /analytics/credit-periods — last 12 billing periods of API credit usage."""
+    payload = _request("/analytics/credit-periods")
+    if isinstance(payload, list):
+        return payload
+    return payload.get("periods") or payload.get("data") or []
+
+
+def health_check() -> tuple[bool, str]:
+    """GET /health — lightweight availability probe (no API key)."""
+    url = f"{DEFAULT_BASE}/health"
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read().decode("utf-8", errors="replace").strip()
+            return True, body or "ok"
+    except urllib.error.HTTPError as e:
+        return False, f"HTTP {e.code}"
+    except urllib.error.URLError as e:
+        return False, f"transport: {e}"
+
+
 def get_address_enriched(address: str, chain: str | None = None) -> dict[str, Any]:
     """GET /intelligence/address_enriched/{address} — entity, label, tags."""
     addr = address.lower().strip()
