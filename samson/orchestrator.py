@@ -30,6 +30,7 @@ import httpx
 from samson.core.config import SamsonSettings, get_settings, repo_root
 from samson.core.database import AuditRepository, Database, sha256_payload
 from samson.core.payloads import PayloadDefinition, PayloadOrchestrator, PayloadRegistry
+from samson.core.target_loader import IngestedTarget, IngestedTargetKind, TargetLoader
 from samson.rag.rag_oracle import RagOracle
 from samson.rag.schemas import RetrieveContextRequest
 from samson.redteam.adversary_executor import AdversaryEmulationExecutor
@@ -37,6 +38,8 @@ from samson.redteam.financial_guardrail_deployer import FinancialGuardrailDeploy
 from samson.redteam.orchestrator_hooks import SamsonRedTeamHooks
 from samson.redteam.schemas import (
     AdversaryTargetContext,
+    BulkAuditMatrix,
+    BulkAuditTargetRow,
     ContinuousAuditRequest,
     ContinuousAuditResult,
     ContinuousAuditStepResult,
@@ -44,6 +47,7 @@ from samson.redteam.schemas import (
     FinancialGuardrailDeployRequest,
     GarakScanRequest,
     PyRITRiskRequest,
+    ShodanCollectResult,
 )
 from samson.redteam.shodan_collector import SamsonShodanClient
 
@@ -968,6 +972,278 @@ def cmd_run_continuous_audit(args: argparse.Namespace) -> int:
     return asyncio.run(_run())
 
 
+def _print_bulk_audit_matrix(matrix: BulkAuditMatrix) -> None:
+    width = 96
+    print("=" * width)
+    print("SAMSON BULK AUDIT — Consolidated Performance Matrix")
+    print("=" * width)
+    print(f"Request ID:          {matrix.request_id}")
+    print(f"Source root:         {matrix.source_root}")
+    print(f"Operator:            {matrix.operator_id}")
+    print(f"Interface:           {matrix.interface_type}")
+    print(f"Targets total:       {matrix.targets_total}")
+    print(f"Targets audited:     {matrix.targets_audited}")
+    print(
+        f"Shodan:              lookups={matrix.shodan_lookups}  "
+        f"cache_hits={matrix.shodan_cache_hits}  credits_spent={matrix.shodan_credits_spent}"
+    )
+    print(
+        f"Payloads / breaches: {matrix.payloads_executed} / {matrix.breaches_logged}"
+    )
+    print(
+        f"Guardrails / blocks: {matrix.guardrails_deployed} / {matrix.proxy_blocks}  "
+        f"(proxy_verifications={matrix.proxy_verifications})"
+    )
+    print(
+        f"Assertions:          PASS={matrix.assertion_pass_count}  "
+        f"FAIL={matrix.assertion_fail_count}  ERROR={matrix.error_count}"
+    )
+    print("-" * width)
+    header = (
+        f"{'#':>3}  {'KIND':<6}  {'TARGET':<28}  {'PORTS':<12}  {'CVEs':>4}  "
+        f"{'SHODAN':<8}  {'PAY':>3}  {'BR':>3}  {'GR':>3}  {'BLK':>3}  {'ASSERT':<6}  {'ms':>7}"
+    )
+    print(header)
+    print("-" * width)
+    for index, row in enumerate(matrix.rows, start=1):
+        ports = ",".join(str(p) for p in row.open_ports[:5]) or "-"
+        if len(row.open_ports) > 5:
+            ports += "+"
+        cves = len(row.detected_vulnerabilities)
+        if row.shodan_blocked:
+            shodan = "BLOCK"
+        elif row.shodan_from_cache is True:
+            shodan = "CACHE"
+        elif row.shodan_from_cache is False:
+            shodan = "LIVE"
+        else:
+            shodan = "-"
+        assert_label = (
+            "PASS"
+            if row.assertion_passed is True
+            else "FAIL"
+            if row.assertion_passed is False
+            else "ERROR"
+            if row.error
+            else "-"
+        )
+        target = row.normalized_value
+        if len(target) > 28:
+            target = target[:25] + "..."
+        print(
+            f"{index:>3}  {row.kind:<6}  {target:<28}  {ports:<12}  {cves:>4}  "
+            f"{shodan:<8}  {row.payloads_executed:>3}  {row.breaches_logged:>3}  "
+            f"{row.guardrails_deployed:>3}  {row.proxy_blocks:>3}  {assert_label:<6}  {row.duration_ms:>7}"
+        )
+        if row.error:
+            print(f"     ERROR: {row.error}")
+    print("=" * width)
+    print(f"Completed at:        {matrix.completed_at.isoformat()}")
+    print("=" * width)
+
+
+async def _shodan_enrich_target(
+    client: SamsonShodanClient,
+    target: IngestedTarget,
+    *,
+    operator_id: str,
+    run_id: UUID | None,
+    force_refresh: bool,
+) -> ShodanCollectResult | None:
+    """Run cache-first Shodan recon for IP-bearing targets before financial injection."""
+    ip = target.ip_address
+    if not ip and target.kind == IngestedTargetKind.IP:
+        ip = target.normalized_value
+    if not ip:
+        return None
+    result = await client.fetch_host_data(
+        ip,
+        operator_id=operator_id,
+        run_id=run_id,
+        force_refresh=force_refresh,
+    )
+    if result.artifact is not None:
+        target.open_ports = list(result.artifact.open_ports)
+        target.detected_vulnerabilities = list(result.artifact.detected_vulnerabilities)
+        TargetLoader.resolve_audit_endpoint(
+            target,
+            preferred_ports=target.open_ports,
+            interface_type=target.interface_type,
+        )
+        target.metadata["shodan"] = {
+            "from_cache": result.from_cache,
+            "credits_spent": result.credits_spent,
+            "credits_remaining": result.credits_remaining,
+            "is_blocked": result.is_blocked,
+            "hostnames": result.artifact.hostnames,
+            "org": result.artifact.org,
+        }
+    return result
+
+
+async def _execute_bulk_audit(
+    settings: SamsonSettings,
+    *,
+    operator_id: str,
+    interface_type: str,
+    scenario_id: str,
+    policy_profile: str,
+    auth_headers: dict[str, str],
+    source_root: str | None,
+    limit: int | None,
+    skip_shodan: bool,
+    force_shodan_refresh: bool,
+    run_id: UUID | None,
+) -> BulkAuditMatrix:
+    loader = TargetLoader(explicit_root=source_root) if source_root else TargetLoader()
+    pool = loader.load()
+    for target in pool.targets:
+        target.interface_type = interface_type
+
+    overlay_path = _REPO_ROOT / "config" / "samson" / "scope.bulk-overlay.yaml"
+    loader.write_scope_overlay(
+        pool,
+        base_scope_path=settings.scope_config_path,
+        destination=overlay_path,
+    )
+    settings = settings.model_copy(update={"scope_config_path": overlay_path})
+
+    targets = pool.targets
+    if limit is not None and limit >= 0:
+        targets = targets[:limit]
+
+    matrix = BulkAuditMatrix(
+        request_id=uuid4(),
+        operator_id=operator_id,
+        source_root=pool.source_root,
+        interface_type=interface_type,
+        targets_total=len(targets),
+        targets_audited=0,
+    )
+    shodan = SamsonShodanClient(settings)
+    try:
+        for target in targets:
+            started = time.perf_counter()
+            row = BulkAuditTargetRow(
+                target_id=target.target_id,
+                kind=target.kind.value,
+                normalized_value=target.normalized_value,
+                audit_endpoint=str(target.audit_endpoint) if target.audit_endpoint else None,
+                ip_address=target.ip_address,
+            )
+            try:
+                if not skip_shodan:
+                    shodan_result = await _shodan_enrich_target(
+                        shodan,
+                        target,
+                        operator_id=operator_id,
+                        run_id=run_id,
+                        force_refresh=force_shodan_refresh,
+                    )
+                    if shodan_result is not None:
+                        matrix.shodan_lookups += 1
+                        row.shodan_from_cache = shodan_result.from_cache
+                        row.shodan_credits_spent = shodan_result.credits_spent
+                        row.shodan_blocked = shodan_result.is_blocked
+                        row.open_ports = list(target.open_ports)
+                        row.detected_vulnerabilities = list(target.detected_vulnerabilities)
+                        matrix.shodan_credits_spent += shodan_result.credits_spent
+                        if shodan_result.from_cache:
+                            matrix.shodan_cache_hits += 1
+
+                TargetLoader.resolve_audit_endpoint(
+                    target,
+                    preferred_ports=target.open_ports,
+                    interface_type=interface_type,
+                )
+                row.audit_endpoint = str(target.audit_endpoint)
+                row.open_ports = list(target.open_ports)
+                row.detected_vulnerabilities = list(target.detected_vulnerabilities)
+
+                req = target.to_continuous_audit_request(
+                    operator_id=operator_id,
+                    scenario_id=scenario_id,
+                    run_id=run_id,
+                    auth_headers=auth_headers,
+                    policy_profile=policy_profile,
+                )
+                audit_result = await _execute_continuous_audit_loop(
+                    settings,
+                    req,
+                    target_meta={
+                        "ingested": True,
+                        "kind": target.kind.value,
+                        "source_files": target.source_files,
+                        "shodan": target.metadata.get("shodan"),
+                    },
+                )
+                _print_continuous_audit_metrics(audit_result)
+                matrix.targets_audited += 1
+                matrix.payloads_executed += audit_result.payloads_executed
+                matrix.breaches_logged += audit_result.breaches_logged
+                matrix.guardrails_deployed += audit_result.guardrails_deployed
+                matrix.proxy_verifications += audit_result.proxy_verifications
+                matrix.proxy_blocks += audit_result.proxy_blocks
+                if audit_result.assertion_passed:
+                    matrix.assertion_pass_count += 1
+                else:
+                    matrix.assertion_fail_count += 1
+                row.payloads_executed = audit_result.payloads_executed
+                row.breaches_logged = audit_result.breaches_logged
+                row.guardrails_deployed = audit_result.guardrails_deployed
+                row.proxy_blocks = audit_result.proxy_blocks
+                row.assertion_passed = audit_result.assertion_passed
+            except Exception as exc:
+                logger.error(
+                    "Bulk audit failed for target %s (%s): %s",
+                    target.normalized_value,
+                    target.kind.value,
+                    exc,
+                )
+                row.error = f"{type(exc).__name__}: {exc}"
+                matrix.error_count += 1
+            finally:
+                row.duration_ms = int((time.perf_counter() - started) * 1000)
+                matrix.rows.append(row)
+    finally:
+        await shodan.close()
+
+    matrix.completed_at = datetime.now(timezone.utc)
+    return matrix
+
+
+def cmd_run_bulk_audit(args: argparse.Namespace) -> int:
+    """Ingest desktop/container target pool → Shodan recon → continuous-audit per target."""
+    settings = get_settings()
+    if args.unattended:
+        settings = settings.model_copy(update={"require_human_approval": False})
+
+    async def _run() -> int:
+        matrix = await _execute_bulk_audit(
+            settings,
+            operator_id=args.operator,
+            interface_type=args.interface_type,
+            scenario_id=args.scenario_id,
+            policy_profile=args.profile,
+            auth_headers=_parse_auth_headers(args.auth_header),
+            source_root=args.source_root,
+            limit=args.limit,
+            skip_shodan=bool(args.skip_shodan),
+            force_shodan_refresh=bool(args.force_shodan_refresh),
+            run_id=UUID(args.run_id) if args.run_id else None,
+        )
+        _print_bulk_audit_matrix(matrix)
+        if args.json:
+            print(matrix.model_dump_json(indent=2))
+        if matrix.error_count and matrix.targets_audited == 0:
+            return 1
+        if matrix.assertion_fail_count or matrix.error_count:
+            return 2
+        return 0
+
+    return asyncio.run(_run())
+
+
 def cmd_shodan_lookup(args: argparse.Namespace) -> int:
     settings = get_settings()
 
@@ -1066,6 +1342,37 @@ def build_parser() -> argparse.ArgumentParser:
     )
     audit.add_argument("--json", action="store_true", help="Also emit machine-readable JSON after metrics table")
     audit.set_defaults(func=cmd_run_continuous_audit)
+
+    bulk = sub.add_parser(
+        "run-bulk-audit",
+        help="Ingest desktop/container target pool → Shodan recon → continuous-audit matrix",
+    )
+    bulk.add_argument(
+        "--source-root",
+        default=None,
+        help="Override target pool root (default: ~/Desktop/тест ЦЕЛИ or /data/pentest/targets)",
+    )
+    bulk.add_argument(
+        "--interface-type",
+        default="IBAN-Parser",
+        choices=["Stripe-Gateway", "Plaid-Integration", "REST-LLM-API", "IBAN-Parser"],
+    )
+    bulk.add_argument("--operator", default="operator-alpha")
+    bulk.add_argument("--scenario-id", default="bulk-continuous-audit")
+    bulk.add_argument("--run-id", default=None)
+    bulk.add_argument("--auth-header", default=None, help="Comma-separated Header:Value pairs")
+    bulk.add_argument("--profile", choices=["strict", "balanced", "permissive"], default="strict")
+    bulk.add_argument("--limit", type=int, default=None, help="Audit at most N unique targets")
+    bulk.add_argument("--skip-shodan", action="store_true", help="Skip Shodan recon enrichment")
+    bulk.add_argument("--force-shodan-refresh", action="store_true", help="Bypass Shodan Postgres cache")
+    bulk.add_argument(
+        "--unattended",
+        action="store_true",
+        default=True,
+        help="Disable human-approval gates for fully automated runs (default: enabled)",
+    )
+    bulk.add_argument("--json", action="store_true", help="Also emit machine-readable JSON after matrix")
+    bulk.set_defaults(func=cmd_run_bulk_audit)
 
     shodan = sub.add_parser("shodan-lookup", help="Authorized Shodan host recon with credit budget enforcement")
     shodan.add_argument("--ip", required=True, help="Target IPv4/IPv6 address")

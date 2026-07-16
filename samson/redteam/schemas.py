@@ -199,6 +199,52 @@ class ContinuousAuditResult(BaseModel):
     completed_at: datetime
 
 
+class BulkAuditTargetRow(BaseModel):
+    """One target row in the consolidated bulk-audit performance matrix."""
+
+    target_id: UUID
+    kind: str
+    normalized_value: str
+    audit_endpoint: str | None = None
+    ip_address: str | None = None
+    open_ports: list[int] = Field(default_factory=list)
+    detected_vulnerabilities: list[str] = Field(default_factory=list)
+    shodan_from_cache: bool | None = None
+    shodan_credits_spent: int = 0
+    shodan_blocked: bool = False
+    payloads_executed: int = 0
+    breaches_logged: int = 0
+    guardrails_deployed: int = 0
+    proxy_blocks: int = 0
+    assertion_passed: bool | None = None
+    duration_ms: int = 0
+    error: str | None = None
+
+
+class BulkAuditMatrix(BaseModel):
+    """Consolidated multi-target continuous-audit performance matrix."""
+
+    request_id: UUID
+    operator_id: str
+    source_root: str
+    interface_type: str
+    targets_total: int
+    targets_audited: int
+    shodan_lookups: int = 0
+    shodan_cache_hits: int = 0
+    shodan_credits_spent: int = 0
+    payloads_executed: int = 0
+    breaches_logged: int = 0
+    guardrails_deployed: int = 0
+    proxy_verifications: int = 0
+    proxy_blocks: int = 0
+    assertion_pass_count: int = 0
+    assertion_fail_count: int = 0
+    error_count: int = 0
+    rows: list[BulkAuditTargetRow] = Field(default_factory=list)
+    completed_at: datetime = Field(default_factory=_utcnow)
+
+
 # =============================================================================
 # Shodan recon (OSINT host intelligence)
 # =============================================================================
@@ -483,6 +529,8 @@ __all__ = [
     "ContinuousAuditRequest",
     "ContinuousAuditStepResult",
     "ContinuousAuditResult",
+    "BulkAuditTargetRow",
+    "BulkAuditMatrix",
     "ApiCreditBudget",
     "ShodanServiceBanner",
     "ShodanReconArtifact",
