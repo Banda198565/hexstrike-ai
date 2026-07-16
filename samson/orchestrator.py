@@ -27,8 +27,8 @@ logger = logging.getLogger("samson.orchestrator")
 def cmd_migrate(_: argparse.Namespace) -> int:
     settings = get_settings()
     db = Database(settings)
-    migration = Path(__file__).resolve().parent / "migrations" / "001_schema.sql"
-    db.ensure_schema([str(migration)])
+    migration_dir = Path(__file__).resolve().parent / "migrations"
+    db.ensure_schema([str(migration_dir / "001_schema.sql"), str(migration_dir / "002_adversary_emulation.sql")])
     logger.info("Schema migration applied")
     return 0
 

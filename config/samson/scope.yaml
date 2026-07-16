@@ -14,6 +14,7 @@ allowed_doc_types:
   - pyrit_report
   - garak_report
   - atlas_technique
+  - emulation_result
 targets:
   - target_id: arena-default
     base_url: http://127.0.0.1:8080

@@ -12,9 +12,10 @@ from uuid import UUID, uuid4
 from samson.core.config import SamsonSettings, get_settings
 from samson.core.database import AuditRepository, Database, sha256_payload
 from samson.core.errors import ApprovalRequiredError, ScopeViolationError
-from samson.core.http_client import SamsonHttpClient
+from samson.core.http_client import AuditHttpContext, SamsonHttpClient
 from samson.core.payloads import PayloadOrchestrator
 from samson.core.scope import ScopeEnforcer
+from samson.redteam.adversary_executor import AdversaryEmulationExecutor
 from samson.redteam.schemas import ImpactSimulationRequest, ImpactSimulationResult
 
 logger = logging.getLogger(__name__)
@@ -36,11 +37,13 @@ class ImpactSimulationAgent:
         self._scope = ScopeEnforcer(self._settings)
         self._http = SamsonHttpClient(self._settings)
         self._payloads = PayloadOrchestrator(self._settings, scope=self._scope, http=self._http)
+        self._adversary = AdversaryEmulationExecutor(self._settings)
         self._audit_dir = Path("samson/redteam/impact/reports")
         self._audit_dir.mkdir(parents=True, exist_ok=True)
 
     def close(self) -> None:
         self._payloads.close()
+        self._adversary.close()
         self._http.close()
 
     def run(self, req: ImpactSimulationRequest) -> ImpactSimulationResult:
@@ -59,7 +62,20 @@ class ImpactSimulationAgent:
 
         phases = _PROFILE_PHASES.get(req.simulation_profile, [])
         payload_results: list[dict] = []
+        emulation_results = []
         artifacts: list[str] = []
+
+        if req.target_context and req.execution_payloads:
+            for execution_payload in req.execution_payloads:
+                emulation = self._adversary.execute(
+                    target=req.target_context,
+                    payload=execution_payload,
+                    operator_id=req.operator_id,
+                    run_id=req.run_id,
+                    request_id=req.request_id,
+                )
+                emulation_results.append(emulation)
+                payload_results.append(emulation.model_dump(mode="json"))
 
         for payload_id in req.payload_ids:
             result = self._payloads.execute(
@@ -127,10 +143,18 @@ class ImpactSimulationAgent:
             reversible=True,
             audit_path=str(audit_path),
             payload_results=payload_results,
+            emulation_results=emulation_results,
             completed_at=datetime.now(tz=timezone.utc),
         )
 
     def _execute_phase(self, phase: str, base_url: str, req: ImpactSimulationRequest) -> dict:
+        audit = AuditHttpContext(
+            request_id=req.request_id,
+            operator_id=req.operator_id,
+            run_id=req.run_id,
+            tool="impact_simulation",
+            action=f"phase_{phase}",
+        )
         if phase == "persistence_marker":
             url = f"{base_url}/api/v1/arena/markers"
             self._scope.assert_url_in_scope(url, request_id=req.request_id)
@@ -141,6 +165,7 @@ class ImpactSimulationAgent:
                     "scenario_id": req.scenario_id,
                     "phase": phase,
                 },
+                audit=audit,
             )
         if phase == "fixture_read":
             fixture = self._settings.fixture_root_path / "synthetic" / "credentials.json"
@@ -148,15 +173,15 @@ class ImpactSimulationAgent:
                 return {"phase": phase, "artifact_path": str(fixture), "status": "read"}
             url = f"{base_url}/api/v1/arena/fixtures/synthetic/credentials"
             self._scope.assert_url_in_scope(url, request_id=req.request_id)
-            return {"phase": phase, "response": self._http.get_json(url)}
+            return {"phase": phase, "response": self._http.get_json(url, audit=audit)}
         if phase == "service_discovery":
             url = f"{base_url}/api/v1/arena/services"
             self._scope.assert_url_in_scope(url, request_id=req.request_id)
-            return {"phase": phase, "response": self._http.get_json(url)}
+            return {"phase": phase, "response": self._http.get_json(url, audit=audit)}
         if phase == "adjacent_probe":
             url = f"{base_url}/api/v1/arena/adjacent/health"
             self._scope.assert_url_in_scope(url, request_id=req.request_id)
-            return {"phase": phase, "response": self._http.get_json(url)}
+            return {"phase": phase, "response": self._http.get_json(url, audit=audit)}
         if phase == "financial_fixture_read":
             fixture = self._settings.fixture_root_path / "financial" / "synthetic_ibans.json"
             if fixture.is_file():

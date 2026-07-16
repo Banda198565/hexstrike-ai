@@ -12,9 +12,10 @@ from uuid import uuid4
 from samson.core.config import SamsonSettings, get_settings
 from samson.core.database import AuditRepository, Database, sha256_payload
 from samson.core.errors import ApprovalRequiredError
-from samson.core.http_client import SamsonHttpClient
+from samson.core.http_client import AuditHttpContext, SamsonHttpClient
 from samson.core.payloads import PayloadOrchestrator
 from samson.core.scope import ScopeEnforcer
+from samson.redteam.adversary_executor import AdversaryEmulationExecutor
 from samson.redteam.atlas.mapper import AtlasMapper
 from samson.redteam.schemas import ATLASMapRequest, FinancialSandboxRequest, FinancialSandboxResult
 
@@ -37,11 +38,13 @@ class FinancialSandboxAgent:
         self._http = SamsonHttpClient(self._settings)
         self._payloads = PayloadOrchestrator(self._settings, scope=self._scope, http=self._http)
         self._atlas = AtlasMapper(self._settings)
+        self._adversary = AdversaryEmulationExecutor(self._settings)
         self._ledger_dir = Path("samson/redteam/financial/ledger")
         self._ledger_dir.mkdir(parents=True, exist_ok=True)
 
     def close(self) -> None:
         self._payloads.close()
+        self._adversary.close()
         self._http.close()
 
     def run(self, req: FinancialSandboxRequest) -> FinancialSandboxResult:
@@ -56,6 +59,16 @@ class FinancialSandboxAgent:
         self._scope.assert_operator(req.operator_id, request_id=req.request_id)
         start = time.perf_counter()
         simulation_id = uuid4()
+        emulation_result = None
+
+        if req.target_context and req.execution_payload:
+            emulation_result = self._adversary.execute(
+                target=req.target_context,
+                payload=req.execution_payload,
+                operator_id=req.operator_id,
+                run_id=req.run_id,
+                request_id=req.request_id,
+            )
 
         payload_id = req.payload_id or _TECHNIQUE_PAYLOADS.get(req.technique, "")
         payload_results: list[dict] = []
@@ -86,6 +99,13 @@ class FinancialSandboxAgent:
         iban_url = self._settings.resolve_financial_iban_url()
         self._scope.assert_url_in_scope(stripe_url, request_id=req.request_id)
         self._scope.assert_url_in_scope(iban_url, request_id=req.request_id)
+        audit = AuditHttpContext(
+            request_id=req.request_id,
+            operator_id=req.operator_id,
+            run_id=req.run_id,
+            tool="financial_sandbox",
+            action=req.technique,
+        )
 
         if req.technique in {"payment_api_abuse", "invoice_substitution", "beneficiary_swap"}:
             tx = self._http.post_json(
@@ -95,6 +115,7 @@ class FinancialSandboxAgent:
                     "amount_eur": float(req.variables.get("amount_eur", 12500.0)),
                     "metadata": {"synthetic": True, "technique": req.technique, "run_id": str(req.run_id)},
                 },
+                audit=audit,
             )
             mock_transactions.append(tx)
 
@@ -105,6 +126,7 @@ class FinancialSandboxAgent:
                     "iban": str(req.variables.get("iban_to", "DE00000000000000000000")),
                     "merchant_id": req.mock_merchant_id,
                 },
+                audit=audit,
             )
             mock_transactions.append(iban_resp)
 
@@ -187,6 +209,7 @@ class FinancialSandboxAgent:
             ledger_snapshot_path=str(ledger_path),
             atlas_technique_ids=[t.atlas_id for t in atlas.techniques],
             payload_results=payload_results,
+            emulation_result=emulation_result,
             completed_at=datetime.now(tz=timezone.utc),
         )
 
