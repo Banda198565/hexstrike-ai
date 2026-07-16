@@ -335,6 +335,40 @@ class ShodanCollectResult(BaseModel):
     completed_at: datetime = Field(default_factory=_utcnow)
 
 
+class RedisTrophySample(BaseModel):
+    """One AI/LLM-related Redis key with a truncated sample value."""
+
+    key: str
+    pattern_matched: str
+    value_type: str = "string"
+    sample_value: str = ""
+    value_bytes: int = 0
+
+
+class RedisEmulationResult(BaseModel):
+    """Result of an authorized unauthenticated Redis resilience probe."""
+
+    execution_id: UUID
+    request_id: UUID
+    operator_id: str
+    run_id: UUID | None = None
+    target_host: str
+    target_port: int = Field(default=6379, ge=1, le=65535)
+    connected: bool = False
+    authentication_required: bool = False
+    vulnerability_verified: bool = False
+    redis_version: str | None = None
+    keys_scanned: int = 0
+    compromised_key_count: int = 0
+    intercepted_contexts: list[str] = Field(default_factory=list)
+    trophy_samples: list[RedisTrophySample] = Field(default_factory=list)
+    rag_doc_path: str | None = None
+    rag_document_id: UUID | None = None
+    duration_ms: int = Field(default=0, ge=0)
+    error: str | None = None
+    completed_at: datetime = Field(default_factory=_utcnow)
+
+
 class MetasploitExecutionResult(BaseModel):
     """Authorized Metasploit Framework module execution result for purple-team recon.
 
@@ -596,6 +630,8 @@ __all__ = [
     "ShodanServiceBanner",
     "ShodanReconArtifact",
     "ShodanCollectResult",
+    "RedisTrophySample",
+    "RedisEmulationResult",
     "MetasploitExecutionResult",
     "PyRITRiskRequest",
     "PyRITRiskResult",
