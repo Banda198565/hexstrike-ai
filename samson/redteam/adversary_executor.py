@@ -181,6 +181,11 @@ class AdversaryEmulationExecutor:
     ) -> None:
         """Best-effort RAG post-analysis — must never abort network audit / guardrail deploy."""
         try:
+            import os
+
+            if os.environ.get("SAMSON_SKIP_RAG_ANALYZE", "").lower() in {"1", "true", "yes"}:
+                logger.info("RAG analyze skipped via SAMSON_SKIP_RAG_ANALYZE execution=%s", result.execution_id)
+                return
             query = (
                 f"Explain adversary emulation result for attack vector {payload.attack_vector}. "
                 f"Entities: {', '.join(result.intercepted_financial_entities) or 'none'}."
@@ -196,6 +201,14 @@ class AdversaryEmulationExecutor:
                     top_k=6,
                 )
             )
+            # Chat briefing is optional; never block proxy lifecycle on slow Ollama /api/chat.
+            if os.environ.get("SAMSON_SKIP_RAG_BRIEF", "1").lower() in {"1", "true", "yes"}:
+                logger.info(
+                    "RAG retrieve-only for execution=%s chunks=%s",
+                    result.execution_id,
+                    len(retrieval.chunks),
+                )
+                return
             self._rag.build_brief(
                 BuildBriefRequest(
                     request_id=request_id,
