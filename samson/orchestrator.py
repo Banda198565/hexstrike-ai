@@ -107,6 +107,7 @@ def cmd_migrate(_: argparse.Namespace) -> int:
             str(migration_dir / "004_shodan_recon.sql"),
             str(migration_dir / "005_synthetic_emulation.sql"),
             str(migration_dir / "006_arkham_recon.sql"),
+            str(migration_dir / "007_fofa_recon.sql"),
         ]
     )
     logger.info("Schema migration applied")
@@ -1656,6 +1657,90 @@ def cmd_arkham_lookup(args: argparse.Namespace) -> int:
     return asyncio.run(_run())
 
 
+def cmd_fofa_lookup(args: argparse.Namespace) -> int:
+    """Authorized FOFA Redis/host hunt → ShodanReconArtifact (unified schema)."""
+    from samson.redteam.hybrid_recon import SamsonFofaClient
+
+    settings = get_settings()
+    if not (settings.fofa_api_key or "").strip():
+        print(
+            "ERROR: FOFA API key missing. Set SAMSON_FOFA_API_KEY or FOFA_API_KEY.",
+            file=sys.stderr,
+        )
+        return 2
+
+    if not args.query and not args.ip:
+        print("ERROR: provide --ip or --query", file=sys.stderr)
+        return 2
+
+    async def _run() -> int:
+        client = SamsonFofaClient(settings)
+        try:
+            await client.fetch_account_info()
+            if args.query:
+                result = await client.search(
+                    args.query,
+                    operator_id=args.operator,
+                    run_id=UUID(args.run_id) if args.run_id else None,
+                    size=args.size,
+                )
+            else:
+                result = await client.hunt_redis_for_ip(
+                    args.ip,
+                    operator_id=args.operator,
+                    run_id=UUID(args.run_id) if args.run_id else None,
+                    force_refresh=bool(args.force_refresh),
+                    size=args.size,
+                )
+            print(result.model_dump_json(indent=2))
+            if result.is_blocked:
+                return 3
+            return 0
+        except Exception as exc:  # noqa: BLE001
+            print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
+            return 1
+        finally:
+            await client.close()
+
+    return asyncio.run(_run())
+
+
+def cmd_fofa_hunt_redis(args: argparse.Namespace) -> int:
+    """Hybrid recon: desktop pool IPs → FOFA Redis:6379 hunt → unified artifacts."""
+    from samson.redteam.hybrid_recon import HybridReconModule
+
+    settings = get_settings()
+    if not (settings.fofa_api_key or "").strip():
+        print(
+            "ERROR: FOFA API key missing. Set SAMSON_FOFA_API_KEY or FOFA_API_KEY.",
+            file=sys.stderr,
+        )
+        return 2
+
+    async def _run() -> int:
+        module = HybridReconModule(settings)
+        try:
+            result = await module.recon_target_pool(
+                source_root=args.source_root,
+                operator_id=args.operator,
+                run_id=UUID(args.run_id) if args.run_id else None,
+                allow_global_redis_hunt=bool(args.allow_global),
+                force_refresh=bool(args.force_refresh),
+                limit=args.limit,
+            )
+            print(result.model_dump_json(indent=2))
+            if result.blocked and result.fofa_lookups == 0:
+                return 3
+            return 0
+        except Exception as exc:  # noqa: BLE001
+            print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
+            return 1
+        finally:
+            await module.close()
+
+    return asyncio.run(_run())
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Samson SBM orchestrator")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1789,6 +1874,38 @@ def build_parser() -> argparse.ArgumentParser:
     arkham.add_argument("--force-refresh", action="store_true", help="Bypass local Postgres cache")
     arkham.add_argument("--json", action="store_true", help="Include raw_payload in output")
     arkham.set_defaults(func=cmd_arkham_lookup)
+
+    fofa = sub.add_parser(
+        "fofa-lookup",
+        help="Authorized FOFA host/Redis hunt normalized to ShodanReconArtifact",
+    )
+    fofa.add_argument("--ip", default=None, help="Target IPv4/IPv6 (builds ip=… && port=\"6379\")")
+    fofa.add_argument("--query", default=None, help="Raw FOFA query (overrides --ip)")
+    fofa.add_argument("--operator", default="operator-alpha")
+    fofa.add_argument("--run-id", default=None)
+    fofa.add_argument("--size", type=int, default=None, help="FOFA page size (default settings)")
+    fofa.add_argument("--force-refresh", action="store_true", help="Bypass FOFA Postgres cache")
+    fofa.set_defaults(func=cmd_fofa_lookup)
+
+    fofa_hunt = sub.add_parser(
+        "fofa-hunt-redis",
+        help="Hybrid recon: target-pool IPs → FOFA Redis:6379 → unified artifacts",
+    )
+    fofa_hunt.add_argument(
+        "--source-root",
+        default=None,
+        help="Override target pool root (default: ~/Desktop/тест ЦЕЛИ)",
+    )
+    fofa_hunt.add_argument("--operator", default="operator-alpha")
+    fofa_hunt.add_argument("--run-id", default=None)
+    fofa_hunt.add_argument("--limit", type=int, default=None)
+    fofa_hunt.add_argument(
+        "--allow-global",
+        action="store_true",
+        help="If pool has no public IPs, run global port=6379 && protocol=redis (authorized only)",
+    )
+    fofa_hunt.add_argument("--force-refresh", action="store_true")
+    fofa_hunt.set_defaults(func=cmd_fofa_hunt_redis)
 
     return parser
 

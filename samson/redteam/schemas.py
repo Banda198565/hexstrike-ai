@@ -350,6 +350,43 @@ class ShodanCollectResult(BaseModel):
     completed_at: datetime = Field(default_factory=_utcnow)
 
 
+class FofaCollectResult(BaseModel):
+    """Outcome of a FOFA hybrid recon lookup (normalized to ShodanReconArtifact)."""
+
+    request_id: UUID
+    query: str
+    ip_address: str | None = None
+    is_blocked: bool = False
+    block_reason: str | None = None
+    from_cache: bool = False
+    credits_spent: int = 0
+    credits_remaining: int | None = None
+    result_count: int = 0
+    artifacts: list[ShodanReconArtifact] = Field(default_factory=list)
+    artifact: ShodanReconArtifact | None = None
+    http_status_code: int | None = None
+    errmsg: str | None = None
+    completed_at: datetime = Field(default_factory=_utcnow)
+
+
+class HybridReconResult(BaseModel):
+    """Multi-source recon merge (FOFA Redis hunt ± Shodan host enrich)."""
+
+    request_id: UUID
+    operator_id: str
+    source_root: str | None = None
+    queries: list[str] = Field(default_factory=list)
+    targets_considered: int = 0
+    fofa_lookups: int = 0
+    fofa_cache_hits: int = 0
+    fofa_credits_spent: int = 0
+    redis_candidates: int = 0
+    artifacts: list[ShodanReconArtifact] = Field(default_factory=list)
+    blocked: bool = False
+    block_reason: str | None = None
+    completed_at: datetime = Field(default_factory=_utcnow)
+
+
 class ArkhamEntityRef(BaseModel):
     """Normalized Arkham entity attribution for an address."""
 
@@ -721,6 +758,8 @@ __all__ = [
     "ShodanServiceBanner",
     "ShodanReconArtifact",
     "ShodanCollectResult",
+    "FofaCollectResult",
+    "HybridReconResult",
     "ArkhamEntityRef",
     "ArkhamChainIntelligence",
     "ArkhamAddressArtifact",

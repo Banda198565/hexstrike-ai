@@ -133,6 +133,17 @@ class SamsonSettings(BaseSettings):
     # Local Anvil/Hardhat drills keep gas free — still fetch+persist, but do not skip signer.
     arkham_balance_gate_bypass_local_chains: bool = True
 
+    # FOFA hybrid OSINT recon (key via SAMSON_FOFA_API_KEY — never hardcode)
+    fofa_api_key: str = ""
+    fofa_api_email: str = ""
+    fofa_api_base_url: HttpUrl = Field(default="https://fofa.info")
+    fofa_budget_id: str = "fofa_default"
+    fofa_min_interval_sec: float = 5.0
+    fofa_cache_ttl_sec: int = 86_400
+    fofa_initial_credits: int = 100
+    fofa_reserve_credits: int = 0
+    fofa_default_size: int = 100
+
     @field_validator("shodan_api_key", mode="before")
     @classmethod
     def _coerce_shodan_api_key(cls, value: object) -> str:
@@ -164,6 +175,34 @@ class SamsonSettings(BaseSettings):
         return (
             os.environ.get("SAMSON_ARKHAM_API_KEY")
             or os.environ.get("ARKHAM_API_KEY")
+            or ""
+        ).strip()
+
+    @field_validator("fofa_api_key", mode="before")
+    @classmethod
+    def _coerce_fofa_api_key(cls, value: object) -> str:
+        import os
+
+        text = str(value or "").strip()
+        if text:
+            return text
+        return (
+            os.environ.get("SAMSON_FOFA_API_KEY")
+            or os.environ.get("FOFA_API_KEY")
+            or ""
+        ).strip()
+
+    @field_validator("fofa_api_email", mode="before")
+    @classmethod
+    def _coerce_fofa_api_email(cls, value: object) -> str:
+        import os
+
+        text = str(value or "").strip()
+        if text:
+            return text
+        return (
+            os.environ.get("SAMSON_FOFA_API_EMAIL")
+            or os.environ.get("FOFA_EMAIL")
             or ""
         ).strip()
 
