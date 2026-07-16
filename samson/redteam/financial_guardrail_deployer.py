@@ -46,7 +46,9 @@ class FinancialGuardrailDeployer:
         return self._proxy
 
     async def close(self) -> None:
+        """Release bound proxy sockets so the next audit round can rebind :8787."""
         await self._proxy.stop()
+        self._active_deployment_id = None
 
     async def deploy_from_execution(self, req: FinancialGuardrailDeployRequest) -> FinancialGuardrailDeployResult:
         start = datetime.now(timezone.utc)

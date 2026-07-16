@@ -157,31 +157,34 @@ class ContinuousAuditPipeline:
         if not emulation.intercepted_financial_entities and not self._has_financial_content(payload):
             return step
 
-        deploy = await self._deployer.deploy_from_execution(
-            FinancialGuardrailDeployRequest(
-                request_id=uuid4(),
-                execution_id=emulation.execution_id,
-                operator_id=req.operator_id,
-                run_id=run_id,
-                policy_profile=req.policy_profile,
-                upstream_base_url=self._resolve_upstream(str(req.target_endpoint)),
+        try:
+            deploy = await self._deployer.deploy_from_execution(
+                FinancialGuardrailDeployRequest(
+                    request_id=uuid4(),
+                    execution_id=emulation.execution_id,
+                    operator_id=req.operator_id,
+                    run_id=run_id,
+                    policy_profile=req.policy_profile,
+                    upstream_base_url=self._resolve_upstream(str(req.target_endpoint)),
+                )
             )
-        )
-        step.guardrail_deployed = True
-        step.deployment_id = deploy.deployment_id
-        step.proxy_listen_url = deploy.listen_url
+            step.guardrail_deployed = True
+            step.deployment_id = deploy.deployment_id
+            step.proxy_listen_url = deploy.listen_url
 
-        proxy_result = await self._rerun_through_proxy(
-            target_endpoint=str(req.target_endpoint),
-            payload=payload,
-            target=target,
-            listen_host=self._settings.guardrail_proxy_host,
-            listen_port=self._settings.guardrail_proxy_port,
-        )
-        step.after_http_status = proxy_result["status_code"]
-        step.after_action = proxy_result["action"]
-        step.proxy_verified = proxy_result["verified"]
-        step.proxy_response = proxy_result.get("body", {})
+            proxy_result = await self._rerun_through_proxy(
+                target_endpoint=str(req.target_endpoint),
+                payload=payload,
+                target=target,
+                listen_host=self._settings.guardrail_proxy_host,
+                listen_port=self._settings.guardrail_proxy_port,
+            )
+            step.after_http_status = proxy_result["status_code"]
+            step.after_action = proxy_result["action"]
+            step.proxy_verified = proxy_result["verified"]
+            step.proxy_response = proxy_result.get("body", {})
+        finally:
+            await self._deployer.close()
 
         return step
 

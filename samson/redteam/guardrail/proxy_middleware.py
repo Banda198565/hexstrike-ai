@@ -78,27 +78,52 @@ class AsyncFinancialGuardrailProxy:
 
         self._runner = web.AppRunner(self._app)
         await self._runner.setup()
-        self._site = web.TCPSite(self._runner, config.listen_host, config.listen_port)
+        # reuse_address=True: surrender :8787 immediately across rapid audit rounds (TIME_WAIT-safe)
+        self._site = web.TCPSite(
+            self._runner,
+            config.listen_host,
+            config.listen_port,
+            shutdown_timeout=5.0,
+            reuse_address=True,
+            reuse_port=False,
+        )
         await self._site.start()
         logger.info(
-            "Financial guardrail proxy listening on %s:%s -> %s",
+            "Financial guardrail proxy listening on %s:%s -> %s (reuse_address=True)",
             config.listen_host,
             config.listen_port,
             config.upstream_base_url,
         )
 
     async def stop(self) -> None:
-        if self._site:
-            await self._site.stop()
-            self._site = None
-        if self._runner:
-            await self._runner.cleanup()
-            self._runner = None
-        if self._client:
-            await self._client.aclose()
-            self._client = None
+        """Tear down TCP site, runner, and upstream client; always clears runtime state."""
+        site = self._site
+        runner = self._runner
+        client = self._client
+        self._site = None
+        self._runner = None
+        self._client = None
         self._state = None
         self._app = None
+
+        if site is not None:
+            try:
+                await site.stop()
+            except Exception as exc:  # noqa: BLE001 — cleanup must not raise into audit loops
+                logger.warning("Guardrail proxy site stop failed: %s", exc)
+        if runner is not None:
+            try:
+                await runner.cleanup()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Guardrail proxy runner cleanup failed: %s", exc)
+        if client is not None:
+            try:
+                await client.aclose()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Guardrail proxy HTTP client close failed: %s", exc)
+
+        # Yield to the event loop so the OS can reclaim the bound port before the next start().
+        await asyncio.sleep(0)
 
     async def inspect_text(self, text: str, *, request_path: str) -> GuardrailInterceptionDecision:
         if not self._state:

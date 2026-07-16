@@ -693,47 +693,68 @@ async def _execute_continuous_audit_loop(
                     emulation.intercepted_financial_entities,
                 )
 
-                deploy = await deployer.deploy_from_execution(
-                    FinancialGuardrailDeployRequest(
-                        request_id=uuid4(),
-                        execution_id=emulation.execution_id,
-                        operator_id=req.operator_id,
-                        run_id=run_id,
-                        policy_profile=req.policy_profile,
-                        upstream_base_url=_resolve_upstream(
-                            str(req.target_endpoint),
-                            arena_base_url=settings.arena_base_url_str,
-                        ),
+                # Round 2: deploy proxy → replay attack → tear down before next payload index
+                try:
+                    deploy = await deployer.deploy_from_execution(
+                        FinancialGuardrailDeployRequest(
+                            request_id=uuid4(),
+                            execution_id=emulation.execution_id,
+                            operator_id=req.operator_id,
+                            run_id=run_id,
+                            policy_profile=req.policy_profile,
+                            upstream_base_url=_resolve_upstream(
+                                str(req.target_endpoint),
+                                arena_base_url=settings.arena_base_url_str,
+                            ),
+                        )
                     )
-                )
-                step.guardrail_deployed = True
-                step.deployment_id = deploy.deployment_id
-                step.proxy_listen_url = deploy.listen_url
-                guardrails_deployed += 1
+                    step.guardrail_deployed = True
+                    step.deployment_id = deploy.deployment_id
+                    step.proxy_listen_url = deploy.listen_url
+                    guardrails_deployed += 1
 
-                proxy_result = await _rerun_through_proxy(
-                    settings=settings,
-                    target_endpoint=str(req.target_endpoint),
-                    payload=payload,
-                    target=target,
-                )
-                step.after_http_status = proxy_result["status_code"]
-                step.after_action = proxy_result["action"]
-                step.proxy_verified = proxy_result["verified"]
-                step.proxy_response = proxy_result.get("body", {})
+                    proxy_result = await _rerun_through_proxy(
+                        settings=settings,
+                        target_endpoint=str(req.target_endpoint),
+                        payload=payload,
+                        target=target,
+                    )
+                    step.after_http_status = proxy_result["status_code"]
+                    step.after_action = proxy_result["action"]
+                    step.proxy_verified = proxy_result["verified"]
+                    step.proxy_response = proxy_result.get("body", {})
 
-                if step.proxy_verified:
-                    proxy_verifications += 1
-                if step.after_action in {"drop", "hitl"}:
-                    proxy_blocks += 1
+                    if step.proxy_verified:
+                        proxy_verifications += 1
+                    if step.after_action in {"drop", "hitl"}:
+                        proxy_blocks += 1
 
-                logger.info(
-                    "Proxy verification execution=%s action=%s verified=%s url=%s",
-                    emulation.execution_id,
-                    step.after_action,
-                    step.proxy_verified,
-                    proxy_result.get("proxy_url"),
-                )
+                    logger.info(
+                        "Proxy verification execution=%s action=%s verified=%s url=%s",
+                        emulation.execution_id,
+                        step.after_action,
+                        step.proxy_verified,
+                        proxy_result.get("proxy_url"),
+                    )
+                except Exception as exc:
+                    logger.error(
+                        "Round-2 proxy verification failed execution=%s: %s",
+                        emulation.execution_id,
+                        exc,
+                    )
+                    step.proxy_response = {
+                        **step.proxy_response,
+                        "round2_error": str(exc),
+                        "round2_error_type": type(exc).__name__,
+                    }
+                finally:
+                    # Absolute port cleanup before the next continuous-audit loop index
+                    await deployer.close()
+                    logger.info(
+                        "Guardrail proxy torn down after execution=%s (port %s released)",
+                        emulation.execution_id,
+                        settings.guardrail_proxy_port,
+                    )
 
             steps.append(step)
 
