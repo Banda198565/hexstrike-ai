@@ -31,7 +31,9 @@ class FinancialGuardrailDeployer:
     configuration, and starts async outbound inspection with IBAN whitelist enforcement.
     """
 
-    def __init__(self, settings: SamsonSettings | None = None) -> None:
+    def __init__(self, settings: SamsonSettings | None = None, *, database_url: str | None = None) -> None:
+        if database_url:
+            settings = SamsonSettings(database_url=database_url)
         self._settings = settings or get_settings()
         self._db = Database(self._settings)
         self._audit = AuditRepository(self._db)

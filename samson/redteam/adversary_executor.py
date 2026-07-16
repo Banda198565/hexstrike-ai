@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -35,7 +36,9 @@ _VECTOR_VERIFICATION_HINTS = {
 class AdversaryEmulationExecutor:
     """Runs ExecutionPayload against AdversaryTargetContext via real HTTP; persists and indexes results."""
 
-    def __init__(self, settings: SamsonSettings | None = None) -> None:
+    def __init__(self, settings: SamsonSettings | None = None, *, database_url: str | None = None) -> None:
+        if database_url:
+            settings = SamsonSettings(database_url=database_url)
         self._settings = settings or get_settings()
         self._scope = ScopeEnforcer(self._settings)
         self._http = SamsonHttpClient(self._settings)
@@ -147,6 +150,27 @@ class AdversaryEmulationExecutor:
             len(entities),
         )
         return result
+
+    async def execute_async(
+        self,
+        *,
+        target: AdversaryTargetContext,
+        payload: ExecutionPayload,
+        operator_id: str,
+        run_id: UUID | None = None,
+        request_id: UUID | None = None,
+        http_method: str = "POST",
+    ) -> AdversaryEmulationResult:
+        """Async wrapper around synchronous HTTP execution (runs in thread pool)."""
+        return await asyncio.to_thread(
+            self.execute,
+            target=target,
+            payload=payload,
+            operator_id=operator_id,
+            run_id=run_id,
+            request_id=request_id,
+            http_method=http_method,
+        )
 
     def _rag_analyze(
         self,
