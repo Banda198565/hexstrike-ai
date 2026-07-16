@@ -439,6 +439,40 @@ class SweeperPurpleTeamResult(BaseModel):
     completed_at: datetime = Field(default_factory=_utcnow)
 
 
+class DrainerFamilyResult(BaseModel):
+    """One family in the multi-drainer purple-team suite (evm / usdt / trx)."""
+
+    family: Literal["evm_erc20", "usdt_evm", "trx_trc20"]
+    source_repo: str
+    synthetic: bool = True
+    sandbox_only: bool = True
+    attack_executed: bool = False
+    attack_success: bool = False
+    defense_detected: bool = False
+    defense_blocked: bool = False
+    victim_wallet: str | None = None
+    destination_wallet: str | None = None
+    token_address: str | None = None
+    token_symbol: str | None = None
+    amount_raw: int = 0
+    approve_tx: str | None = None
+    drain_tx: str | None = None
+    indicators: list[str] = Field(default_factory=list)
+    remediation: list[str] = Field(default_factory=list)
+    error: str | None = None
+
+
+class DrainerPurpleTeamResult(BaseModel):
+    """Suite covering EVM/USDT/TRX drainer patterns — attack (sandbox) + defense."""
+
+    request_id: UUID
+    operator_id: str
+    families_run: list[str] = Field(default_factory=list)
+    results: list[DrainerFamilyResult] = Field(default_factory=list)
+    assertion_passed: bool = False
+    completed_at: datetime = Field(default_factory=_utcnow)
+
+
 class ArkhamEntityRef(BaseModel):
     """Normalized Arkham entity attribution for an address."""
 
@@ -815,6 +849,8 @@ __all__ = [
     "SweeperAttackResult",
     "SweeperDefenseResult",
     "SweeperPurpleTeamResult",
+    "DrainerFamilyResult",
+    "DrainerPurpleTeamResult",
     "ArkhamEntityRef",
     "ArkhamChainIntelligence",
     "ArkhamAddressArtifact",

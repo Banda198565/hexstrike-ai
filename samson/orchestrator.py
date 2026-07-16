@@ -109,6 +109,7 @@ def cmd_migrate(_: argparse.Namespace) -> int:
             str(migration_dir / "006_arkham_recon.sql"),
             str(migration_dir / "007_fofa_recon.sql"),
             str(migration_dir / "008_sweeper_purple_team.sql"),
+            str(migration_dir / "009_drainer_purple_team.sql"),
         ]
     )
     logger.info("Schema migration applied")
@@ -1742,6 +1743,75 @@ def cmd_fofa_hunt_redis(args: argparse.Namespace) -> int:
     return asyncio.run(_run())
 
 
+def cmd_drainer_purple_team(args: argparse.Namespace) -> int:
+    """Multi-family purple-team: EVM/USDT Anvil drain + TRX defense IOC."""
+    from samson.redteam.drainer_purple_team import MultiDrainerPurpleTeam
+
+    settings = get_settings()
+    if args.unattended:
+        settings = settings.model_copy(update={"require_human_approval": False})
+
+    family = (args.family or "all").strip().lower()
+    if family == "all":
+        families: list[str] = ["evm_erc20", "usdt_evm", "trx_trc20"]
+    else:
+        families = [family]
+
+    needs_key = any(f in ("evm_erc20", "usdt_evm") for f in families)
+    if needs_key and not (settings.web3_private_key or "").strip():
+        print(
+            "ERROR: SAMSON_WEB3_PRIVATE_KEY missing — required for Anvil EVM/USDT drain.",
+            file=sys.stderr,
+        )
+        return 2
+
+    async def _run() -> int:
+        team = MultiDrainerPurpleTeam(settings)
+        try:
+            result = await team.run(
+                operator_id=args.operator,
+                run_id=UUID(args.run_id) if args.run_id else None,
+                families=families,
+                token_amount=args.token_amount,
+            )
+            width = 78
+            print("=" * width)
+            print("SAMSON DRAINER PURPLE-TEAM — Attack + Defense (multi-family)")
+            print("=" * width)
+            print(f"Request ID:     {result.request_id}")
+            print(f"Operator:       {result.operator_id}")
+            print(f"Families:       {', '.join(result.families_run)}")
+            for item in result.results:
+                print("-" * width)
+                print(f"FAMILY:         {item.family} ({item.source_repo})")
+                print(f"  attack_exec:  {item.attack_executed}")
+                print(f"  attack_ok:    {item.attack_success}")
+                print(f"  defense_det:  {item.defense_detected}")
+                print(f"  defense_blk:  {item.defense_blocked}")
+                print(f"  victim:       {item.victim_wallet or '-'}")
+                print(f"  destination:  {item.destination_wallet or '-'}")
+                print(f"  token:        {item.token_symbol or '-'} {item.token_address or ''}".rstrip())
+                print(f"  amount_raw:   {item.amount_raw}")
+                print(f"  approve_tx:   {item.approve_tx or '-'}")
+                print(f"  drain_tx:     {item.drain_tx or '-'}")
+                print(f"  indicators:   {', '.join(item.indicators) or '-'}")
+                if item.error:
+                    print(f"  error:        {item.error}")
+            print("-" * width)
+            print(f"ASSERTION:      {'PASS' if result.assertion_passed else 'FAIL'}")
+            print("=" * width)
+            if args.json:
+                print(result.model_dump_json(indent=2))
+            return 0 if result.assertion_passed else 2
+        except Exception as exc:  # noqa: BLE001
+            print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
+            return 1
+        finally:
+            await team.close()
+
+    return asyncio.run(_run())
+
+
 def cmd_sweeper_purple_team(args: argparse.Namespace) -> int:
     """Two-sided purple-team: synthetic Anvil sweeper attack → defense detect/block."""
     from samson.redteam.sweeper_purple_team import SweeperPurpleTeam
@@ -1970,6 +2040,31 @@ def build_parser() -> argparse.ArgumentParser:
     )
     fofa_hunt.add_argument("--force-refresh", action="store_true")
     fofa_hunt.set_defaults(func=cmd_fofa_hunt_redis)
+
+    drainer = sub.add_parser(
+        "drainer-purple-team",
+        help=(
+            "Multi-family purple-team: EVM/USDT Anvil approve+transferFrom drain "
+            "+ TRX defense IOC (no mainnet/TRON drain)"
+        ),
+    )
+    drainer.add_argument("--operator", default="operator-alpha")
+    drainer.add_argument("--run-id", default=None)
+    drainer.add_argument(
+        "--family",
+        default="all",
+        choices=["all", "evm_erc20", "usdt_evm", "trx_trc20"],
+        help="Drainer family to exercise (default: all)",
+    )
+    drainer.add_argument(
+        "--token-amount",
+        type=int,
+        default=1_000_000_000,
+        help="Synthetic ERC-20 amount minted to victim (EVM families)",
+    )
+    drainer.add_argument("--unattended", action="store_true", default=True)
+    drainer.add_argument("--json", action="store_true")
+    drainer.set_defaults(func=cmd_drainer_purple_team)
 
     sweeper = sub.add_parser(
         "sweeper-purple-team",
