@@ -87,6 +87,7 @@
         "bind-mcp-tools": {
           "script": "scripts/mcp-smoke-test.sh",
           "config": "mcp/agent-bindings.json",
+          "output": "artifacts/mcp-smoke-report.json",
           "target": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA"
         },
         "onchain-graph": {
