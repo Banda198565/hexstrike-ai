@@ -149,6 +149,56 @@ class FinancialGuardrailDeployResult(BaseModel):
     completed_at: datetime
 
 
+class ContinuousAuditRequest(BaseModel):
+    request_id: UUID
+    target_endpoint: HttpUrl
+    interface_type: str = Field(
+        default="IBAN-Parser",
+        description="Stripe-Gateway, Plaid-Integration, REST-LLM-API, IBAN-Parser",
+    )
+    operator_id: str
+    scenario_id: str = "continuous-audit"
+    run_id: UUID | None = None
+    auth_headers: dict[str, str] = Field(default_factory=dict)
+    rag_query: str | None = None
+    rag_top_k: int = Field(default=12, ge=1, le=32)
+    policy_profile: Literal["strict", "balanced", "permissive"] = "strict"
+
+
+class ContinuousAuditStepResult(BaseModel):
+    payload_id: UUID
+    attack_vector: str
+    execution_id: UUID
+    breach_verified: bool
+    before_http_status: int
+    before_allowed: bool = True
+    intercepted_financial_entities: list[str] = Field(default_factory=list)
+    guardrail_deployed: bool = False
+    deployment_id: UUID | None = None
+    proxy_listen_url: str | None = None
+    after_http_status: int | None = None
+    after_action: Literal["allow", "drop", "hitl", "not_run"] = "not_run"
+    proxy_verified: bool = False
+    proxy_response: dict = Field(default_factory=dict)
+
+
+class ContinuousAuditResult(BaseModel):
+    request_id: UUID
+    run_id: UUID
+    target_endpoint: str
+    interface_type: str
+    operator_id: str
+    payloads_executed: int
+    breaches_logged: int
+    guardrails_deployed: int
+    proxy_verifications: int
+    proxy_blocks: int
+    rag_metadata: dict
+    steps: list[ContinuousAuditStepResult]
+    assertion_passed: bool
+    completed_at: datetime
+
+
 # =============================================================================
 # ADR-003 PyRIT
 # =============================================================================
@@ -365,6 +415,9 @@ __all__ = [
     "GuardrailPendingAction",
     "FinancialGuardrailDeployRequest",
     "FinancialGuardrailDeployResult",
+    "ContinuousAuditRequest",
+    "ContinuousAuditStepResult",
+    "ContinuousAuditResult",
     "PyRITRiskRequest",
     "PyRITRiskResult",
     "GarakScanRequest",

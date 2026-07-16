@@ -17,10 +17,12 @@ from samson.rag.rag_oracle import RagOracle
 from samson.rag.schemas import RetrieveContextRequest
 from samson.redteam.orchestrator_hooks import SamsonRedTeamHooks
 from samson.redteam.schemas import (
+    ContinuousAuditRequest,
     FinancialGuardrailDeployRequest,
     GarakScanRequest,
     PyRITRiskRequest,
 )
+from samson.pipeline.continuous_audit import ContinuousAuditPipeline
 
 logging.basicConfig(
     level=logging.INFO,
@@ -146,6 +148,46 @@ def cmd_guardrail_deploy(args: argparse.Namespace) -> int:
     return asyncio.run(_run())
 
 
+def _parse_auth_headers(raw: str | None) -> dict[str, str]:
+    if not raw:
+        return {}
+    headers: dict[str, str] = {}
+    for part in raw.split(","):
+        if ":" not in part:
+            continue
+        key, value = part.split(":", 1)
+        headers[key.strip()] = value.strip()
+    return headers
+
+
+def cmd_run_continuous_audit(args: argparse.Namespace) -> int:
+    settings = get_settings()
+    pipeline = ContinuousAuditPipeline(settings)
+
+    async def _run() -> int:
+        try:
+            result = await pipeline.run(
+                ContinuousAuditRequest(
+                    request_id=uuid4(),
+                    target_endpoint=args.target_endpoint,
+                    interface_type=args.interface_type,
+                    operator_id=args.operator,
+                    scenario_id=args.scenario_id,
+                    run_id=UUID(args.run_id) if args.run_id else None,
+                    auth_headers=_parse_auth_headers(args.auth_header),
+                    rag_query=args.rag_query,
+                    rag_top_k=args.rag_top_k,
+                    policy_profile=args.profile,
+                )
+            )
+            print(result.model_dump_json(indent=2))
+            return 0 if result.assertion_passed else 2
+        finally:
+            await pipeline.close()
+
+    return asyncio.run(_run())
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Samson SBM orchestrator")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -180,6 +222,25 @@ def build_parser() -> argparse.ArgumentParser:
     guardrail.add_argument("--profile", choices=["strict", "balanced", "permissive"], default="strict")
     guardrail.add_argument("--upstream", default=None)
     guardrail.set_defaults(func=cmd_guardrail_deploy)
+
+    audit = sub.add_parser(
+        "run-continuous-audit",
+        help="RAG payloads → adversary execution → guardrail deploy → proxy verification",
+    )
+    audit.add_argument("--target-endpoint", required=True, help="Authorized target API URL")
+    audit.add_argument(
+        "--interface-type",
+        default="IBAN-Parser",
+        choices=["Stripe-Gateway", "Plaid-Integration", "REST-LLM-API", "IBAN-Parser"],
+    )
+    audit.add_argument("--operator", default="operator-alpha")
+    audit.add_argument("--scenario-id", default="continuous-audit")
+    audit.add_argument("--run-id", default=None)
+    audit.add_argument("--auth-header", default=None, help="Comma-separated Header:Value pairs")
+    audit.add_argument("--rag-query", default=None)
+    audit.add_argument("--rag-top-k", type=int, default=12)
+    audit.add_argument("--profile", choices=["strict", "balanced", "permissive"], default="strict")
+    audit.set_defaults(func=cmd_run_continuous_audit)
 
     return parser
 
