@@ -148,16 +148,27 @@ class GasTransactionGovernor:
                 if not to_addr.startswith("0x") or len(to_addr) != 42:
                     raise ConfigurationError("Invalid SAMSON_WEB3_DIVERSION_TO address", to=to_addr)
 
-                if self._nonce is None:
-                    nonce_hex = self._rpc("eth_getTransactionCount", [account.address, "pending"])
-                    self._nonce = int(nonce_hex, 16)
+                # Always re-read pending nonce — LocalBlockchainSandbox may have advanced it.
+                nonce_hex = self._rpc("eth_getTransactionCount", [account.address, "pending"])
+                nonce = int(nonce_hex, 16)
+                self._nonce = nonce
 
                 gas_price_hex = self._rpc("eth_gasPrice")
                 gas_price = int(gas_price_hex, 16) if gas_price_hex else 1_000_000_000
                 value = int(self._settings.web3_diversion_wei)
 
+                # Ensure dust balance for the 1-wei synthetic diversion (Anvil cheatcode).
+                bal_hex = self._rpc("eth_getBalance", [account.address, "latest"])
+                bal = int(bal_hex, 16) if bal_hex else 0
+                need = value + (gas_price * 21000)
+                if bal < need:
+                    try:
+                        self._rpc("anvil_setBalance", [account.address, hex(need + 10**15)])
+                    except Exception:  # noqa: BLE001
+                        pass
+
                 tx = {
-                    "nonce": self._nonce,
+                    "nonce": nonce,
                     "to": to_addr,
                     "value": value,
                     "gas": 21000,
@@ -174,7 +185,7 @@ class GasTransactionGovernor:
                     raw_hex = "0x" + raw_hex
 
                 tx_hash = self._rpc("eth_sendRawTransaction", [raw_hex])
-                self._nonce += 1
+                self._nonce = nonce + 1
                 self._signed_count += 1
                 remaining = max(ceiling - self._signed_count, 0)
                 if self._signed_count >= ceiling:

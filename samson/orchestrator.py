@@ -51,6 +51,7 @@ from samson.redteam.schemas import (
 )
 from samson.redteam.financial_sandbox import FinancialSandboxAgent
 from samson.redteam.shodan_collector import SamsonShodanClient
+from samson.redteam.validation_node import LocalBlockchainSandbox
 from samson.redteam.web3_gas_governor import get_gas_governor
 
 logging.basicConfig(
@@ -103,6 +104,7 @@ def cmd_migrate(_: argparse.Namespace) -> int:
             str(migration_dir / "002_adversary_emulation.sql"),
             str(migration_dir / "003_guardrail_proxy.sql"),
             str(migration_dir / "004_shodan_recon.sql"),
+            str(migration_dir / "005_synthetic_emulation.sql"),
         ]
     )
     logger.info("Schema migration applied")
@@ -748,8 +750,18 @@ async def _execute_continuous_audit_loop(
     deployer = FinancialGuardrailDeployer(settings)
     sandbox = FinancialSandboxAgent(settings)
     gas = get_gas_governor(settings)
+    chain_sandbox = LocalBlockchainSandbox(settings)
+    synthetic_loss_wei = 0
+    wallet_depletions = 0
+    validation_tx_hashes: list[str] = []
 
     try:
+        if (settings.web3_private_key or "").strip():
+            try:
+                await chain_sandbox.connect()
+            except Exception as exc:  # noqa: BLE001 — continue audit without chain if offline
+                logger.warning("LocalBlockchainSandbox unavailable: %s", exc)
+
         run_id = req.run_id or await asyncio.to_thread(
             _ensure_exercise_run,
             db,
@@ -786,6 +798,18 @@ async def _execute_continuous_audit_loop(
         proxy_verifications = 0
         proxy_blocks = 0
         web3_signed_total = 0
+
+        signer_address: str | None = None
+        if (settings.web3_private_key or "").strip():
+            try:
+                from eth_account import Account
+
+                key = settings.web3_private_key.strip()
+                if not key.startswith("0x"):
+                    key = "0x" + key
+                signer_address = Account.from_key(key).address
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Unable to derive sandbox signer address: %s", exc)
 
         for payload in payloads:
             request_id = uuid4()
@@ -852,6 +876,30 @@ async def _execute_continuous_audit_loop(
                         step.proxy_response = {
                             **step.proxy_response,
                             "web3_error": diversion.error,
+                        }
+
+                # Local Anvil/Hardhat financial validation — full synthetic depletion
+                if signer_address and chain_sandbox.connected:
+                    compromise = await chain_sandbox.validate_wallet_compromise(
+                        signer_address,
+                        settings.web3_private_key,
+                        operator_id=req.operator_id,
+                        run_id=run_id,
+                        request_id=request_id,
+                        execution_id=uuid4(),  # distinct from HTTP emulation row
+                    )
+                    step.synthetic_loss_wei = compromise.synthetic_loss_wei
+                    step.wallet_depleted = compromise.depleted
+                    step.validation_tx_hash = compromise.tx_hash
+                    if compromise.validated and compromise.depleted:
+                        synthetic_loss_wei += compromise.synthetic_loss_wei
+                        wallet_depletions += 1
+                        if compromise.tx_hash:
+                            validation_tx_hashes.append(compromise.tx_hash)
+                    elif compromise.error:
+                        step.proxy_response = {
+                            **step.proxy_response,
+                            "validation_node_error": compromise.error,
                         }
 
                 # Round 2: deploy proxy → replay attack → tear down before next payload index
@@ -938,6 +986,9 @@ async def _execute_continuous_audit_loop(
             web3_signed_total=web3_signed_total,
             gas_remaining=gas.gas_remaining,
             web3_frozen=gas.frozen,
+            synthetic_loss_wei=synthetic_loss_wei,
+            wallet_depletions=wallet_depletions,
+            validation_tx_hashes=validation_tx_hashes,
         )
 
         if settings.audit_enabled:
@@ -957,6 +1008,7 @@ async def _execute_continuous_audit_loop(
     finally:
         executor.close()
         sandbox.close()
+        await chain_sandbox.close()
         await deployer.close_proxy()
 
 
@@ -1032,13 +1084,19 @@ def _print_bulk_audit_matrix(matrix: BulkAuditMatrix) -> None:
         f"remaining={matrix.gas_remaining}  frozen={matrix.web3_frozen}"
     )
     print(
+        f"Synthetic losses:    wei={matrix.synthetic_loss_wei}  "
+        f"depletions={matrix.wallet_depletions}  "
+        f"guardrail_blocks={matrix.proxy_blocks}"
+    )
+    print(
         f"Assertions:          PASS={matrix.assertion_pass_count}  "
         f"FAIL={matrix.assertion_fail_count}  ERROR={matrix.error_count}"
     )
     print("-" * width)
     header = (
-        f"{'#':>3}  {'KIND':<6}  {'TARGET':<24}  "
-        f"{'BR':>3}  {'GR':>3}  {'BLK':>3}  {'W3':>3}  {'GAS_L':>5}  "
+        f"{'#':>3}  {'KIND':<6}  {'TARGET':<22}  "
+        f"{'BR':>3}  {'GR':>3}  {'BLK':>3}  {'W3':>3}  "
+        f"{'LOSS_WEI':>12}  {'DEP':>3}  "
         f"{'PROXY':<8}  {'ASSERT':<6}  {'ms':>7}"
     )
     print(header)
@@ -1054,15 +1112,18 @@ def _print_bulk_audit_matrix(matrix: BulkAuditMatrix) -> None:
             else "-"
         )
         target = row.normalized_value
-        if len(target) > 24:
-            target = target[:21] + "..."
-        gas_left = row.gas_remaining if row.gas_remaining is not None else "-"
+        if len(target) > 22:
+            target = target[:19] + "..."
+        dep = "Y" if row.wallet_depleted else "N"
         print(
-            f"{index:>3}  {row.kind:<6}  {target:<24}  "
+            f"{index:>3}  {row.kind:<6}  {target:<22}  "
             f"{row.breaches_logged:>3}  {row.guardrails_deployed:>3}  {row.proxy_blocks:>3}  "
-            f"{row.web3_signed:>3}  {gas_left!s:>5}  "
+            f"{row.web3_signed:>3}  "
+            f"{row.synthetic_loss_wei:>12}  {dep:>3}  "
             f"{row.proxy_status:<8}  {assert_label:<6}  {row.duration_ms:>7}"
         )
+        if row.validation_tx_hash:
+            print(f"     validation_tx={row.validation_tx_hash}")
         if row.error:
             print(f"     ERROR: {row.error}")
     print("=" * width)
@@ -1242,6 +1303,8 @@ async def _execute_bulk_audit(
                 matrix.web3_signed_total += audit_result.web3_signed_total
                 matrix.gas_remaining = audit_result.gas_remaining
                 matrix.web3_frozen = matrix.web3_frozen or audit_result.web3_frozen
+                matrix.synthetic_loss_wei += audit_result.synthetic_loss_wei
+                matrix.wallet_depletions += audit_result.wallet_depletions
                 if audit_result.assertion_passed:
                     matrix.assertion_pass_count += 1
                 else:
@@ -1253,6 +1316,13 @@ async def _execute_bulk_audit(
                 row.assertion_passed = audit_result.assertion_passed
                 row.web3_signed = audit_result.web3_signed_total
                 row.gas_remaining = audit_result.gas_remaining
+                row.synthetic_loss_wei = audit_result.synthetic_loss_wei
+                row.wallet_depleted = audit_result.wallet_depletions > 0
+                row.validation_tx_hash = (
+                    audit_result.validation_tx_hashes[-1]
+                    if audit_result.validation_tx_hashes
+                    else None
+                )
                 row.proxy_status = "closed"
                 if audit_result.guardrails_deployed > 0:
                     row.proxy_status = "closed"  # deployer.close_proxy() always runs in Round-2 finally

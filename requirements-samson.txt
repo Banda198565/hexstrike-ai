@@ -10,6 +10,7 @@ pgvector>=0.3.0,<1.0.0
 
 # Web3 / EVM synthetic diversion signing (fork/arena only; key via env)
 eth-account>=0.13.0,<0.14.0
+web3>=6.15.0,<8.0.0
 
 # Optional red-team tool integrations (install in execution environment)
 # pyrit

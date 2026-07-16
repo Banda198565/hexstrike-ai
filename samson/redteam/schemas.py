@@ -184,6 +184,9 @@ class ContinuousAuditStepResult(BaseModel):
     web3_signed: bool = False
     web3_frozen: bool = False
     gas_remaining: int | None = None
+    synthetic_loss_wei: int = 0
+    wallet_depleted: bool = False
+    validation_tx_hash: str | None = None
 
 
 class ContinuousAuditResult(BaseModel):
@@ -204,6 +207,9 @@ class ContinuousAuditResult(BaseModel):
     web3_signed_total: int = 0
     gas_remaining: int | None = None
     web3_frozen: bool = False
+    synthetic_loss_wei: int = 0
+    wallet_depletions: int = 0
+    validation_tx_hashes: list[str] = Field(default_factory=list)
 
 
 class BulkAuditTargetRow(BaseModel):
@@ -225,6 +231,9 @@ class BulkAuditTargetRow(BaseModel):
     proxy_blocks: int = 0
     web3_signed: int = 0
     gas_remaining: int | None = None
+    synthetic_loss_wei: int = 0
+    wallet_depleted: bool = False
+    validation_tx_hash: str | None = None
     proxy_status: str = "idle"
     assertion_passed: bool | None = None
     duration_ms: int = 0
@@ -252,6 +261,8 @@ class BulkAuditMatrix(BaseModel):
     max_gas_transactions: int = 100
     gas_remaining: int | None = None
     web3_frozen: bool = False
+    synthetic_loss_wei: int = 0
+    wallet_depletions: int = 0
     assertion_pass_count: int = 0
     assertion_fail_count: int = 0
     error_count: int = 0
