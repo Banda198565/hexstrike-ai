@@ -214,6 +214,16 @@
         {"agent": "Agent-Battle-07", "task": "generate-target-conclusion", "depends_on": "multi-wallet-recon"}
       ],
       "note": "Run: bash scripts/run-hot-wallet-ops.sh — includes dossier + mempool sample"
+    },
+    "kz-shodan-recon": {
+      "description": "Kazakhstan Shodan/OSINT: exposed Geth :8545, Jenkins, crypto infra (read-only)",
+      "mode": "forensics",
+      "steps": [
+        {"agent": "Agent-OSINT-03", "task": "shodan-kz-scan"},
+        {"agent": "Agent-Vuln-05", "task": "passive-cve-check", "optional": true},
+        {"agent": "Agent-Report-06", "task": "generate-defensive-checklist", "optional": true}
+      ],
+      "note": "Requires SHODAN_API_KEY for full search; fallback uses RIPEstat + crt.sh + InternetDB"
     }
   }
 }

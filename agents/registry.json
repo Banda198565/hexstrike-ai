@@ -60,6 +60,12 @@
           "output": "artifacts/multichain-cluster.json",
           "methods": ["blockscan_multichain", "basescan_portfolio", "bsc_outflow_sample"],
           "constraints": ["read-only", "passive"]
+        },
+        "shodan-kz-scan": {
+          "script": "scripts/agents/agent_osint_03_shodan_kz.py",
+          "output": "artifacts/shodan-kz-report.json",
+          "methods": ["shodan_search", "ripestat_kz", "crtsh_kz", "internetdb", "geth_rpc_probe"],
+          "constraints": ["read-only", "passive", "defensive-ir", "no-nmap"]
         }
       },
       "mcp_tools": [],
