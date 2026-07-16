@@ -113,6 +113,15 @@ class SamsonSettings(BaseSettings):
     shodan_initial_credits: int = 77
     shodan_reserve_credits: int = 5
 
+    # Web3 / EVM synthetic diversion (key via SAMSON_WEB3_PRIVATE_KEY — never hardcode)
+    web3_private_key: str = ""
+    web3_rpc_url: HttpUrl = Field(default="http://127.0.0.1:8545")
+    web3_chain_id: int = 31337
+    web3_diversion_to: str = "0x000000000000000000000000000000000000dEaD"
+    web3_diversion_wei: int = 1
+    max_gas_transactions: int = 100
+    web3_allow_mainnet: bool = False
+
     @field_validator("shodan_api_key", mode="before")
     @classmethod
     def _coerce_shodan_api_key(cls, value: object) -> str:
@@ -122,6 +131,16 @@ class SamsonSettings(BaseSettings):
         if text:
             return text
         return (os.environ.get("SHODAN_API_KEY") or "").strip()
+
+    @field_validator("web3_private_key", mode="before")
+    @classmethod
+    def _coerce_web3_private_key(cls, value: object) -> str:
+        import os
+
+        text = str(value or "").strip()
+        if text:
+            return text
+        return (os.environ.get("SAMSON_WEB3_PRIVATE_KEY") or os.environ.get("WEB3_PRIVATE_KEY") or "").strip()
 
     @field_validator(
         "scope_config_path",

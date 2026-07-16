@@ -180,6 +180,10 @@ class ContinuousAuditStepResult(BaseModel):
     after_action: Literal["allow", "drop", "hitl", "not_run"] = "not_run"
     proxy_verified: bool = False
     proxy_response: dict = Field(default_factory=dict)
+    web3_tx_hash: str | None = None
+    web3_signed: bool = False
+    web3_frozen: bool = False
+    gas_remaining: int | None = None
 
 
 class ContinuousAuditResult(BaseModel):
@@ -197,6 +201,9 @@ class ContinuousAuditResult(BaseModel):
     steps: list[ContinuousAuditStepResult]
     assertion_passed: bool
     completed_at: datetime
+    web3_signed_total: int = 0
+    gas_remaining: int | None = None
+    web3_frozen: bool = False
 
 
 class BulkAuditTargetRow(BaseModel):
@@ -216,6 +223,9 @@ class BulkAuditTargetRow(BaseModel):
     breaches_logged: int = 0
     guardrails_deployed: int = 0
     proxy_blocks: int = 0
+    web3_signed: int = 0
+    gas_remaining: int | None = None
+    proxy_status: str = "idle"
     assertion_passed: bool | None = None
     duration_ms: int = 0
     error: str | None = None
@@ -238,6 +248,10 @@ class BulkAuditMatrix(BaseModel):
     guardrails_deployed: int = 0
     proxy_verifications: int = 0
     proxy_blocks: int = 0
+    web3_signed_total: int = 0
+    max_gas_transactions: int = 100
+    gas_remaining: int | None = None
+    web3_frozen: bool = False
     assertion_pass_count: int = 0
     assertion_fail_count: int = 0
     error_count: int = 0

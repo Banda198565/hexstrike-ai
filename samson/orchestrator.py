@@ -49,7 +49,9 @@ from samson.redteam.schemas import (
     PyRITRiskRequest,
     ShodanCollectResult,
 )
+from samson.redteam.financial_sandbox import FinancialSandboxAgent
 from samson.redteam.shodan_collector import SamsonShodanClient
+from samson.redteam.web3_gas_governor import get_gas_governor
 
 logging.basicConfig(
     level=logging.INFO,
@@ -744,6 +746,8 @@ async def _execute_continuous_audit_loop(
     audit = AuditRepository(db)
     executor = AdversaryEmulationExecutor(settings)
     deployer = FinancialGuardrailDeployer(settings)
+    sandbox = FinancialSandboxAgent(settings)
+    gas = get_gas_governor(settings)
 
     try:
         run_id = req.run_id or await asyncio.to_thread(
@@ -781,6 +785,7 @@ async def _execute_continuous_audit_loop(
         guardrails_deployed = 0
         proxy_verifications = 0
         proxy_blocks = 0
+        web3_signed_total = 0
 
         for payload in payloads:
             request_id = uuid4()
@@ -825,6 +830,29 @@ async def _execute_continuous_audit_loop(
                     emulation.execution_id,
                     emulation.intercepted_financial_entities,
                 )
+
+                # Web3 / Stripe / IBAN interception — synthetic diversion under gas ceiling
+                diversion = await asyncio.to_thread(
+                    sandbox.sign_breach_diversion,
+                    operator_id=req.operator_id,
+                    run_id=run_id,
+                    request_id=request_id,
+                    execution_id=emulation.execution_id,
+                    target_endpoint=str(req.target_endpoint),
+                    vulnerability_verified=True,
+                )
+                if diversion is not None:
+                    step.web3_signed = diversion.signed
+                    step.web3_tx_hash = diversion.tx_hash
+                    step.web3_frozen = diversion.frozen
+                    step.gas_remaining = diversion.gas_remaining
+                    if diversion.signed:
+                        web3_signed_total += 1
+                    if diversion.error:
+                        step.proxy_response = {
+                            **step.proxy_response,
+                            "web3_error": diversion.error,
+                        }
 
                 # Round 2: deploy proxy → replay attack → tear down before next payload index
                 try:
@@ -907,6 +935,9 @@ async def _execute_continuous_audit_loop(
             steps=steps,
             assertion_passed=_assert_continuous_audit(steps),
             completed_at=datetime.now(timezone.utc),
+            web3_signed_total=web3_signed_total,
+            gas_remaining=gas.gas_remaining,
+            web3_frozen=gas.frozen,
         )
 
         if settings.audit_enabled:
@@ -925,6 +956,7 @@ async def _execute_continuous_audit_loop(
         return result
     finally:
         executor.close()
+        sandbox.close()
         await deployer.close_proxy()
 
 
@@ -974,7 +1006,7 @@ def cmd_run_continuous_audit(args: argparse.Namespace) -> int:
 
 
 def _print_bulk_audit_matrix(matrix: BulkAuditMatrix) -> None:
-    width = 96
+    width = 110
     print("=" * width)
     print("SAMSON BULK AUDIT — Consolidated Performance Matrix")
     print("=" * width)
@@ -996,29 +1028,22 @@ def _print_bulk_audit_matrix(matrix: BulkAuditMatrix) -> None:
         f"(proxy_verifications={matrix.proxy_verifications})"
     )
     print(
+        f"Web3 gas:            signed={matrix.web3_signed_total}  "
+        f"remaining={matrix.gas_remaining}  frozen={matrix.web3_frozen}"
+    )
+    print(
         f"Assertions:          PASS={matrix.assertion_pass_count}  "
         f"FAIL={matrix.assertion_fail_count}  ERROR={matrix.error_count}"
     )
     print("-" * width)
     header = (
-        f"{'#':>3}  {'KIND':<6}  {'TARGET':<28}  {'PORTS':<12}  {'CVEs':>4}  "
-        f"{'SHODAN':<8}  {'PAY':>3}  {'BR':>3}  {'GR':>3}  {'BLK':>3}  {'ASSERT':<6}  {'ms':>7}"
+        f"{'#':>3}  {'KIND':<6}  {'TARGET':<24}  "
+        f"{'BR':>3}  {'GR':>3}  {'BLK':>3}  {'W3':>3}  {'GAS_L':>5}  "
+        f"{'PROXY':<8}  {'ASSERT':<6}  {'ms':>7}"
     )
     print(header)
     print("-" * width)
     for index, row in enumerate(matrix.rows, start=1):
-        ports = ",".join(str(p) for p in row.open_ports[:5]) or "-"
-        if len(row.open_ports) > 5:
-            ports += "+"
-        cves = len(row.detected_vulnerabilities)
-        if row.shodan_blocked:
-            shodan = "BLOCK"
-        elif row.shodan_from_cache is True:
-            shodan = "CACHE"
-        elif row.shodan_from_cache is False:
-            shodan = "LIVE"
-        else:
-            shodan = "-"
         assert_label = (
             "PASS"
             if row.assertion_passed is True
@@ -1029,12 +1054,14 @@ def _print_bulk_audit_matrix(matrix: BulkAuditMatrix) -> None:
             else "-"
         )
         target = row.normalized_value
-        if len(target) > 28:
-            target = target[:25] + "..."
+        if len(target) > 24:
+            target = target[:21] + "..."
+        gas_left = row.gas_remaining if row.gas_remaining is not None else "-"
         print(
-            f"{index:>3}  {row.kind:<6}  {target:<28}  {ports:<12}  {cves:>4}  "
-            f"{shodan:<8}  {row.payloads_executed:>3}  {row.breaches_logged:>3}  "
-            f"{row.guardrails_deployed:>3}  {row.proxy_blocks:>3}  {assert_label:<6}  {row.duration_ms:>7}"
+            f"{index:>3}  {row.kind:<6}  {target:<24}  "
+            f"{row.breaches_logged:>3}  {row.guardrails_deployed:>3}  {row.proxy_blocks:>3}  "
+            f"{row.web3_signed:>3}  {gas_left!s:>5}  "
+            f"{row.proxy_status:<8}  {assert_label:<6}  {row.duration_ms:>7}"
         )
         if row.error:
             print(f"     ERROR: {row.error}")
@@ -1095,7 +1122,15 @@ async def _execute_bulk_audit(
     skip_shodan: bool,
     force_shodan_refresh: bool,
     run_id: UUID | None,
+    max_gas_transactions: int | None = None,
 ) -> BulkAuditMatrix:
+    """Desktop pool → Shodan → Round1 → Web3/Stripe/IBAN → :8787 → Round2 → close_proxy."""
+    from samson.redteam.web3_gas_governor import get_gas_governor, reset_gas_governor
+
+    reset_gas_governor()
+    if max_gas_transactions is not None:
+        settings = settings.model_copy(update={"max_gas_transactions": int(max_gas_transactions)})
+
     loader = TargetLoader(explicit_root=source_root) if source_root else TargetLoader()
     pool = loader.load()
     for target in pool.targets:
@@ -1120,6 +1155,8 @@ async def _execute_bulk_audit(
         interface_type=interface_type,
         targets_total=len(targets),
         targets_audited=0,
+        max_gas_transactions=settings.max_gas_transactions,
+        gas_remaining=settings.max_gas_transactions,
     )
     shodan = SamsonShodanClient(settings)
     try:
@@ -1185,6 +1222,9 @@ async def _execute_bulk_audit(
                 matrix.guardrails_deployed += audit_result.guardrails_deployed
                 matrix.proxy_verifications += audit_result.proxy_verifications
                 matrix.proxy_blocks += audit_result.proxy_blocks
+                matrix.web3_signed_total += audit_result.web3_signed_total
+                matrix.gas_remaining = audit_result.gas_remaining
+                matrix.web3_frozen = matrix.web3_frozen or audit_result.web3_frozen
                 if audit_result.assertion_passed:
                     matrix.assertion_pass_count += 1
                 else:
@@ -1194,6 +1234,15 @@ async def _execute_bulk_audit(
                 row.guardrails_deployed = audit_result.guardrails_deployed
                 row.proxy_blocks = audit_result.proxy_blocks
                 row.assertion_passed = audit_result.assertion_passed
+                row.web3_signed = audit_result.web3_signed_total
+                row.gas_remaining = audit_result.gas_remaining
+                row.proxy_status = "closed"
+                if audit_result.guardrails_deployed > 0:
+                    row.proxy_status = "closed"  # deployer.close_proxy() always runs in Round-2 finally
+                if audit_result.web3_frozen or any(s.web3_frozen for s in audit_result.steps):
+                    row.proxy_status = "web3_frozen"
+                elif any(s.proxy_response.get("round2_error") for s in audit_result.steps):
+                    row.proxy_status = "error"
             except Exception as exc:
                 logger.error(
                     "Bulk audit failed for target %s (%s): %s",
@@ -1202,8 +1251,13 @@ async def _execute_bulk_audit(
                     exc,
                 )
                 row.error = f"{type(exc).__name__}: {exc}"
+                row.proxy_status = "error"
                 matrix.error_count += 1
             finally:
+                gov = get_gas_governor(settings)
+                row.gas_remaining = gov.gas_remaining
+                matrix.gas_remaining = gov.gas_remaining
+                matrix.web3_frozen = matrix.web3_frozen or gov.frozen
                 row.duration_ms = int((time.perf_counter() - started) * 1000)
                 matrix.rows.append(row)
     finally:
@@ -1216,8 +1270,13 @@ async def _execute_bulk_audit(
 def cmd_run_bulk_audit(args: argparse.Namespace) -> int:
     """Ingest desktop/container target pool → Shodan recon → continuous-audit per target."""
     settings = get_settings()
+    updates: dict[str, object] = {}
     if args.unattended:
-        settings = settings.model_copy(update={"require_human_approval": False})
+        updates["require_human_approval"] = False
+    if getattr(args, "max_gas_transactions", None) is not None:
+        updates["max_gas_transactions"] = int(args.max_gas_transactions)
+    if updates:
+        settings = settings.model_copy(update=updates)
 
     async def _run() -> int:
         matrix = await _execute_bulk_audit(
@@ -1232,6 +1291,7 @@ def cmd_run_bulk_audit(args: argparse.Namespace) -> int:
             skip_shodan=bool(args.skip_shodan),
             force_shodan_refresh=bool(args.force_shodan_refresh),
             run_id=UUID(args.run_id) if args.run_id else None,
+            max_gas_transactions=getattr(args, "max_gas_transactions", None),
         )
         _print_bulk_audit_matrix(matrix)
         if args.json:
@@ -1366,6 +1426,12 @@ def build_parser() -> argparse.ArgumentParser:
     bulk.add_argument("--limit", type=int, default=None, help="Audit at most N unique targets")
     bulk.add_argument("--skip-shodan", action="store_true", help="Skip Shodan recon enrichment")
     bulk.add_argument("--force-shodan-refresh", action="store_true", help="Bypass Shodan Postgres cache")
+    bulk.add_argument(
+        "--max-gas-transactions",
+        type=int,
+        default=None,
+        help="Hard ceiling on signed synthetic Web3 diversions (default: settings / 100)",
+    )
     bulk.add_argument(
         "--unattended",
         action="store_true",

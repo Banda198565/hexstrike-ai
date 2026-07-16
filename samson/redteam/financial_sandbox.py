@@ -1,4 +1,8 @@
-"""Financial impact simulation via arena mock payment services (ADR-005)."""
+"""Financial impact simulation via arena mock payment services (ADR-005).
+
+Also exposes Web3 synthetic diversion signing (env ``SAMSON_WEB3_PRIVATE_KEY``)
+through :mod:`samson.redteam.web3_gas_governor` when breaches are confirmed.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +11,7 @@ import logging
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from samson.core.config import SamsonSettings, get_settings
 from samson.core.database import AuditRepository, Database, sha256_payload
@@ -18,6 +22,7 @@ from samson.core.scope import ScopeEnforcer
 from samson.redteam.adversary_executor import AdversaryEmulationExecutor
 from samson.redteam.atlas.mapper import AtlasMapper
 from samson.redteam.schemas import ATLASMapRequest, FinancialSandboxRequest, FinancialSandboxResult
+from samson.redteam.web3_gas_governor import DiversionResult, GasTransactionGovernor, get_gas_governor
 
 logger = logging.getLogger(__name__)
 
@@ -39,13 +44,39 @@ class FinancialSandboxAgent:
         self._payloads = PayloadOrchestrator(self._settings, scope=self._scope, http=self._http)
         self._atlas = AtlasMapper(self._settings)
         self._adversary = AdversaryEmulationExecutor(self._settings)
+        self._gas = get_gas_governor(self._settings)
         self._ledger_dir = Path("samson/redteam/financial/ledger")
         self._ledger_dir.mkdir(parents=True, exist_ok=True)
+
+    @property
+    def gas_governor(self) -> GasTransactionGovernor:
+        return self._gas
 
     def close(self) -> None:
         self._payloads.close()
         self._adversary.close()
         self._http.close()
+
+    def sign_breach_diversion(
+        self,
+        *,
+        operator_id: str,
+        run_id: UUID | None,
+        request_id: UUID,
+        execution_id: UUID,
+        target_endpoint: str,
+        vulnerability_verified: bool,
+    ) -> DiversionResult | None:
+        """On confirmed breach, sign one synthetic diversion within the gas ceiling."""
+        if not vulnerability_verified:
+            return None
+        return self._gas.sign_synthetic_diversion_on_breach(
+            operator_id=operator_id,
+            run_id=run_id,
+            request_id=request_id,
+            execution_id=execution_id,
+            target_endpoint=target_endpoint,
+        )
 
     def run(self, req: FinancialSandboxRequest) -> FinancialSandboxResult:
         if self._settings.require_human_approval:
