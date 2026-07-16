@@ -194,9 +194,32 @@ class SamsonShodanClient:
                 credits_remaining=budget.credits_remaining,
             )
 
-        # STEP 3 — live targeted request
+        # STEP 3 — rate limit, then re-check budget (TOCTOU-safe vs concurrent agents)
         await self._enforce_rate_limit(budget.min_interval_sec)
+        budget = await asyncio.to_thread(self._load_or_init_budget)
+        if budget.credits_remaining <= self._reserve or budget.is_blocked:
+            await self._block_and_audit(
+                request_id=request_id,
+                operator_id=operator_id,
+                run_id=run_id,
+                ip_address=ip,
+                budget=budget,
+                reason=(
+                    f"CRITICAL BLOCK post-rate-limit: Shodan credit floor "
+                    f"(remaining={budget.credits_remaining} <= reserve={self._reserve})"
+                ),
+            )
+            return ShodanCollectResult(
+                request_id=request_id,
+                ip_address=ip,
+                is_blocked=True,
+                block_reason="credits_reserve_reached",
+                from_cache=False,
+                credits_spent=0,
+                credits_remaining=budget.credits_remaining,
+            )
 
+        # STEP 4 — live targeted request
         url = f"{self._base_url}/shodan/host/{ip}"
         params: dict[str, Any] = {"key": self._api_key}
         if history:
@@ -246,8 +269,10 @@ class SamsonShodanClient:
         artifact = artifact.model_copy(update={"rag_doc_path": str(rag_path)})
 
         await asyncio.to_thread(self._persist_artifact, artifact, run_id)
-        # Debit exactly one credit in local accounting table
+        # Debit exactly one credit in local accounting table (atomic WHERE floor)
+        prior_remaining = int(budget.credits_remaining)
         new_budget = await asyncio.to_thread(self._consume_credit, budget)
+        credits_spent = 1 if int(new_budget.credits_remaining) < prior_remaining else 0
 
         if self._settings.audit_enabled:
             await asyncio.to_thread(
@@ -262,7 +287,7 @@ class SamsonShodanClient:
                         "ip": ip,
                         "cves": artifact.detected_vulnerabilities,
                         "ports": artifact.open_ports,
-                        "credits_spent": 1,
+                        "credits_spent": credits_spent,
                     }
                 ),
                 duration_ms=duration_ms,
@@ -270,10 +295,11 @@ class SamsonShodanClient:
             )
 
         logger.info(
-            "Shodan recon ip=%s ports=%d cves=%d credits_spent=1 credits_remaining=%d",
+            "Shodan recon ip=%s ports=%d cves=%d credits_spent=%d credits_remaining=%d",
             ip,
             len(artifact.open_ports),
             len(artifact.detected_vulnerabilities),
+            credits_spent,
             new_budget.credits_remaining,
         )
         return ShodanCollectResult(
@@ -281,7 +307,7 @@ class SamsonShodanClient:
             ip_address=ip,
             is_blocked=False,
             from_cache=False,
-            credits_spent=1,
+            credits_spent=credits_spent,
             credits_remaining=new_budget.credits_remaining,
             artifact=artifact,
             http_status_code=response.status_code,
@@ -315,17 +341,48 @@ class SamsonShodanClient:
         return self._client
 
     async def _enforce_rate_limit(self, min_interval_sec: float) -> None:
-        """Hard limiter: max 1 Shodan query per min_interval_sec (default 5s)."""
+        """Hard limiter: max 1 Shodan query per min_interval_sec (default 5s).
+
+        Combines an in-process asyncio.Lock (same-client concurrency) with a
+        PostgreSQL ``last_query_at`` gate so multi-agent / multi-instance callers
+        cannot bypass the 5-second floor.
+        """
         interval = max(float(min_interval_sec), float(self._settings.shodan_min_interval_sec))
         async with self._rate_lock:
+            # Process-local monotonic clock
             now = time.monotonic()
             if self._last_query_monotonic is not None:
                 elapsed = now - self._last_query_monotonic
                 remaining = interval - elapsed
                 if remaining > 0:
-                    logger.info("Shodan rate-limit sleep %.2fs", remaining)
+                    logger.info("Shodan rate-limit sleep %.2fs (local)", remaining)
                     await asyncio.sleep(remaining)
+
+            # Cross-instance Postgres clock (shared budget row)
+            while True:
+                wait_sec = await asyncio.to_thread(self._db_rate_wait_seconds, interval)
+                if wait_sec <= 0:
+                    break
+                logger.info("Shodan rate-limit sleep %.2fs (postgres)", wait_sec)
+                await asyncio.sleep(wait_sec)
+
             self._last_query_monotonic = time.monotonic()
+
+    def _db_rate_wait_seconds(self, interval: float) -> float:
+        """Return seconds to wait based on shared ``last_query_at``; 0 if clear."""
+        row = self._db.fetchone(
+            """
+            SELECT EXTRACT(EPOCH FROM (NOW() - last_query_at)) AS elapsed
+            FROM api_credit_budgets
+            WHERE budget_id = :budget_id AND last_query_at IS NOT NULL
+            """,
+            {"budget_id": self._budget_id},
+        )
+        if not row or row.get("elapsed") is None:
+            return 0.0
+        elapsed = float(row["elapsed"])
+        remaining = float(interval) - elapsed
+        return remaining if remaining > 0 else 0.0
 
     def _load_or_init_budget(self) -> ApiCreditBudget:
         row = self._db.fetchone(SELECT_BUDGET_QUERY, {"budget_id": self._budget_id})
@@ -375,30 +432,55 @@ class SamsonShodanClient:
         )
 
     def _consume_credit(self, budget: ApiCreditBudget) -> ApiCreditBudget:
-        remaining = max(int(budget.credits_remaining) - 1, 0)
-        blocked = remaining <= self._reserve
-        self._db.execute(
+        """Atomically debit one credit only while remaining > reserve and not blocked.
+
+        The WHERE clause prevents concurrent multi-agent callers from racing past
+        ``MIN_CREDIT_THRESHOLD`` / ``shodan_reserve_credits`` (default 5).
+        """
+        row = self._db.fetchone(
             """
             UPDATE api_credit_budgets
-            SET credits_remaining = :credits_remaining,
+            SET credits_remaining = credits_remaining - 1,
                 last_query_at = NOW(),
-                is_blocked = :is_blocked,
+                is_blocked = CASE
+                    WHEN (credits_remaining - 1) <= :reserve THEN TRUE
+                    ELSE FALSE
+                END,
                 updated_at = NOW()
             WHERE budget_id = :budget_id
+              AND is_blocked = FALSE
+              AND credits_remaining > :reserve
+            RETURNING credits_remaining, is_blocked, last_query_at, updated_at,
+                      credits_total, min_interval_sec, provider
             """,
             {
                 "budget_id": budget.budget_id,
-                "credits_remaining": remaining,
-                "is_blocked": blocked,
+                "reserve": int(self._reserve),
             },
         )
-        return budget.model_copy(
-            update={
-                "credits_remaining": remaining,
-                "is_blocked": blocked,
-                "last_query_at": datetime.now(timezone.utc),
-                "updated_at": datetime.now(timezone.utc),
-            }
+        if not row:
+            # Concurrent consumer already hit the floor — reload authoritative state.
+            reloaded = self._load_or_init_budget()
+            return reloaded.model_copy(update={"is_blocked": True})
+
+        last_query = row.get("last_query_at")
+        if isinstance(last_query, str):
+            last_query = datetime.fromisoformat(last_query)
+        updated = row.get("updated_at")
+        if isinstance(updated, str):
+            updated = datetime.fromisoformat(updated)
+        if updated is None:
+            updated = datetime.now(timezone.utc)
+
+        return ApiCreditBudget(
+            budget_id=budget.budget_id,
+            provider=str(row.get("provider") or budget.provider),
+            credits_remaining=int(row["credits_remaining"]),
+            credits_total=int(row.get("credits_total") or budget.credits_total),
+            min_interval_sec=float(row.get("min_interval_sec") or budget.min_interval_sec),
+            last_query_at=last_query,
+            is_blocked=bool(row["is_blocked"]),
+            updated_at=updated,
         )
 
     async def _block_and_audit(

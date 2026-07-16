@@ -881,8 +881,9 @@ async def _execute_continuous_audit_loop(
                         "round2_error_type": type(exc).__name__,
                     }
                 finally:
-                    # Absolute port cleanup before the next continuous-audit loop index
-                    await deployer.close()
+                    # Absolute port cleanup before the next continuous-audit loop index.
+                    # Guaranteed even on Round-2 network timeout / connection failure.
+                    await deployer.close_proxy()
                     logger.info(
                         "Guardrail proxy torn down after execution=%s (port %s released)",
                         emulation.execution_id,
@@ -924,7 +925,7 @@ async def _execute_continuous_audit_loop(
         return result
     finally:
         executor.close()
-        await deployer.close()
+        await deployer.close_proxy()
 
 
 def cmd_run_continuous_audit(args: argparse.Namespace) -> int:

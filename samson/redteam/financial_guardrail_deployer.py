@@ -47,8 +47,14 @@ class FinancialGuardrailDeployer:
 
     async def close(self) -> None:
         """Release bound proxy sockets so the next audit round can rebind :8787."""
-        await self._proxy.stop()
-        self._active_deployment_id = None
+        try:
+            await self._proxy.stop()
+        finally:
+            self._active_deployment_id = None
+
+    async def close_proxy(self) -> None:
+        """Alias for :meth:`close` — guaranteed teardown entrypoint for Round-2 finally blocks."""
+        await self.close()
 
     async def deploy_from_execution(self, req: FinancialGuardrailDeployRequest) -> FinancialGuardrailDeployResult:
         start = datetime.now(timezone.utc)

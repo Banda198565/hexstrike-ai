@@ -45,7 +45,7 @@ class ContinuousAuditPipeline:
     async def close(self) -> None:
         self._loader.close()
         self._executor.close()
-        await self._deployer.close()
+        await self._deployer.close_proxy()
 
     async def run(self, req: ContinuousAuditRequest) -> ContinuousAuditResult:
         run_id = req.run_id or await asyncio.to_thread(self._ensure_exercise_run, req)
@@ -184,7 +184,7 @@ class ContinuousAuditPipeline:
             step.proxy_verified = proxy_result["verified"]
             step.proxy_response = proxy_result.get("body", {})
         finally:
-            await self._deployer.close()
+            await self._deployer.close_proxy()
 
         return step
 
