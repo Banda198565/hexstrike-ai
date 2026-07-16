@@ -144,6 +144,12 @@ class SamsonSettings(BaseSettings):
     fofa_reserve_credits: int = 0
     fofa_default_size: int = 100
 
+    # CoinStats public wallet OSINT (key via SAMSON_COINSTATS_API_KEY — never hardcode)
+    coinstats_api_key: str = ""
+    coinstats_api_base_url: HttpUrl = Field(default="https://api.coinstats.app/v1")
+    coinstats_min_interval_sec: float = 1.0
+    coinstats_cache_ttl_sec: int = 86_400
+
     @field_validator("shodan_api_key", mode="before")
     @classmethod
     def _coerce_shodan_api_key(cls, value: object) -> str:
@@ -203,6 +209,20 @@ class SamsonSettings(BaseSettings):
         return (
             os.environ.get("SAMSON_FOFA_API_EMAIL")
             or os.environ.get("FOFA_EMAIL")
+            or ""
+        ).strip()
+
+    @field_validator("coinstats_api_key", mode="before")
+    @classmethod
+    def _coerce_coinstats_api_key(cls, value: object) -> str:
+        import os
+
+        text = str(value or "").strip()
+        if text:
+            return text
+        return (
+            os.environ.get("SAMSON_COINSTATS_API_KEY")
+            or os.environ.get("COINSTATS_API_KEY")
             or ""
         ).strip()
 

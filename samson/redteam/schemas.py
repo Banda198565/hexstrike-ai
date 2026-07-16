@@ -473,6 +473,54 @@ class DrainerPurpleTeamResult(BaseModel):
     completed_at: datetime = Field(default_factory=_utcnow)
 
 
+class CoinStatsTokenBalance(BaseModel):
+    """Normalized token holding from CoinStats wallet balance API."""
+
+    coin_id: str | None = None
+    name: str | None = None
+    symbol: str | None = None
+    amount: float = 0.0
+    price_usd: float | None = None
+    value_usd: float | None = None
+    chain: str | None = None
+    raw: dict[str, Any] = Field(default_factory=dict)
+
+
+class CoinStatsWalletArtifact(BaseModel):
+    """Public wallet OSINT snapshot via CoinStats (read-only)."""
+
+    artifact_id: UUID
+    request_id: UUID
+    operator_id: str
+    address: str
+    connection_id: str
+    is_empty: bool = True
+    token_count: int = 0
+    total_value_usd: float = 0.0
+    balances: list[CoinStatsTokenBalance] = Field(default_factory=list)
+    transactions_synced: bool = False
+    transaction_count: int = 0
+    transactions: list[dict[str, Any]] = Field(default_factory=list)
+    defi_raw: dict[str, Any] | list[Any] | None = None
+    from_cache: bool = False
+    raw_payload: dict[str, Any] = Field(default_factory=dict)
+    collected_at: datetime = Field(default_factory=_utcnow)
+    error: str | None = None
+
+
+class CoinStatsCollectResult(BaseModel):
+    """Outcome of a CoinStats wallet lookup."""
+
+    request_id: UUID
+    address: str
+    connection_id: str
+    artifact: CoinStatsWalletArtifact | None = None
+    from_cache: bool = False
+    credits_hint: int | None = None
+    error: str | None = None
+    completed_at: datetime = Field(default_factory=_utcnow)
+
+
 class ArkhamEntityRef(BaseModel):
     """Normalized Arkham entity attribution for an address."""
 
@@ -851,6 +899,9 @@ __all__ = [
     "SweeperPurpleTeamResult",
     "DrainerFamilyResult",
     "DrainerPurpleTeamResult",
+    "CoinStatsTokenBalance",
+    "CoinStatsWalletArtifact",
+    "CoinStatsCollectResult",
     "ArkhamEntityRef",
     "ArkhamChainIntelligence",
     "ArkhamAddressArtifact",

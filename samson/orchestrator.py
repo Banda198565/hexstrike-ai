@@ -110,6 +110,7 @@ def cmd_migrate(_: argparse.Namespace) -> int:
             str(migration_dir / "007_fofa_recon.sql"),
             str(migration_dir / "008_sweeper_purple_team.sql"),
             str(migration_dir / "009_drainer_purple_team.sql"),
+            str(migration_dir / "010_coinstats_wallet.sql"),
         ]
     )
     logger.info("Schema migration applied")
@@ -1625,6 +1626,81 @@ def cmd_shodan_lookup(args: argparse.Namespace) -> int:
     return asyncio.run(_run())
 
 
+def cmd_coinstats_wallet(args: argparse.Namespace) -> int:
+    """Public wallet OSINT via CoinStats (balances / optional txs / DeFi)."""
+    from samson.redteam.coinstats_client import CoinStatsClient
+
+    settings = get_settings()
+    if not (settings.coinstats_api_key or "").strip():
+        print(
+            "ERROR: CoinStats API key missing. "
+            "Set SAMSON_COINSTATS_API_KEY or COINSTATS_API_KEY.",
+            file=sys.stderr,
+        )
+        return 2
+
+    async def _run() -> int:
+        client = CoinStatsClient(settings)
+        try:
+            if args.list_chains:
+                chains = await client.list_blockchains()
+                print(json.dumps(chains, indent=2, default=str))
+                return 0
+            if not args.address or not args.connection_id:
+                print(
+                    "ERROR: provide --address and --connection-id "
+                    "(or --list-chains)",
+                    file=sys.stderr,
+                )
+                return 2
+            result = await client.lookup_wallet(
+                args.address,
+                connection_id=args.connection_id,
+                operator_id=args.operator,
+                run_id=UUID(args.run_id) if args.run_id else None,
+                force_refresh=bool(args.force_refresh),
+                sync_transactions=bool(args.sync_tx),
+                include_transactions=bool(args.include_tx),
+                include_defi=bool(args.include_defi),
+                tx_limit=int(args.tx_limit),
+            )
+            artifact = result.artifact
+            if args.json:
+                print(result.model_dump_json(indent=2))
+            else:
+                width = 72
+                print("=" * width)
+                print("SAMSON COINSTATS WALLET OSINT")
+                print("=" * width)
+                print(f"Request ID:     {result.request_id}")
+                print(f"Address:        {result.address}")
+                print(f"Chain:          {result.connection_id}")
+                print(f"From cache:     {result.from_cache}")
+                print(f"Credits hint:   {result.credits_hint}")
+                if artifact:
+                    print(f"Empty:          {artifact.is_empty}")
+                    print(f"Token count:    {artifact.token_count}")
+                    print(f"Total USD:      {artifact.total_value_usd}")
+                    print(f"Tx synced:      {artifact.transactions_synced}")
+                    print(f"Tx count:       {artifact.transaction_count}")
+                    for bal in artifact.balances[:15]:
+                        print(
+                            f"  - {bal.symbol or '?'}: amount={bal.amount} "
+                            f"usd={bal.value_usd}"
+                        )
+                    if len(artifact.balances) > 15:
+                        print(f"  … +{len(artifact.balances) - 15} more")
+                print("=" * width)
+            return 0
+        except Exception as exc:  # noqa: BLE001
+            print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
+            return 1
+        finally:
+            await client.close()
+
+    return asyncio.run(_run())
+
+
 def cmd_arkham_lookup(args: argparse.Namespace) -> int:
     """Authorized Arkham address intel → web3_recon_artifacts + risk classification."""
     settings = get_settings()
@@ -1997,6 +2073,39 @@ def build_parser() -> argparse.ArgumentParser:
     shodan.add_argument("--minify", action="store_true")
     shodan.add_argument("--force-refresh", action="store_true", help="Bypass local Postgres cache")
     shodan.set_defaults(func=cmd_shodan_lookup)
+
+    coinstats = sub.add_parser(
+        "coinstats-wallet",
+        help="Public wallet OSINT via CoinStats (balances / txs / DeFi)",
+    )
+    coinstats.add_argument("--address", default=None, help="Wallet address")
+    coinstats.add_argument(
+        "--connection-id",
+        default=None,
+        help="CoinStats connectionId (ethereum, tron, solana, bitcoin, …)",
+    )
+    coinstats.add_argument(
+        "--list-chains",
+        action="store_true",
+        help="List supported blockchains (GET /wallet/blockchains)",
+    )
+    coinstats.add_argument("--operator", default="operator-alpha")
+    coinstats.add_argument("--run-id", default=None)
+    coinstats.add_argument("--force-refresh", action="store_true")
+    coinstats.add_argument(
+        "--sync-tx",
+        action="store_true",
+        help="PATCH /wallet/transactions before read",
+    )
+    coinstats.add_argument(
+        "--include-tx",
+        action="store_true",
+        help="Include transaction history (implies sync)",
+    )
+    coinstats.add_argument("--include-defi", action="store_true")
+    coinstats.add_argument("--tx-limit", type=int, default=20)
+    coinstats.add_argument("--json", action="store_true")
+    coinstats.set_defaults(func=cmd_coinstats_wallet)
 
     arkham = sub.add_parser(
         "arkham-lookup",
