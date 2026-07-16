@@ -105,6 +105,13 @@ class SamsonSettings(BaseSettings):
     guardrail_proxy_port: int = 8787
     guardrail_proxy_auto_start: bool = True
 
+    # Shodan OSINT recon (key via SAMSON_SHODAN_API_KEY — never hardcode)
+    shodan_api_key: str = ""
+    shodan_api_base_url: HttpUrl = Field(default="https://api.shodan.io")
+    shodan_budget_id: str = "shodan_default"
+    shodan_min_interval_sec: float = 5.0
+    shodan_initial_credits: int = 77
+
     @field_validator(
         "scope_config_path",
         "payload_registry_path",

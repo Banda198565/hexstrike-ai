@@ -200,6 +200,69 @@ class ContinuousAuditResult(BaseModel):
 
 
 # =============================================================================
+# Shodan recon (OSINT host intelligence)
+# =============================================================================
+
+
+class ApiCreditBudget(BaseModel):
+    """PostgreSQL-backed Shodan API credit budget and rate-limit state."""
+
+    budget_id: str = "shodan_default"
+    provider: str = "shodan"
+    credits_remaining: int = Field(..., ge=0)
+    credits_total: int = Field(default=77, ge=0)
+    min_interval_sec: float = Field(default=5.0, gt=0)
+    last_query_at: datetime | None = None
+    is_blocked: bool = False
+    updated_at: datetime = Field(default_factory=_utcnow)
+
+
+class ShodanServiceBanner(BaseModel):
+    port: int
+    transport: str = "tcp"
+    product: str | None = None
+    version: str | None = None
+    banner: str = ""
+    timestamp: str | None = None
+
+
+class ShodanReconArtifact(BaseModel):
+    """Normalized Shodan host intelligence for RAG + Postgres persistence."""
+
+    artifact_id: UUID
+    request_id: UUID
+    ip_address: str
+    operator_id: str
+    hostnames: list[str] = Field(default_factory=list)
+    org: str | None = None
+    isp: str | None = None
+    asn: str | None = None
+    os: str | None = None
+    country_code: str | None = None
+    city: str | None = None
+    open_ports: list[int] = Field(default_factory=list)
+    banners: list[ShodanServiceBanner] = Field(default_factory=list)
+    detected_vulnerabilities: list[str] = Field(
+        default_factory=list,
+        description="CVE identifiers extracted from Shodan vulns arrays",
+    )
+    raw_payload: dict[str, Any] = Field(default_factory=dict)
+    rag_doc_path: str | None = None
+    collected_at: datetime = Field(default_factory=_utcnow)
+
+
+class ShodanCollectResult(BaseModel):
+    request_id: UUID
+    ip_address: str
+    is_blocked: bool = False
+    block_reason: str | None = None
+    credits_remaining: int | None = None
+    artifact: ShodanReconArtifact | None = None
+    http_status_code: int | None = None
+    completed_at: datetime = Field(default_factory=_utcnow)
+
+
+# =============================================================================
 # ADR-003 PyRIT
 # =============================================================================
 
@@ -418,6 +481,10 @@ __all__ = [
     "ContinuousAuditRequest",
     "ContinuousAuditStepResult",
     "ContinuousAuditResult",
+    "ApiCreditBudget",
+    "ShodanServiceBanner",
+    "ShodanReconArtifact",
+    "ShodanCollectResult",
     "PyRITRiskRequest",
     "PyRITRiskResult",
     "GarakScanRequest",

@@ -44,6 +44,7 @@ from samson.redteam.schemas import (
     GarakScanRequest,
     PyRITRiskRequest,
 )
+from samson.redteam.shodan_collector import SamsonShodanClient
 
 logging.basicConfig(
     level=logging.INFO,
@@ -94,6 +95,7 @@ def cmd_migrate(_: argparse.Namespace) -> int:
             str(migration_dir / "001_schema.sql"),
             str(migration_dir / "002_adversary_emulation.sql"),
             str(migration_dir / "003_guardrail_proxy.sql"),
+            str(migration_dir / "004_shodan_recon.sql"),
         ]
     )
     logger.info("Schema migration applied")
@@ -839,6 +841,29 @@ def cmd_run_continuous_audit(args: argparse.Namespace) -> int:
     return asyncio.run(_run())
 
 
+def cmd_shodan_lookup(args: argparse.Namespace) -> int:
+    settings = get_settings()
+
+    async def _run() -> int:
+        client = SamsonShodanClient(settings)
+        try:
+            result = await client.collect_host(
+                args.ip,
+                operator_id=args.operator,
+                run_id=UUID(args.run_id) if args.run_id else None,
+                history=bool(args.history),
+                minify=bool(args.minify),
+            )
+            print(result.model_dump_json(indent=2))
+            if result.is_blocked:
+                return 3
+            return 0
+        finally:
+            await client.close()
+
+    return asyncio.run(_run())
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Samson SBM orchestrator")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -899,6 +924,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     audit.add_argument("--json", action="store_true", help="Also emit machine-readable JSON after metrics table")
     audit.set_defaults(func=cmd_run_continuous_audit)
+
+    shodan = sub.add_parser("shodan-lookup", help="Authorized Shodan host recon with credit budget enforcement")
+    shodan.add_argument("--ip", required=True, help="Target IPv4/IPv6 address")
+    shodan.add_argument("--operator", default="operator-alpha")
+    shodan.add_argument("--run-id", default=None)
+    shodan.add_argument("--history", action="store_true")
+    shodan.add_argument("--minify", action="store_true")
+    shodan.set_defaults(func=cmd_shodan_lookup)
 
     return parser
 
