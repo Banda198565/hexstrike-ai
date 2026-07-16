@@ -297,7 +297,7 @@ class TargetLoader:
                 reason = self._structural_reject_reason(kind, value)
                 if reason:
                     dropped_junk += 1
-                    print(f"[-] Dropped junk target: {value} ({reason})")
+                    print(f"[-] Dropped junk target: {value} ({reason})", flush=True)
                     logger.info("Dropped junk target %s (%s)", value, reason)
                     continue
                 key = f"{kind.value}:{value.lower()}"
@@ -346,7 +346,7 @@ class TargetLoader:
             ok, detail = self._probe_live(target)
             if not ok:
                 dropped_offline += 1
-                print(f"[-] Dropped offline target: {target.normalized_value} ({detail})")
+                print(f"[-] Dropped offline target: {target.normalized_value} ({detail})", flush=True)
                 logger.info(
                     "Dropped offline target %s (%s)",
                     target.normalized_value,
@@ -356,7 +356,7 @@ class TargetLoader:
             target.metadata["live_probe"] = detail
             live.append(target)
             endpoint = str(target.audit_endpoint) if target.audit_endpoint else target.normalized_value
-            print(f"[+] Active target validated: {endpoint}")
+            print(f"[+] Active target validated: {endpoint}", flush=True)
 
         pool = IngestedTargetPool(
             source_root=str(root),
