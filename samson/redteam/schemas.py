@@ -256,6 +256,8 @@ class ShodanCollectResult(BaseModel):
     ip_address: str
     is_blocked: bool = False
     block_reason: str | None = None
+    from_cache: bool = False
+    credits_spent: int = 0
     credits_remaining: int | None = None
     artifact: ShodanReconArtifact | None = None
     http_status_code: int | None = None

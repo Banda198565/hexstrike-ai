@@ -111,6 +111,7 @@ class SamsonSettings(BaseSettings):
     shodan_budget_id: str = "shodan_default"
     shodan_min_interval_sec: float = 5.0
     shodan_initial_credits: int = 77
+    shodan_reserve_credits: int = 5
 
     @field_validator(
         "scope_config_path",

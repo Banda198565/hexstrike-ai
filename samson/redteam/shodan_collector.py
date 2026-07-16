@@ -1,8 +1,8 @@
 """Production Shodan OSINT collector for Samson recon agent.
 
-Fires real async HTTP requests against api.shodan.io, enforces PostgreSQL-backed
-ApiCreditBudget + 1-query/5s rate limit, persists ShodanReconArtifact, and writes
-CVE summaries into the RAG docs tree for infrastructural risk retrieval.
+Cache-first host lookup → PostgreSQL ApiCreditBudget gate (reserve <= 5) →
+real async https://api.shodan.io/shodan/host/{ip} request → credit debit →
+ShodanReconArtifact persistence + RAG markdown under samson/rag/docs/emulation/.
 """
 
 from __future__ import annotations
@@ -40,9 +40,16 @@ _IP_RE = re.compile(
     r")$"
 )
 
+SELECT_BUDGET_QUERY = """
+SELECT budget_id, provider, credits_remaining, credits_total,
+       min_interval_sec, last_query_at, is_blocked, updated_at
+FROM api_credit_budgets
+WHERE budget_id = :budget_id
+"""
+
 
 class SamsonShodanClient:
-    """Async Shodan host intelligence client with credit budget and hard rate limiting."""
+    """Async Shodan host intelligence client with cache, credit budget, and rate limiting."""
 
     def __init__(
         self,
@@ -57,6 +64,7 @@ class SamsonShodanClient:
         self._api_key = (api_key or self._settings.shodan_api_key or "").strip()
         self._base_url = str(self._settings.shodan_api_base_url).rstrip("/")
         self._budget_id = self._settings.shodan_budget_id
+        self._reserve = int(self._settings.shodan_reserve_credits)
         self._db = Database(self._settings)
         self._audit = AuditRepository(self._db)
         self._client: httpx.AsyncClient | None = None
@@ -75,6 +83,35 @@ class SamsonShodanClient:
             await self._client.aclose()
             self._client = None
 
+    async def fetch_host_data(
+        self,
+        target_ip: str,
+        *,
+        operator_id: str = "operator-alpha",
+        request_id: UUID | None = None,
+        run_id: UUID | None = None,
+        history: bool = False,
+        minify: bool = False,
+        force_refresh: bool = False,
+    ) -> ShodanCollectResult:
+        """
+        Cache-first Shodan host fetch.
+
+        1) Local Postgres cache (0 credits)
+        2) Budget gate: block when remaining_credits <= reserve (default 5) or is_blocked
+        3) Live GET https://api.shodan.io/shodan/host/{ip}?key=...
+        4) Debit one local credit and persist artifact
+        """
+        return await self.collect_host(
+            target_ip,
+            operator_id=operator_id,
+            request_id=request_id,
+            run_id=run_id,
+            history=history,
+            minify=minify,
+            force_refresh=force_refresh,
+        )
+
     async def collect_host(
         self,
         ip_address: str,
@@ -84,12 +121,48 @@ class SamsonShodanClient:
         run_id: UUID | None = None,
         history: bool = False,
         minify: bool = False,
+        force_refresh: bool = False,
     ) -> ShodanCollectResult:
-        """Lookup a single host on Shodan with budget + rate-limit enforcement."""
+        """Lookup a single host on Shodan with cache + budget + rate-limit enforcement."""
         request_id = request_id or uuid4()
         ip = (ip_address or "").strip()
         if not ip or not _IP_RE.match(ip):
             raise ConfigurationError("Invalid IP address for Shodan host lookup", ip=ip_address)
+
+        # STEP 1 — local cache (save Shodan credits)
+        if not force_refresh:
+            cached = await asyncio.to_thread(self.get_cached_recon, ip)
+            if cached is not None:
+                budget = await asyncio.to_thread(self._load_or_init_budget)
+                logger.info(
+                    "[+] Cache hit for %s — Shodan credits preserved (0 spent); remaining=%s",
+                    ip,
+                    budget.credits_remaining,
+                )
+                if self._settings.audit_enabled:
+                    await asyncio.to_thread(
+                        self._audit.write_redteam_audit,
+                        request_id=request_id,
+                        tool="shodan_collector",
+                        operator_id=operator_id,
+                        action="collect_host_cache_hit",
+                        outcome="pass",
+                        payload_hash=sha256_payload({"ip": ip, "artifact_id": str(cached.artifact_id)}),
+                        duration_ms=0,
+                        run_id=run_id,
+                    )
+                # Rebind request_id for this call while preserving cached intelligence.
+                artifact = cached.model_copy(update={"request_id": request_id, "operator_id": operator_id})
+                return ShodanCollectResult(
+                    request_id=request_id,
+                    ip_address=ip,
+                    is_blocked=False,
+                    from_cache=True,
+                    credits_spent=0,
+                    credits_remaining=budget.credits_remaining,
+                    artifact=artifact,
+                    http_status_code=200,
+                )
 
         if not self._api_key:
             raise ConfigurationError(
@@ -97,24 +170,31 @@ class SamsonShodanClient:
                 budget_id=self._budget_id,
             )
 
+        # STEP 2 — budget gate before live shot
         budget = await asyncio.to_thread(self._load_or_init_budget)
-        if budget.credits_remaining < 1 or budget.is_blocked:
+        if budget.credits_remaining <= self._reserve or budget.is_blocked:
             await self._block_and_audit(
                 request_id=request_id,
                 operator_id=operator_id,
                 run_id=run_id,
                 ip_address=ip,
                 budget=budget,
-                reason="Shodan API credits exhausted (credits_remaining < 1)",
+                reason=(
+                    f"CRITICAL BLOCK: Shodan credit limit reached "
+                    f"(remaining={budget.credits_remaining} <= reserve={self._reserve})"
+                ),
             )
             return ShodanCollectResult(
                 request_id=request_id,
                 ip_address=ip,
                 is_blocked=True,
-                block_reason="credits_exhausted",
+                block_reason="credits_reserve_reached",
+                from_cache=False,
+                credits_spent=0,
                 credits_remaining=budget.credits_remaining,
             )
 
+        # STEP 3 — live targeted request
         await self._enforce_rate_limit(budget.min_interval_sec)
 
         url = f"{self._base_url}/shodan/host/{ip}"
@@ -166,6 +246,7 @@ class SamsonShodanClient:
         artifact = artifact.model_copy(update={"rag_doc_path": str(rag_path)})
 
         await asyncio.to_thread(self._persist_artifact, artifact, run_id)
+        # Debit exactly one credit in local accounting table
         new_budget = await asyncio.to_thread(self._consume_credit, budget)
 
         if self._settings.audit_enabled:
@@ -181,6 +262,7 @@ class SamsonShodanClient:
                         "ip": ip,
                         "cves": artifact.detected_vulnerabilities,
                         "ports": artifact.open_ports,
+                        "credits_spent": 1,
                     }
                 ),
                 duration_ms=duration_ms,
@@ -188,7 +270,7 @@ class SamsonShodanClient:
             )
 
         logger.info(
-            "Shodan recon ip=%s ports=%d cves=%d credits_remaining=%d",
+            "Shodan recon ip=%s ports=%d cves=%d credits_spent=1 credits_remaining=%d",
             ip,
             len(artifact.open_ports),
             len(artifact.detected_vulnerabilities),
@@ -198,10 +280,30 @@ class SamsonShodanClient:
             request_id=request_id,
             ip_address=ip,
             is_blocked=False,
+            from_cache=False,
+            credits_spent=1,
             credits_remaining=new_budget.credits_remaining,
             artifact=artifact,
             http_status_code=response.status_code,
         )
+
+    def get_cached_recon(self, target_ip: str) -> ShodanReconArtifact | None:
+        """Return newest persisted ShodanReconArtifact for IP, or None."""
+        row = self._db.fetchone(
+            """
+            SELECT artifact_id, request_id, operator_id, ip_address, hostnames,
+                   org, isp, asn, os, country_code, city, open_ports, banners,
+                   detected_vulnerabilities, raw_payload, rag_doc_path, collected_at
+            FROM shodan_recon_artifacts
+            WHERE ip_address = :ip
+            ORDER BY collected_at DESC
+            LIMIT 1
+            """,
+            {"ip": target_ip.strip()},
+        )
+        if not row:
+            return None
+        return self._row_to_artifact(row)
 
     async def _ensure_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -226,15 +328,7 @@ class SamsonShodanClient:
             self._last_query_monotonic = time.monotonic()
 
     def _load_or_init_budget(self) -> ApiCreditBudget:
-        row = self._db.fetchone(
-            """
-            SELECT budget_id, provider, credits_remaining, credits_total,
-                   min_interval_sec, last_query_at, is_blocked, updated_at
-            FROM api_credit_budgets
-            WHERE budget_id = :budget_id
-            """,
-            {"budget_id": self._budget_id},
-        )
+        row = self._db.fetchone(SELECT_BUDGET_QUERY, {"budget_id": self._budget_id})
         if not row:
             self._db.execute(
                 """
@@ -282,7 +376,7 @@ class SamsonShodanClient:
 
     def _consume_credit(self, budget: ApiCreditBudget) -> ApiCreditBudget:
         remaining = max(int(budget.credits_remaining) - 1, 0)
-        blocked = remaining < 1
+        blocked = remaining <= self._reserve
         self._db.execute(
             """
             UPDATE api_credit_budgets
@@ -318,7 +412,7 @@ class SamsonShodanClient:
         reason: str,
     ) -> None:
         logger.critical(
-            "Shodan execution blocked: %s budget_id=%s credits_remaining=%s ip=%s",
+            "❌ CRITICAL BLOCK: %s budget_id=%s credits_remaining=%s ip=%s",
             reason,
             budget.budget_id,
             budget.credits_remaining,
@@ -346,11 +440,50 @@ class SamsonShodanClient:
                         "ip": ip_address,
                         "reason": reason,
                         "credits_remaining": budget.credits_remaining,
+                        "reserve": self._reserve,
                     }
                 ),
                 duration_ms=0,
                 run_id=run_id,
             )
+
+    @staticmethod
+    def _row_to_artifact(row: dict[str, Any]) -> ShodanReconArtifact:
+        banners_raw = row.get("banners") or []
+        if isinstance(banners_raw, str):
+            banners_raw = json.loads(banners_raw)
+        banners = [
+            ShodanServiceBanner.model_validate(item)
+            for item in banners_raw
+            if isinstance(item, dict)
+        ]
+        raw_payload = row.get("raw_payload") or {}
+        if isinstance(raw_payload, str):
+            raw_payload = json.loads(raw_payload)
+        collected = row.get("collected_at")
+        if isinstance(collected, str):
+            collected = datetime.fromisoformat(collected)
+        if collected is None:
+            collected = datetime.now(timezone.utc)
+        return ShodanReconArtifact(
+            artifact_id=UUID(str(row["artifact_id"])),
+            request_id=UUID(str(row["request_id"])),
+            ip_address=str(row["ip_address"]),
+            operator_id=str(row["operator_id"]),
+            hostnames=[str(h) for h in (row.get("hostnames") or [])],
+            org=row.get("org"),
+            isp=row.get("isp"),
+            asn=row.get("asn"),
+            os=row.get("os"),
+            country_code=row.get("country_code"),
+            city=row.get("city"),
+            open_ports=[int(p) for p in (row.get("open_ports") or [])],
+            banners=banners,
+            detected_vulnerabilities=[str(c) for c in (row.get("detected_vulnerabilities") or [])],
+            raw_payload=raw_payload if isinstance(raw_payload, dict) else {},
+            rag_doc_path=row.get("rag_doc_path"),
+            collected_at=collected,
+        )
 
     @classmethod
     def _parse_host_payload(
@@ -494,7 +627,6 @@ class SamsonShodanClient:
             ),
             encoding="utf-8",
         )
-        # Keep repo-relative path stable for RAG loaders regardless of CWD.
         try:
             return path.relative_to(repo_root())
         except ValueError:
@@ -541,3 +673,26 @@ class SamsonShodanClient:
                 "collected_at": artifact.collected_at.isoformat(),
             },
         )
+
+
+async def fetch_host_data(
+    target_ip: str,
+    api_key: str,
+    *,
+    operator_id: str = "operator-alpha",
+    database_url: str | None = None,
+    force_refresh: bool = False,
+) -> ShodanCollectResult | None:
+    """Module-level entrypoint matching the recon-agent cache → budget → live shot flow."""
+    client = SamsonShodanClient(api_key=api_key, database_url=database_url)
+    try:
+        result = await client.fetch_host_data(
+            target_ip,
+            operator_id=operator_id,
+            force_refresh=force_refresh,
+        )
+        if result.is_blocked:
+            return None
+        return result
+    finally:
+        await client.close()

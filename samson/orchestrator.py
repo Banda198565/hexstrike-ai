@@ -847,12 +847,13 @@ def cmd_shodan_lookup(args: argparse.Namespace) -> int:
     async def _run() -> int:
         client = SamsonShodanClient(settings)
         try:
-            result = await client.collect_host(
+            result = await client.fetch_host_data(
                 args.ip,
                 operator_id=args.operator,
                 run_id=UUID(args.run_id) if args.run_id else None,
                 history=bool(args.history),
                 minify=bool(args.minify),
+                force_refresh=bool(args.force_refresh),
             )
             print(result.model_dump_json(indent=2))
             if result.is_blocked:
@@ -931,6 +932,7 @@ def build_parser() -> argparse.ArgumentParser:
     shodan.add_argument("--run-id", default=None)
     shodan.add_argument("--history", action="store_true")
     shodan.add_argument("--minify", action="store_true")
+    shodan.add_argument("--force-refresh", action="store_true", help="Bypass local Postgres cache")
     shodan.set_defaults(func=cmd_shodan_lookup)
 
     return parser
