@@ -179,32 +179,40 @@ class AdversaryEmulationExecutor:
         operator_id: str,
         request_id: UUID,
     ) -> None:
-        query = (
-            f"Explain adversary emulation result for attack vector {payload.attack_vector}. "
-            f"Entities: {', '.join(result.intercepted_financial_entities) or 'none'}."
-        )
-        retrieval = self._rag.retrieve_context(
-            RetrieveContextRequest(
-                request_id=uuid4(),
-                query=query,
-                environment=self._settings.environment,
-                project=self._settings.project,
-                operator_id=operator_id,
-                tags=["emulation_result", payload.attack_vector],
-                top_k=6,
+        """Best-effort RAG post-analysis — must never abort network audit / guardrail deploy."""
+        try:
+            query = (
+                f"Explain adversary emulation result for attack vector {payload.attack_vector}. "
+                f"Entities: {', '.join(result.intercepted_financial_entities) or 'none'}."
             )
-        )
-        self._rag.build_brief(
-            BuildBriefRequest(
-                request_id=request_id,
-                retrieve_response=retrieval,
-                scenario_draft={
-                    "attack_vector": payload.attack_vector,
-                    "vulnerability_verified": result.vulnerability_verified,
-                    "entities": result.intercepted_financial_entities,
-                },
+            retrieval = self._rag.retrieve_context(
+                RetrieveContextRequest(
+                    request_id=uuid4(),
+                    query=query,
+                    environment=self._settings.environment,
+                    project=self._settings.project,
+                    operator_id=operator_id,
+                    tags=["emulation_result", payload.attack_vector],
+                    top_k=6,
+                )
             )
-        )
+            self._rag.build_brief(
+                BuildBriefRequest(
+                    request_id=request_id,
+                    retrieve_response=retrieval,
+                    scenario_draft={
+                        "attack_vector": payload.attack_vector,
+                        "vulnerability_verified": result.vulnerability_verified,
+                        "entities": result.intercepted_financial_entities,
+                    },
+                )
+            )
+        except Exception as exc:  # noqa: BLE001 — audit loop continues without RAG briefing
+            logger.warning(
+                "RAG analyze skipped for execution=%s: %s",
+                result.execution_id,
+                exc,
+            )
 
     @staticmethod
     def _build_request_body(target: AdversaryTargetContext, payload: ExecutionPayload) -> tuple[Any, str]:
