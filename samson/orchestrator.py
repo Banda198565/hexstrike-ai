@@ -1133,6 +1133,18 @@ async def _execute_bulk_audit(
 
     loader = TargetLoader(explicit_root=source_root) if source_root else TargetLoader()
     pool = loader.load()
+    print("=== SANITIZED TARGET POOL (execution context) ===")
+    for index, target in enumerate(pool.targets, start=1):
+        endpoint = str(target.audit_endpoint) if target.audit_endpoint else target.normalized_value
+        print(
+            f"[+] Active target validated: {endpoint} "
+            f"(kind={target.kind.value} id={target.target_id})"
+        )
+        print(f"    [{index}/{pool.unique_count}] source={','.join(target.source_files)}")
+    print(
+        f"=== pool ready: live={pool.unique_count} "
+        f"junk_dropped={pool.dropped_junk} offline_dropped={pool.dropped_offline} ==="
+    )
     for target in pool.targets:
         target.interface_type = interface_type
 

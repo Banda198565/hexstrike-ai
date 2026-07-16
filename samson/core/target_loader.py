@@ -2,7 +2,7 @@
 
 Scans the authorized macOS desktop folder (Cyrillic label) with a container
 fallback path, extracts unique IPs / domains / URLs from operator documents,
-and materializes them as strict Pydantic models ready for continuous-audit.
+purges structural junk, and keeps only live-validated destinations.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import re
+import socket
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -19,6 +20,7 @@ from typing import Any, Iterable
 from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
+import httpx
 import yaml
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 
@@ -50,6 +52,23 @@ _TEXT_SUFFIXES = {
     ".url",
 }
 
+# Internal history / editor / VCS artifacts — never ingested.
+_JUNK_NAME_FRAGMENTS = (
+    ".git",
+    ".svn",
+    ".hg",
+    "__pycache__",
+    ".history",
+    ".Trash",
+    ".DS_Store",
+    "~",
+    ".bak",
+    ".swp",
+    ".tmp",
+    ".orig",
+    "Thumbs.db",
+)
+
 _URL_RE = re.compile(r"https?://[^\s<>\"')\]]+", re.IGNORECASE)
 _IPV4_RE = re.compile(
     r"(?<![\w.])(?:(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}"
@@ -60,19 +79,49 @@ _DOMAIN_RE = re.compile(
     r"(?:[a-z]{2,63}|xn--[a-z0-9-]{2,59})(?::\d{2,5})?(?![\w.-])",
     re.IGNORECASE,
 )
+_INVALID_TEXT_RE = re.compile(
+    r"^(?:null|none|n/?a|undefined|todo|tbd|xxx+|placeholder|junk|test)$",
+    re.IGNORECASE,
+)
 
 _SKIP_DOMAINS = {
     "example.com",
     "example.org",
     "example.net",
+    "example.edu",
     "localhost",
     "localdomain",
     "invalid",
     "test",
 }
 
+# Reserved / documentation / non-production TLDs and suffixes.
+_JUNK_TLDS = {
+    "test",
+    "invalid",
+    "localhost",
+    "local",
+    "example",
+    "internal",
+    "lan",
+    "home",
+    "corp",
+    "localdomain",
+}
+
+# RFC 5737 / RFC 3849 documentation + other non-routable junk ranges.
+_JUNK_IP_NETWORKS = (
+    ipaddress.ip_network("0.0.0.0/8"),
+    ipaddress.ip_network("192.0.2.0/24"),
+    ipaddress.ip_network("198.51.100.0/24"),
+    ipaddress.ip_network("203.0.113.0/24"),
+    ipaddress.ip_network("233.252.0.0/24"),
+    ipaddress.ip_network("255.255.255.255/32"),
+)
+
 _HTTP_PORTS = {80, 8080, 8000, 8888, 3000, 5000, 7001, 9000}
 _HTTPS_PORTS = {443, 8443, 9443}
+_LIVE_PROBE_TIMEOUT_SEC = float(os.environ.get("SAMSON_TARGET_LIVE_TIMEOUT_SEC", "2.0"))
 
 
 def _utcnow() -> datetime:
@@ -157,11 +206,13 @@ class IngestedTarget(BaseModel):
 
 
 class IngestedTargetPool(BaseModel):
-    """Complete pool of unique targets from one filesystem scan."""
+    """Complete pool of unique live-validated targets from one filesystem scan."""
 
     source_root: str
     scanned_files: int = 0
     skipped_files: int = 0
+    dropped_junk: int = 0
+    dropped_offline: int = 0
     targets: list[IngestedTarget] = Field(default_factory=list)
     loaded_at: datetime = Field(default_factory=_utcnow)
 
@@ -231,6 +282,7 @@ class TargetLoader:
         by_key: dict[str, IngestedTarget] = {}
         scanned = 0
         skipped = 0
+        dropped_junk = 0
 
         for path in files:
             try:
@@ -242,30 +294,93 @@ class TargetLoader:
             scanned += 1
             relative = str(path.relative_to(root))
             for kind, value in self.extract_indicators(text):
+                reason = self._structural_reject_reason(kind, value)
+                if reason:
+                    dropped_junk += 1
+                    print(f"[-] Dropped junk target: {value} ({reason})")
+                    logger.info("Dropped junk target %s (%s)", value, reason)
+                    continue
                 key = f"{kind.value}:{value.lower()}"
                 existing = by_key.get(key)
                 if existing is not None:
                     if relative not in existing.source_files:
                         existing.source_files.append(relative)
                     continue
+                # Host-level duplicate collapse (prefer URL > domain > ip)
+                host_key = self._host_dedupe_key(kind, value)
+                if host_key:
+                    rival_key = next(
+                        (
+                            k
+                            for k, t in by_key.items()
+                            if self._host_dedupe_key(t.kind, t.normalized_value) == host_key
+                        ),
+                        None,
+                    )
+                    if rival_key is not None:
+                        rival = by_key[rival_key]
+                        if self._kind_rank(kind) <= self._kind_rank(rival.kind):
+                            if relative not in rival.source_files:
+                                rival.source_files.append(relative)
+                            dropped_junk += 1
+                            print(
+                                f"[-] Dropped junk target: {value} "
+                                f"(duplicate host of {rival.normalized_value})"
+                            )
+                            continue
+                        dropped_junk += 1
+                        print(
+                            f"[-] Dropped junk target: {rival.normalized_value} "
+                            f"(duplicate host superseded by {value})"
+                        )
+                        del by_key[rival_key]
                 by_key[key] = self._build_target(kind, value, source_file=relative)
 
-        targets = sorted(by_key.values(), key=lambda t: (t.kind.value, t.normalized_value))
-        for target in targets:
+        candidates = sorted(by_key.values(), key=lambda t: (t.kind.value, t.normalized_value))
+        for target in candidates:
             self.resolve_audit_endpoint(target)
+
+        live: list[IngestedTarget] = []
+        dropped_offline = 0
+        for target in candidates:
+            ok, detail = self._probe_live(target)
+            if not ok:
+                dropped_offline += 1
+                print(f"[-] Dropped offline target: {target.normalized_value} ({detail})")
+                logger.info(
+                    "Dropped offline target %s (%s)",
+                    target.normalized_value,
+                    detail,
+                )
+                continue
+            target.metadata["live_probe"] = detail
+            live.append(target)
+            endpoint = str(target.audit_endpoint) if target.audit_endpoint else target.normalized_value
+            print(f"[+] Active target validated: {endpoint}")
 
         pool = IngestedTargetPool(
             source_root=str(root),
             scanned_files=scanned,
             skipped_files=skipped,
-            targets=targets,
+            dropped_junk=dropped_junk,
+            dropped_offline=dropped_offline,
+            targets=live,
         )
         logger.info(
-            "Ingested %s unique targets from %s files under %s",
+            "Ingested %s live targets (junk=%s offline=%s) from %s files under %s",
             pool.unique_count,
+            pool.dropped_junk,
+            pool.dropped_offline,
             pool.scanned_files,
             pool.source_root,
         )
+        if not pool.targets:
+            raise ConfigurationError(
+                "Target pool empty after sanitization — no live validated destinations",
+                source_root=pool.source_root,
+                dropped_junk=pool.dropped_junk,
+                dropped_offline=pool.dropped_offline,
+            )
         return pool
 
     @staticmethod
@@ -307,7 +422,9 @@ class TargetLoader:
         for match in _DOMAIN_RE.finditer(text):
             raw = match.group(0).rstrip(".,;:!?")
             host = raw.split(":", 1)[0].lower()
-            if host in _SKIP_DOMAINS or host.endswith(".example"):
+            if host in _SKIP_DOMAINS or any(host == d or host.endswith(f".{d}") for d in _JUNK_TLDS):
+                continue
+            if host.endswith(".example"):
                 continue
             # Skip IPv4 already captured as IP
             if _IPV4_RE.fullmatch(host):
@@ -318,6 +435,122 @@ class TargetLoader:
             _add(IngestedTargetKind.DOMAIN, raw)
 
         return found
+
+    @staticmethod
+    def _kind_rank(kind: IngestedTargetKind) -> int:
+        return {IngestedTargetKind.URL: 3, IngestedTargetKind.DOMAIN: 2, IngestedTargetKind.IP: 1}[
+            kind
+        ]
+
+    @staticmethod
+    def _host_dedupe_key(kind: IngestedTargetKind, value: str) -> str | None:
+        if kind == IngestedTargetKind.URL:
+            host = urlparse(value).hostname
+            port = urlparse(value).port
+            if not host:
+                return None
+            return f"{host.lower()}:{port or (443 if value.lower().startswith('https') else 80)}"
+        if kind == IngestedTargetKind.DOMAIN:
+            host = value.split(":", 1)[0].lower()
+            port = int(value.split(":", 1)[1]) if ":" in value and value.rsplit(":", 1)[1].isdigit() else 443
+            return f"{host}:{port}"
+        if kind == IngestedTargetKind.IP:
+            return f"{value}:80"
+        return None
+
+    @classmethod
+    def _structural_reject_reason(cls, kind: IngestedTargetKind, value: str) -> str | None:
+        text = (value or "").strip()
+        if not text or text.isspace():
+            return "empty"
+        if _INVALID_TEXT_RE.match(text):
+            return "invalid_text_pattern"
+        if kind == IngestedTargetKind.IP:
+            try:
+                ip = ipaddress.IPv4Address(text)
+            except ValueError:
+                return "invalid_ipv4"
+            for network in _JUNK_IP_NETWORKS:
+                if ip in network:
+                    return f"documentation_or_reserved_ip:{network}"
+            if ip.is_multicast or ip.is_unspecified or ip.is_reserved:
+                return "non_routable_ip"
+            return None
+        if kind == IngestedTargetKind.DOMAIN:
+            host = text.split(":", 1)[0].lower()
+            labels = host.split(".")
+            if len(labels) < 2:
+                return "not_fqdn"
+            if any(not label or len(label) > 63 for label in labels):
+                return "invalid_fqdn_label"
+            tld = labels[-1]
+            if tld in _JUNK_TLDS or host in _SKIP_DOMAINS:
+                return f"junk_tld_or_domain:{tld}"
+            if any(host == d or host.endswith(f".{d}") for d in _JUNK_TLDS):
+                return "junk_suffix"
+            return None
+        if kind == IngestedTargetKind.URL:
+            parsed = urlparse(text)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                return "invalid_url"
+            host = (parsed.hostname or "").lower()
+            if not host:
+                return "url_missing_host"
+            if _INVALID_TEXT_RE.match(host):
+                return "invalid_text_pattern"
+            # IP-literal URL hosts — documentation ranges out; loopback/private need live probe.
+            try:
+                ip = ipaddress.IPv4Address(host)
+                for network in _JUNK_IP_NETWORKS:
+                    if ip in network:
+                        return f"documentation_or_reserved_ip:{network}"
+                if ip.is_multicast or ip.is_unspecified or ip.is_reserved:
+                    return "non_routable_ip"
+            except ValueError:
+                if host == "localhost":
+                    return None
+                labels = host.split(".")
+                if len(labels) < 2:
+                    return "url_host_not_fqdn"
+                tld = labels[-1]
+                if tld in _JUNK_TLDS or any(host.endswith(f".{d}") for d in _JUNK_TLDS):
+                    return f"junk_tld_or_domain:{tld}"
+                if host in _SKIP_DOMAINS:
+                    return "skip_domain"
+            return None
+        return "unknown_kind"
+
+    @classmethod
+    def _probe_live(cls, target: IngestedTarget) -> tuple[bool, str]:
+        """Strict live check — HTTP(S) response required for audit destinations."""
+        endpoint = str(target.audit_endpoint) if target.audit_endpoint else target.normalized_value
+        parsed = urlparse(endpoint if "://" in endpoint else f"http://{endpoint}")
+        host = parsed.hostname
+        if not host:
+            return False, "missing_host"
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        try:
+            with socket.create_connection((host, port), timeout=_LIVE_PROBE_TIMEOUT_SEC):
+                pass
+        except OSError as exc:
+            return False, f"tcp_unreachable:{exc}"
+
+        url = endpoint if "://" in endpoint else f"http://{host}:{port}/"
+        try:
+            with httpx.Client(
+                timeout=_LIVE_PROBE_TIMEOUT_SEC,
+                follow_redirects=True,
+                verify=False,
+            ) as client:
+                response = client.request("GET", url)
+            # Any completed HTTP exchange (incl. 4xx/5xx) proves an active API/service.
+            if response.status_code <= 0:
+                return False, "http_invalid_status"
+            return True, f"http_{response.status_code}"
+        except httpx.TimeoutException:
+            return False, "http_timeout_no_response"
+        except httpx.HTTPError as exc:
+            return False, f"http_unreachable:{type(exc).__name__}"
 
     @staticmethod
     def resolve_audit_endpoint(
@@ -510,6 +743,12 @@ class TargetLoader:
             if not path.is_file():
                 continue
             if path.name.startswith("."):
+                continue
+            joined = str(path)
+            if any(fragment in joined for fragment in _JUNK_NAME_FRAGMENTS):
+                continue
+            name_lower = path.name.lower()
+            if name_lower.endswith((".bak", ".swp", ".tmp", ".orig", "~")):
                 continue
             if path.suffix.lower() in _TEXT_SUFFIXES or path.suffix == "":
                 yield path
