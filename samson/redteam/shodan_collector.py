@@ -229,7 +229,12 @@ class SamsonShodanClient:
 
         client = await self._ensure_client()
         start = time.perf_counter()
+        # Suppress httpx URL logging — querystring carries the API key.
+        _httpx_log = logging.getLogger("httpx")
+        _prev_level = _httpx_log.level
         try:
+            _httpx_log.setLevel(logging.WARNING)
+            logger.info("Shodan live GET %s (api_key=REDACTED)", url)
             response = await client.get(url, params=params)
         except httpx.HTTPError as exc:
             raise NetworkError(
@@ -237,6 +242,8 @@ class SamsonShodanClient:
                 ip=ip,
                 error=str(exc),
             ) from exc
+        finally:
+            _httpx_log.setLevel(_prev_level)
 
         duration_ms = int((time.perf_counter() - start) * 1000)
         if response.status_code == 401:
