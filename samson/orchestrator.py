@@ -3,19 +3,30 @@
 
 from __future__ import annotations
 
+# ---------------------------------------------------------------------------
+# Absolute dynamic repository root bootstrap (MUST run before samson imports)
+# ---------------------------------------------------------------------------
+import sys
+from pathlib import Path
+
+_ORCHESTRATOR_FILE = Path(__file__).resolve()
+_SAMSON_PKG_DIR = _ORCHESTRATOR_FILE.parent
+_REPO_ROOT = _SAMSON_PKG_DIR.parent  # hexstrike-ai /
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 import argparse
 import asyncio
 import json
 import logging
-import sys
+import re
 from datetime import datetime, timezone
-from pathlib import Path
 from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
 import httpx
 
-from samson.core.config import SamsonSettings, get_settings
+from samson.core.config import SamsonSettings, get_settings, repo_root
 from samson.core.database import AuditRepository, Database, sha256_payload
 from samson.core.payloads import PayloadDefinition, PayloadOrchestrator, PayloadRegistry
 from samson.rag.rag_oracle import RagOracle
@@ -40,8 +51,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger("samson.orchestrator")
 
+assert repo_root() == _REPO_ROOT, "repository root mismatch between orchestrator and config"
+
 _CONTINUOUS_AUDIT_PAYLOADS_PATH = (
-    Path(__file__).resolve().parent / "rag" / "docs" / "payloads" / "continuous_audit_payloads.json"
+    _SAMSON_PKG_DIR / "rag" / "docs" / "payloads" / "continuous_audit_payloads.json"
+)
+
+_HOST_LIKE_RE = re.compile(
+    r"^(?:localhost|[\w.-]+\.[\w.-]+|\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?(?:/.*)?$",
+    re.IGNORECASE,
 )
 
 _INTERFACE_TECHNIQUES: dict[str, list[str]] = {
@@ -59,11 +77,18 @@ _TECHNIQUE_ATTACK_VECTORS: dict[str, str] = {
     "llm_payment_injection": "Indirect_Prompt_Injection",
 }
 
+_INTERFACE_FALLBACK_PATHS: dict[str, str] = {
+    "STRIPE-GATEWAY": "/api/v1/arena/financial/payment-intents",
+    "PLAID-INTEGRATION": "/api/v1/arena/financial/transfers",
+    "IBAN-PARSER": "/api/v1/arena/financial/transfers",
+    "REST-LLM-API": "/api/chat",
+}
+
 
 def cmd_migrate(_: argparse.Namespace) -> int:
     settings = get_settings()
     db = Database(settings)
-    migration_dir = Path(__file__).resolve().parent / "migrations"
+    migration_dir = _SAMSON_PKG_DIR / "migrations"
     db.ensure_schema(
         [
             str(migration_dir / "001_schema.sql"),
@@ -83,7 +108,17 @@ def cmd_health(_: argparse.Namespace) -> int:
     try:
         db_status = db.health_check()
         ollama = rag._ollama.health_check()  # noqa: SLF001
-        print(json.dumps({"database": db_status, "ollama": {"models": len(ollama.get("models", []))}}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "database": db_status,
+                    "ollama": {"models": len(ollama.get("models", []))},
+                    "repo_root": str(_REPO_ROOT),
+                    "database_url_host": urlparse(settings.database_url).hostname,
+                },
+                indent=2,
+            )
+        )
         return 0
     except Exception as exc:
         logger.error("Health check failed: %s", exc)
@@ -137,7 +172,10 @@ def cmd_pyrit_eval(args: argparse.Namespace) -> int:
     settings = get_settings()
     hooks = SamsonRedTeamHooks(settings)
     try:
-        draft = json.loads(Path(args.scenario_file).read_text(encoding="utf-8"))
+        scenario_path = Path(args.scenario_file)
+        if not scenario_path.is_absolute():
+            scenario_path = _REPO_ROOT / scenario_path
+        draft = json.loads(scenario_path.read_text(encoding="utf-8"))
         result = hooks.evaluate_scenario_risk(
             PyRITRiskRequest(
                 request_id=uuid4(),
@@ -187,6 +225,62 @@ def _parse_auth_headers(raw: str | None) -> dict[str, str]:
         key, value = part.split(":", 1)
         headers[key.strip()] = value.strip()
     return headers
+
+
+def _sanitize_target_endpoint(
+    raw: str | None,
+    *,
+    arena_base_url: str,
+    interface_type: str,
+) -> tuple[str, dict]:
+    """
+    Normalize partial / malformed target endpoints into a valid absolute HTTP URL.
+    Falls back to arena_base_url + interface-specific path when input is unusable.
+    """
+    fallback_path = _INTERFACE_FALLBACK_PATHS.get(interface_type.upper(), "/api/v1/arena/health")
+    fallback = f"{arena_base_url.rstrip('/')}{fallback_path}"
+    meta: dict = {"original": raw, "fallback_used": False, "fallback": fallback}
+
+    text = (raw or "").strip()
+    if not text:
+        meta["fallback_used"] = True
+        meta["reason"] = "empty_target"
+        return fallback, meta
+
+    if text.startswith("//"):
+        text = f"http:{text}"
+
+    if "://" in text:
+        parsed = urlparse(text)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            meta["fallback_used"] = True
+            meta["reason"] = (
+                f"unsupported_scheme:{parsed.scheme}"
+                if parsed.scheme and parsed.scheme not in {"http", "https"}
+                else "missing_scheme_or_netloc"
+            )
+            return fallback, meta
+    elif text.startswith("/"):
+        text = f"{arena_base_url.rstrip('/')}{text}"
+        parsed = urlparse(text)
+    elif _HOST_LIKE_RE.match(text):
+        text = f"http://{text}"
+        parsed = urlparse(text)
+    else:
+        meta["fallback_used"] = True
+        meta["reason"] = "unparseable_target"
+        return fallback, meta
+
+    if not parsed.scheme or not parsed.netloc:
+        meta["fallback_used"] = True
+        meta["reason"] = "missing_scheme_or_netloc"
+        return fallback, meta
+
+    path = parsed.path or "/"
+    query = f"?{parsed.query}" if parsed.query else ""
+    sanitized = f"{parsed.scheme}://{parsed.netloc}{path}{query}"
+    meta["sanitized"] = sanitized
+    return sanitized, meta
 
 
 def _attack_vector_for_technique(technique: str) -> str:
@@ -284,6 +378,7 @@ def _load_active_payloads(
         "interface_type": interface_type,
         "techniques": sorted(techniques),
         "payload_count": len(payloads),
+        "repo_root": str(_REPO_ROOT),
     }
     logger.info("Loaded %s active payloads for %s", len(payloads), interface_type)
     return payloads, metadata
@@ -372,9 +467,11 @@ def _assert_run_approved(db: Database, run_id: UUID) -> None:
         raise ApprovalRequiredError("Exercise run not approved", run_id=str(run_id))
 
 
-def _resolve_upstream(target_endpoint: str) -> str:
+def _resolve_upstream(target_endpoint: str, *, arena_base_url: str) -> str:
     parsed = urlparse(target_endpoint)
-    return f"{parsed.scheme}://{parsed.netloc}"
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return arena_base_url.rstrip("/")
 
 
 async def _rerun_through_proxy(
@@ -399,12 +496,22 @@ async def _rerun_through_proxy(
     }
 
     timeout = httpx.Timeout(settings.http_timeout_sec)
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
-        if content_type == "application/json":
-            response = await client.post(proxy_url, json=body, headers=headers)
-        else:
-            content = body.encode("utf-8") if isinstance(body, str) else body
-            response = await client.post(proxy_url, content=content, headers=headers)
+    try:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+            if content_type == "application/json":
+                response = await client.post(proxy_url, json=body, headers=headers)
+            else:
+                content = body.encode("utf-8") if isinstance(body, str) else body
+                response = await client.post(proxy_url, content=content, headers=headers)
+    except httpx.HTTPError as exc:
+        logger.error("Proxy verification transport error: %s", exc)
+        return {
+            "status_code": 0,
+            "action": "allow",
+            "verified": False,
+            "body": {"error": str(exc), "error_type": type(exc).__name__},
+            "proxy_url": proxy_url,
+        }
 
     action = "allow"
     verified = False
@@ -497,6 +604,8 @@ def _print_continuous_audit_metrics(result: ContinuousAuditResult) -> None:
 async def _execute_continuous_audit_loop(
     settings: SamsonSettings,
     req: ContinuousAuditRequest,
+    *,
+    target_meta: dict | None = None,
 ) -> ContinuousAuditResult:
     db = Database(settings)
     audit = AuditRepository(settings)
@@ -531,6 +640,8 @@ async def _execute_continuous_audit_loop(
             operator_id=req.operator_id,
             scenario_id=req.scenario_id,
         )
+        if target_meta:
+            payload_meta = {**payload_meta, "target_sanitization": target_meta}
 
         steps: list[ContinuousAuditStepResult] = []
         breaches_logged = 0
@@ -540,13 +651,29 @@ async def _execute_continuous_audit_loop(
 
         for payload in payloads:
             request_id = uuid4()
-            emulation = await executor.execute_async(
-                target=target,
-                payload=payload,
-                operator_id=req.operator_id,
-                run_id=run_id,
-                request_id=request_id,
-            )
+            try:
+                emulation = await executor.execute_async(
+                    target=target,
+                    payload=payload,
+                    operator_id=req.operator_id,
+                    run_id=run_id,
+                    request_id=request_id,
+                )
+            except Exception as exc:
+                logger.error("Adversary execution failed for payload %s: %s", payload.payload_id, exc)
+                steps.append(
+                    ContinuousAuditStepResult(
+                        payload_id=payload.payload_id,
+                        attack_vector=payload.attack_vector,
+                        execution_id=uuid4(),
+                        breach_verified=False,
+                        before_http_status=0,
+                        before_allowed=False,
+                        intercepted_financial_entities=[],
+                        proxy_response={"error": str(exc), "error_type": type(exc).__name__},
+                    )
+                )
+                continue
 
             step = ContinuousAuditStepResult(
                 payload_id=payload.payload_id,
@@ -573,7 +700,10 @@ async def _execute_continuous_audit_loop(
                         operator_id=req.operator_id,
                         run_id=run_id,
                         policy_profile=req.policy_profile,
-                        upstream_base_url=_resolve_upstream(str(req.target_endpoint)),
+                        upstream_base_url=_resolve_upstream(
+                            str(req.target_endpoint),
+                            arena_base_url=settings.arena_base_url_str,
+                        ),
                     )
                 )
                 step.guardrail_deployed = True
@@ -648,12 +778,27 @@ def cmd_run_continuous_audit(args: argparse.Namespace) -> int:
     if args.unattended:
         settings = settings.model_copy(update={"require_human_approval": False})
 
+    target_endpoint, target_meta = _sanitize_target_endpoint(
+        args.target_endpoint,
+        arena_base_url=settings.arena_base_url_str,
+        interface_type=args.interface_type,
+    )
+    if target_meta.get("fallback_used"):
+        logger.warning(
+            "Malformed target endpoint %r — using fallback %s (%s)",
+            args.target_endpoint,
+            target_endpoint,
+            target_meta.get("reason"),
+        )
+    else:
+        logger.info("Sanitized target endpoint → %s", target_endpoint)
+
     async def _run() -> int:
         result = await _execute_continuous_audit_loop(
             settings,
             ContinuousAuditRequest(
                 request_id=uuid4(),
-                target_endpoint=args.target_endpoint,
+                target_endpoint=target_endpoint,
                 interface_type=args.interface_type,
                 operator_id=args.operator,
                 scenario_id=args.scenario_id,
@@ -663,6 +808,7 @@ def cmd_run_continuous_audit(args: argparse.Namespace) -> int:
                 rag_top_k=args.rag_top_k,
                 policy_profile=args.profile,
             ),
+            target_meta=target_meta,
         )
         _print_continuous_audit_metrics(result)
         if args.json:

@@ -9,6 +9,20 @@ from typing import Literal
 from pydantic import Field, HttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# hexstrike-ai repository root (samson/core/config.py -> parents[2])
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Local Docker Compose PostgreSQL (used when SAMSON_DATABASE_URL is unset)
+_LOCAL_DOCKER_DATABASE_URL = "postgresql://samson:secret@127.0.0.1:5432/samson"
+
+
+def repo_root() -> Path:
+    return _REPO_ROOT
+
+
+def _default_repo_path(*parts: str) -> Path:
+    return _REPO_ROOT.joinpath(*parts)
+
 
 class SamsonSettings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -22,10 +36,10 @@ class SamsonSettings(BaseSettings):
     project: str = Field(default="samson-sbm", description="Project / tenant identifier")
     environment: Literal["dev", "stage", "prod"] = "dev"
 
-    # PostgreSQL
+    # PostgreSQL — defaults to local Docker Compose credentials
     database_url: str = Field(
-        default="postgresql://samson:samson@127.0.0.1:5432/samson",
-        description="SQLAlchemy-compatible PostgreSQL URL",
+        default=_LOCAL_DOCKER_DATABASE_URL,
+        description="SQLAlchemy-compatible PostgreSQL URL (Docker Compose local default)",
     )
     db_pool_size: int = 10
     db_max_overflow: int = 20
@@ -43,30 +57,34 @@ class SamsonSettings(BaseSettings):
     financial_mock_stripe_url: HttpUrl | None = None
     financial_mock_iban_url: HttpUrl | None = None
 
-    # Scope & payloads
-    scope_config_path: Path = Field(default=Path("config/samson/scope.yaml"))
-    payload_registry_path: Path = Field(default=Path("config/samson/payloads"))
-    fixture_root_path: Path = Field(default=Path("target-arena/fixtures"))
+    # Scope & payloads (repo-absolute defaults; relative env values resolve against repo root)
+    scope_config_path: Path = Field(default_factory=lambda: _default_repo_path("config", "samson", "scope.yaml"))
+    payload_registry_path: Path = Field(default_factory=lambda: _default_repo_path("config", "samson", "payloads"))
+    fixture_root_path: Path = Field(default_factory=lambda: _default_repo_path("target-arena", "fixtures"))
 
     # RAG
     rag_chunk_size_tokens: int = 512
     rag_chunk_overlap_tokens: int = 64
-    rag_docs_path: Path = Field(default=Path("samson/rag/docs"))
-    rag_reports_path: Path = Field(default=Path("samson/rag/reports"))
+    rag_docs_path: Path = Field(default_factory=lambda: _default_repo_path("samson", "rag", "docs"))
+    rag_reports_path: Path = Field(default_factory=lambda: _default_repo_path("samson", "rag", "reports"))
     rag_index_version: int = 1
 
     # Red team tools
     pyrit_enabled: bool = True
-    pyrit_config_path: Path = Field(default=Path("config/samson/pyrit.yaml"))
+    pyrit_config_path: Path = Field(default_factory=lambda: _default_repo_path("config", "samson", "pyrit.yaml"))
     pyrit_python: str = "python3"
     pyrit_block_threshold: float = 0.8
     pyrit_elevated_threshold: float = 0.6
 
     garak_enabled: bool = True
     garak_probe_suite: Literal["full", "fast", "custom"] = "fast"
-    garak_reports_path: Path = Field(default=Path("samson/redteam/garak/reports"))
+    garak_reports_path: Path = Field(
+        default_factory=lambda: _default_repo_path("samson", "redteam", "garak", "reports")
+    )
 
-    atlas_taxonomy_path: Path = Field(default=Path("samson/redteam/atlas/taxonomy.json"))
+    atlas_taxonomy_path: Path = Field(
+        default_factory=lambda: _default_repo_path("samson", "redteam", "atlas", "taxonomy.json")
+    )
 
     # HTTP client
     http_timeout_sec: float = 30.0
@@ -87,10 +105,33 @@ class SamsonSettings(BaseSettings):
     guardrail_proxy_port: int = 8787
     guardrail_proxy_auto_start: bool = True
 
-    @field_validator("scope_config_path", "payload_registry_path", "fixture_root_path", mode="before")
+    @field_validator(
+        "scope_config_path",
+        "payload_registry_path",
+        "fixture_root_path",
+        "rag_docs_path",
+        "rag_reports_path",
+        "pyrit_config_path",
+        "garak_reports_path",
+        "atlas_taxonomy_path",
+        mode="before",
+    )
     @classmethod
     def _coerce_path(cls, value: str | Path) -> Path:
-        return Path(value)
+        path = Path(value)
+        if not path.is_absolute():
+            path = _REPO_ROOT / path
+        return path
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _coerce_database_url(cls, value: object) -> str:
+        if value is None:
+            return _LOCAL_DOCKER_DATABASE_URL
+        text = str(value).strip()
+        if not text:
+            return _LOCAL_DOCKER_DATABASE_URL
+        return text
 
     @property
     def ollama_base_url_str(self) -> str:
