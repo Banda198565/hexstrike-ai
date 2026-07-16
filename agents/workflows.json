@@ -224,6 +224,19 @@
         {"agent": "Agent-Report-06", "task": "generate-defensive-checklist", "optional": true}
       ],
       "note": "Requires SHODAN_API_KEY for full search; fallback uses RIPEstat + crt.sh + InternetDB"
+    },
+    "ru-shodan-recon": {
+      "description": "Russia Shodan/OSINT: exposed Geth :8545, Jenkins, Yandex/Selectel infra (read-only)",
+      "mode": "forensics",
+      "env": {
+        "COUNTRY": "RU"
+      },
+      "steps": [
+        {"agent": "Agent-OSINT-03", "task": "shodan-ru-scan"},
+        {"agent": "Agent-Vuln-05", "task": "passive-cve-check", "optional": true},
+        {"agent": "Agent-Report-06", "task": "generate-defensive-checklist", "optional": true}
+      ],
+      "note": "15 Shodan queries + known case IP 51.250.97.223 (Yandex Jenkins). Needs SHODAN_API_KEY for live search."
     }
   }
 }

@@ -66,6 +66,12 @@
           "output": "artifacts/shodan-kz-report.json",
           "methods": ["shodan_search", "ripestat_kz", "crtsh_kz", "internetdb", "geth_rpc_probe"],
           "constraints": ["read-only", "passive", "defensive-ir", "no-nmap"]
+        },
+        "shodan-ru-scan": {
+          "script": "scripts/agents/agent_osint_03_shodan_ru.py",
+          "output": "artifacts/shodan-ru-report.json",
+          "methods": ["shodan_search", "ripestat_ru", "crtsh_ru", "internetdb", "geth_rpc_probe"],
+          "constraints": ["read-only", "passive", "defensive-ir", "no-nmap"]
         }
       },
       "mcp_tools": [],
