@@ -108,6 +108,7 @@ def cmd_migrate(_: argparse.Namespace) -> int:
             str(migration_dir / "005_synthetic_emulation.sql"),
             str(migration_dir / "006_arkham_recon.sql"),
             str(migration_dir / "007_fofa_recon.sql"),
+            str(migration_dir / "008_sweeper_purple_team.sql"),
         ]
     )
     logger.info("Schema migration applied")
@@ -1741,6 +1742,69 @@ def cmd_fofa_hunt_redis(args: argparse.Namespace) -> int:
     return asyncio.run(_run())
 
 
+def cmd_sweeper_purple_team(args: argparse.Namespace) -> int:
+    """Two-sided purple-team: synthetic Anvil sweeper attack → defense detect/block."""
+    from samson.redteam.sweeper_purple_team import SweeperPurpleTeam
+
+    settings = get_settings()
+    if args.unattended:
+        settings = settings.model_copy(update={"require_human_approval": False})
+    if not (settings.web3_private_key or "").strip():
+        print(
+            "ERROR: SAMSON_WEB3_PRIVATE_KEY missing — required for watched-wallet synthetic sweep.",
+            file=sys.stderr,
+        )
+        return 2
+
+    async def _run() -> int:
+        team = SweeperPurpleTeam(settings)
+        try:
+            result = await team.run(
+                operator_id=args.operator,
+                run_id=UUID(args.run_id) if args.run_id else None,
+                destination_wallet=args.destination,
+                min_sweep_wei=args.min_sweep_wei,
+                fund_wei=args.fund_wei,
+                gas_gwei=args.gas_gwei,
+            )
+            width = 78
+            print("=" * width)
+            print("SAMSON SWEEPER PURPLE-TEAM — Attack + Defense")
+            print("=" * width)
+            print(f"Request ID:     {result.request_id}")
+            print(f"Operator:       {result.operator_id}")
+            print("-" * width)
+            print("ATTACK (synthetic Anvil)")
+            print(f"  watched:      {result.attack.watched_wallet}")
+            print(f"  destination:  {result.attack.destination_wallet}")
+            print(f"  triggered:    {result.attack.triggered}")
+            print(f"  swept:        {result.attack.swept}")
+            print(f"  swept_wei:    {result.attack.swept_wei}")
+            print(f"  tx:           {result.attack.tx_hash or '-'}")
+            if result.attack.error:
+                print(f"  error:        {result.attack.error}")
+            print("-" * width)
+            print("DEFENSE")
+            print(f"  detected:     {result.defense.detected}")
+            print(f"  blocked:      {result.defense.blocked}")
+            print(f"  risk:         {result.defense.risk_level}")
+            print(f"  indicators:   {', '.join(result.defense.indicators) or '-'}")
+            print(f"  web3_recon:   {result.defense.persisted_web3_recon}")
+            print("-" * width)
+            print(f"ASSERTION:      {'PASS' if result.assertion_passed else 'FAIL'}")
+            print("=" * width)
+            if args.json:
+                print(result.model_dump_json(indent=2))
+            return 0 if result.assertion_passed else 2
+        except Exception as exc:  # noqa: BLE001
+            print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
+            return 1
+        finally:
+            await team.close()
+
+    return asyncio.run(_run())
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Samson SBM orchestrator")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1906,6 +1970,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     fofa_hunt.add_argument("--force-refresh", action="store_true")
     fofa_hunt.set_defaults(func=cmd_fofa_hunt_redis)
+
+    sweeper = sub.add_parser(
+        "sweeper-purple-team",
+        help="Two-sided: synthetic Anvil sweeper attack → defense detect/block",
+    )
+    sweeper.add_argument("--operator", default="operator-alpha")
+    sweeper.add_argument("--run-id", default=None)
+    sweeper.add_argument(
+        "--destination",
+        default=None,
+        help="Sweep destination (default: settings.web3_diversion_to / 0x…dEaD)",
+    )
+    sweeper.add_argument("--min-sweep-wei", type=int, default=None)
+    sweeper.add_argument("--fund-wei", type=int, default=None)
+    sweeper.add_argument("--gas-gwei", type=int, default=None, help="Elevated gas for race pattern")
+    sweeper.add_argument("--unattended", action="store_true", default=True)
+    sweeper.add_argument("--json", action="store_true")
+    sweeper.set_defaults(func=cmd_sweeper_purple_team)
 
     return parser
 

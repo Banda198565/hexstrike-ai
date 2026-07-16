@@ -387,6 +387,58 @@ class HybridReconResult(BaseModel):
     completed_at: datetime = Field(default_factory=_utcnow)
 
 
+class SweeperAttackResult(BaseModel):
+    """Synthetic Anvil-only sweeper attack (BNB-sweeper pattern emulation)."""
+
+    execution_id: UUID
+    request_id: UUID
+    synthetic: bool = True
+    sandbox_only: bool = True
+    watched_wallet: str
+    destination_wallet: str
+    triggered: bool = False
+    swept: bool = False
+    balance_before_wei: int = 0
+    balance_after_wei: int = 0
+    swept_wei: int = 0
+    min_sweep_wei: int = 0
+    gas_price_wei: int = 0
+    tx_hash: str | None = None
+    chain_id: int | None = None
+    rpc_url: str | None = None
+    pattern_id: str = "bnb_sweeper_full_balance_drain"
+    error: str | None = None
+    completed_at: datetime = Field(default_factory=_utcnow)
+
+
+class SweeperDefenseResult(BaseModel):
+    """Defensive detection + guardrail block for sweeper destination wallets."""
+
+    detection_id: UUID
+    request_id: UUID
+    detected: bool = False
+    blocked: bool = False
+    risk_level: str = "unknown"
+    destination_wallet: str | None = None
+    watched_wallet: str | None = None
+    indicators: list[str] = Field(default_factory=list)
+    guardrail_loaded: bool = False
+    persisted_web3_recon: bool = False
+    remediation: list[str] = Field(default_factory=list)
+    completed_at: datetime = Field(default_factory=_utcnow)
+
+
+class SweeperPurpleTeamResult(BaseModel):
+    """Two-sided purple-team loop: synthetic sweeper attack → defense assertion."""
+
+    request_id: UUID
+    operator_id: str
+    attack: SweeperAttackResult
+    defense: SweeperDefenseResult
+    assertion_passed: bool = False
+    completed_at: datetime = Field(default_factory=_utcnow)
+
+
 class ArkhamEntityRef(BaseModel):
     """Normalized Arkham entity attribution for an address."""
 
@@ -760,6 +812,9 @@ __all__ = [
     "ShodanCollectResult",
     "FofaCollectResult",
     "HybridReconResult",
+    "SweeperAttackResult",
+    "SweeperDefenseResult",
+    "SweeperPurpleTeamResult",
     "ArkhamEntityRef",
     "ArkhamChainIntelligence",
     "ArkhamAddressArtifact",
