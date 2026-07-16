@@ -310,6 +310,42 @@ class ShodanCollectResult(BaseModel):
     completed_at: datetime = Field(default_factory=_utcnow)
 
 
+class MetasploitExecutionResult(BaseModel):
+    """Authorized Metasploit Framework module execution result for purple-team recon.
+
+    Captures defensive engagement telemetry only: module identity, session outcome,
+    and structured findings. Does not encode exploit payloads or weaponization steps.
+    """
+
+    execution_id: UUID
+    request_id: UUID
+    operator_id: str
+    run_id: UUID | None = None
+    target_host: str = Field(..., description="Authorized IPv4/IPv6 or hostname in engagement scope")
+    target_port: int | None = Field(default=None, ge=1, le=65535)
+    module_path: str = Field(
+        ...,
+        description="MSF module path used under authorized engagement (e.g. auxiliary/scanner/...)",
+    )
+    module_type: Literal["auxiliary", "exploit", "post", "payload", "encoder", "nop"] = "auxiliary"
+    workspace: str = "samson-default"
+    session_established: bool = False
+    session_id: int | None = None
+    success: bool = False
+    findings: list[str] = Field(
+        default_factory=list,
+        description="Normalized defensive findings (open services, versions, CVE hints)",
+    )
+    cve_ids: list[str] = Field(default_factory=list)
+    raw_output_hash: str | None = Field(
+        default=None,
+        description="SHA-256 of sanitized console output for audit correlation",
+    )
+    duration_ms: int = Field(default=0, ge=0)
+    error: str | None = None
+    completed_at: datetime = Field(default_factory=_utcnow)
+
+
 # =============================================================================
 # ADR-003 PyRIT
 # =============================================================================
@@ -535,6 +571,7 @@ __all__ = [
     "ShodanServiceBanner",
     "ShodanReconArtifact",
     "ShodanCollectResult",
+    "MetasploitExecutionResult",
     "PyRITRiskRequest",
     "PyRITRiskResult",
     "GarakScanRequest",
