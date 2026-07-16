@@ -72,6 +72,12 @@
           "output": "artifacts/shodan-ru-report.json",
           "methods": ["shodan_search", "ripestat_ru", "crtsh_ru", "internetdb", "geth_rpc_probe"],
           "constraints": ["read-only", "passive", "defensive-ir", "no-nmap"]
+        },
+        "found-targets-recon": {
+          "script": "scripts/agents/agent_osint_03_found_recon.py",
+          "output": "artifacts/found-targets-recon.json",
+          "methods": ["ipinfo", "internetdb", "whois", "jenkins_fingerprint", "geth_rpc_probe", "wallet_correlation"],
+          "constraints": ["read-only", "passive", "defensive-ir", "no-nmap"]
         }
       },
       "mcp_tools": [],

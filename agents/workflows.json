@@ -237,6 +237,23 @@
         {"agent": "Agent-Report-06", "task": "generate-defensive-checklist", "optional": true}
       ],
       "note": "15 Shodan queries + known case IP 51.250.97.223 (Yandex Jenkins). Needs SHODAN_API_KEY for live search."
+    },
+    "found-targets-recon": {
+      "description": "Recon on Shodan-found + case infra: Jenkins, Geth :8545, WHOIS, wallet correlation",
+      "mode": "forensics",
+      "env": {
+        "INPUT": "artifacts/found-targets-infra.json",
+        "TARGET_WALLET": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA"
+      },
+      "steps": [
+        {"agent": "Agent-OSINT-03", "task": "found-targets-recon"},
+        {"agent": "Agent-Web-04", "task": "stealth-recon", "depends_on": "found-targets-recon"},
+        {"agent": "Agent-Vuln-05", "task": "passive-cve-check", "depends_on": "stealth-recon"},
+        {"agent": "Agent-OSINT-03", "task": "entity-resolution", "optional": true},
+        {"agent": "Agent-Report-06", "task": "generate-defensive-checklist", "depends_on": "passive-cve-check"},
+        {"agent": "Agent-Report-06", "task": "generate-session-report", "optional": true, "depends_on": "generate-defensive-checklist"}
+      ],
+      "note": "Reads high_risk from shodan-ru/kz reports + case IPs 51.250.97.223, 51.222.42.220"
     }
   }
 }
