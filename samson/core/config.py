@@ -82,6 +82,11 @@ class SamsonSettings(BaseSettings):
     require_human_approval: bool = True
     prod_dual_approval: bool = True
 
+    # Financial guardrail proxy (ADR-004/005 runtime)
+    guardrail_proxy_host: str = "127.0.0.1"
+    guardrail_proxy_port: int = 8787
+    guardrail_proxy_auto_start: bool = True
+
     @field_validator("scope_config_path", "payload_registry_path", "fixture_root_path", mode="before")
     @classmethod
     def _coerce_path(cls, value: str | Path) -> Path:

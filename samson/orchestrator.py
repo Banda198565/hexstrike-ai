@@ -4,18 +4,23 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import logging
 import sys
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from samson.core.config import get_settings
 from samson.core.database import Database
 from samson.rag.rag_oracle import RagOracle
 from samson.rag.schemas import RetrieveContextRequest
 from samson.redteam.orchestrator_hooks import SamsonRedTeamHooks
-from samson.redteam.schemas import GarakScanRequest, PyRITRiskRequest
+from samson.redteam.schemas import (
+    FinancialGuardrailDeployRequest,
+    GarakScanRequest,
+    PyRITRiskRequest,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,7 +33,13 @@ def cmd_migrate(_: argparse.Namespace) -> int:
     settings = get_settings()
     db = Database(settings)
     migration_dir = Path(__file__).resolve().parent / "migrations"
-    db.ensure_schema([str(migration_dir / "001_schema.sql"), str(migration_dir / "002_adversary_emulation.sql")])
+    db.ensure_schema(
+        [
+            str(migration_dir / "001_schema.sql"),
+            str(migration_dir / "002_adversary_emulation.sql"),
+            str(migration_dir / "003_guardrail_proxy.sql"),
+        ]
+    )
     logger.info("Schema migration applied")
     return 0
 
@@ -111,6 +122,30 @@ def cmd_pyrit_eval(args: argparse.Namespace) -> int:
         hooks.close()
 
 
+def cmd_guardrail_deploy(args: argparse.Namespace) -> int:
+    hooks = SamsonRedTeamHooks(get_settings())
+
+    async def _run() -> int:
+        try:
+            result = await hooks.deploy_financial_guardrail_from_execution(
+                FinancialGuardrailDeployRequest(
+                    request_id=uuid4(),
+                    execution_id=UUID(args.execution_id),
+                    operator_id=args.operator,
+                    run_id=UUID(args.run_id) if args.run_id else None,
+                    policy_profile=args.profile,
+                    upstream_base_url=args.upstream,
+                )
+            )
+            print(result.model_dump_json(indent=2))
+            return 0
+        finally:
+            await hooks._guardrail_deployer.close()  # noqa: SLF001
+            hooks.close()
+
+    return asyncio.run(_run())
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Samson SBM orchestrator")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -137,6 +172,14 @@ def build_parser() -> argparse.ArgumentParser:
     pyrit.add_argument("--scenario-file", required=True)
     pyrit.add_argument("--operator", default="operator-alpha")
     pyrit.set_defaults(func=cmd_pyrit_eval)
+
+    guardrail = sub.add_parser("guardrail-deploy", help="Deploy financial guardrail proxy from emulation result")
+    guardrail.add_argument("--execution-id", required=True)
+    guardrail.add_argument("--operator", default="operator-alpha")
+    guardrail.add_argument("--run-id", default=None)
+    guardrail.add_argument("--profile", choices=["strict", "balanced", "permissive"], default="strict")
+    guardrail.add_argument("--upstream", default=None)
+    guardrail.set_defaults(func=cmd_guardrail_deploy)
 
     return parser
 

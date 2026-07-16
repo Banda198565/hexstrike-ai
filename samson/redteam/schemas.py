@@ -84,6 +84,71 @@ class GuardrailEnforcementConfig(BaseModel):
     enforce_human_approval: bool = True
 
 
+class ProxyMiddlewareConfig(BaseModel):
+    """Compiled local proxy-middleware runtime configuration."""
+
+    deployment_id: UUID
+    execution_id: UUID
+    run_id: UUID | None = None
+    operator_id: str
+    listen_host: str
+    listen_port: int
+    upstream_base_url: str
+    policy_profile: Literal["strict", "balanced", "permissive"]
+    iban_whitelist: list[str]
+    blocked_ibans: list[str]
+    observed_ibans: list[str] = Field(default_factory=list)
+    strict_regex_patterns: list[str]
+    allowed_destination_hosts: list[str]
+    enforce_human_approval: bool = True
+    on_mismatch_action: Literal["drop", "hitl"] = "hitl"
+    config_path: str | None = None
+    guardrail_enforcement: GuardrailEnforcementConfig | None = None
+
+
+class GuardrailInterceptionDecision(BaseModel):
+    action: Literal["allow", "drop", "hitl"]
+    blocked_ibans: list[str]
+    reason: str
+    request_path: str
+    pending_id: UUID | None = None
+
+
+class GuardrailPendingAction(BaseModel):
+    pending_id: UUID
+    deployment_id: UUID
+    operator_id: str
+    run_id: UUID | None = None
+    status: Literal["awaiting_operator_review", "approved", "rejected"]
+    intercepted_ibans: list[str]
+    request_body_hash: str
+    request_path: str
+    reason: str
+    created_at: datetime
+    operator_note: str = ""
+
+
+class FinancialGuardrailDeployRequest(BaseModel):
+    request_id: UUID
+    execution_id: UUID
+    operator_id: str
+    run_id: UUID | None = None
+    policy_profile: Literal["strict", "balanced", "permissive"] = "strict"
+    upstream_base_url: str | None = None
+
+
+class FinancialGuardrailDeployResult(BaseModel):
+    request_id: UUID
+    deployment_id: UUID
+    execution_id: UUID
+    proxy_config: ProxyMiddlewareConfig
+    guardrail_config: GuardrailEnforcementConfig
+    listen_url: str
+    blocked_ibans: list[str]
+    status: Literal["active", "destroyed"]
+    completed_at: datetime
+
+
 # =============================================================================
 # ADR-003 PyRIT
 # =============================================================================
@@ -274,6 +339,7 @@ class FinancialGuardrailRequest(BaseModel):
     action: Literal["deploy", "test", "teardown"]
     policy_profile: Literal["strict", "balanced", "permissive"]
     guardrail_config: GuardrailEnforcementConfig | None = None
+    execution_id: UUID | None = None
 
 
 class FinancialGuardrailResult(BaseModel):
@@ -294,6 +360,11 @@ __all__ = [
     "ExecutionPayload",
     "AdversaryEmulationResult",
     "GuardrailEnforcementConfig",
+    "ProxyMiddlewareConfig",
+    "GuardrailInterceptionDecision",
+    "GuardrailPendingAction",
+    "FinancialGuardrailDeployRequest",
+    "FinancialGuardrailDeployResult",
     "PyRITRiskRequest",
     "PyRITRiskResult",
     "GarakScanRequest",

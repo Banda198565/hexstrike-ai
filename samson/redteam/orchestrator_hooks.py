@@ -10,6 +10,7 @@ from samson.core.database import Database
 from samson.core.errors import ApprovalRequiredError
 from samson.redteam.atlas.mapper import AtlasMapper
 from samson.redteam.financial_guardrail import FinancialGuardrailAgent
+from samson.redteam.financial_guardrail_deployer import FinancialGuardrailDeployer
 from samson.redteam.financial_sandbox import FinancialSandboxAgent
 from samson.redteam.garak.scanner import GarakScanner
 from samson.redteam.impact_simulation import ImpactSimulationAgent
@@ -18,6 +19,8 @@ from samson.redteam.remediation_demo import RemediationDemonstrationAgent
 from samson.redteam.schemas import (
     ATLASMapRequest,
     ATLASMapResult,
+    FinancialGuardrailDeployRequest,
+    FinancialGuardrailDeployResult,
     FinancialGuardrailRequest,
     FinancialGuardrailResult,
     FinancialSandboxRequest,
@@ -48,6 +51,7 @@ class SamsonRedTeamHooks:
         self._remediation = RemediationDemonstrationAgent(self._settings)
         self._financial = FinancialSandboxAgent(self._settings)
         self._financial_guardrail = FinancialGuardrailAgent(self._settings)
+        self._guardrail_deployer = FinancialGuardrailDeployer(self._settings)
 
     def close(self) -> None:
         self._garak.close()
@@ -55,6 +59,11 @@ class SamsonRedTeamHooks:
         self._remediation.close()
         self._financial.close()
         self._financial_guardrail.close()
+        try:
+            import asyncio
+            asyncio.run(self._guardrail_deployer.close())
+        except RuntimeError:
+            pass
 
     def evaluate_scenario_risk(self, req: PyRITRiskRequest) -> PyRITRiskResult:
         return self._pyrit.evaluate(req)
@@ -108,6 +117,11 @@ class SamsonRedTeamHooks:
 
     def deploy_financial_guardrail(self, req: FinancialGuardrailRequest) -> FinancialGuardrailResult:
         return self._financial_guardrail.run(req)
+
+    async def deploy_financial_guardrail_from_execution(
+        self, req: FinancialGuardrailDeployRequest
+    ) -> FinancialGuardrailDeployResult:
+        return await self._guardrail_deployer.deploy_from_execution(req)
 
     def teardown_financial_guardrail(self, deployment_id: UUID, req: FinancialGuardrailRequest) -> FinancialGuardrailResult:
         teardown_req = req.model_copy(update={"action": "teardown"})
