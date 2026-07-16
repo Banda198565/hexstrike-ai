@@ -98,6 +98,10 @@ class ProxyMiddlewareConfig(BaseModel):
     iban_whitelist: list[str]
     blocked_ibans: list[str]
     observed_ibans: list[str] = Field(default_factory=list)
+    blocked_web3_addresses: list[str] = Field(
+        default_factory=list,
+        description="Arkham high-risk EVM addresses blocked on outbound proxy traffic",
+    )
     strict_regex_patterns: list[str]
     allowed_destination_hosts: list[str]
     enforce_human_approval: bool = True
@@ -109,6 +113,7 @@ class ProxyMiddlewareConfig(BaseModel):
 class GuardrailInterceptionDecision(BaseModel):
     action: Literal["allow", "drop", "hitl"]
     blocked_ibans: list[str]
+    blocked_web3_addresses: list[str] = Field(default_factory=list)
     reason: str
     request_path: str
     pending_id: UUID | None = None
@@ -187,6 +192,9 @@ class ContinuousAuditStepResult(BaseModel):
     synthetic_loss_wei: int = 0
     wallet_depleted: bool = False
     validation_tx_hash: str | None = None
+    arkham_entity: str | None = None
+    arkham_label: str | None = None
+    arkham_from_cache: bool | None = None
 
 
 class ContinuousAuditResult(BaseModel):
@@ -210,6 +218,8 @@ class ContinuousAuditResult(BaseModel):
     synthetic_loss_wei: int = 0
     wallet_depletions: int = 0
     validation_tx_hashes: list[str] = Field(default_factory=list)
+    arkham_lookups: int = 0
+    arkham_entities: list[str] = Field(default_factory=list)
 
 
 class BulkAuditTargetRow(BaseModel):
@@ -234,6 +244,10 @@ class BulkAuditTargetRow(BaseModel):
     synthetic_loss_wei: int = 0
     wallet_depleted: bool = False
     validation_tx_hash: str | None = None
+    arkham_entity: str | None = None
+    arkham_label: str | None = None
+    arkham_risk: str | None = None
+    arkham_is_risk: bool = False
     proxy_status: str = "idle"
     assertion_passed: bool | None = None
     duration_ms: int = 0
@@ -263,6 +277,7 @@ class BulkAuditMatrix(BaseModel):
     web3_frozen: bool = False
     synthetic_loss_wei: int = 0
     wallet_depletions: int = 0
+    arkham_lookups: int = 0
     assertion_pass_count: int = 0
     assertion_fail_count: int = 0
     error_count: int = 0
@@ -332,6 +347,62 @@ class ShodanCollectResult(BaseModel):
     credits_remaining: int | None = None
     artifact: ShodanReconArtifact | None = None
     http_status_code: int | None = None
+    completed_at: datetime = Field(default_factory=_utcnow)
+
+
+class ArkhamEntityRef(BaseModel):
+    """Normalized Arkham entity attribution for an address."""
+
+    entity_id: str | None = None
+    name: str | None = None
+    entity_type: str | None = None
+    website: str | None = None
+    twitter: str | None = None
+    note: str | None = None
+
+
+class ArkhamChainIntelligence(BaseModel):
+    """Per-chain Arkham intelligence slice for one address."""
+
+    chain: str
+    address: str
+    label_name: str | None = None
+    is_contract: bool | None = None
+    is_user_address: bool | None = None
+    entity: ArkhamEntityRef | None = None
+
+
+class ArkhamAddressArtifact(BaseModel):
+    """Cached Arkham address intelligence for RAG + Postgres persistence."""
+
+    artifact_id: UUID
+    request_id: UUID
+    operator_id: str
+    address: str
+    primary_chain: str | None = None
+    entity_name: str | None = None
+    entity_id: str | None = None
+    entity_type: str | None = None
+    label_name: str | None = None
+    is_contract: bool | None = None
+    is_user_address: bool | None = None
+    chains_seen: list[str] = Field(default_factory=list)
+    labels: list[str] = Field(default_factory=list)
+    chain_intel: list[ArkhamChainIntelligence] = Field(default_factory=list)
+    raw_payload: dict[str, Any] = Field(default_factory=dict)
+    rag_doc_path: str | None = None
+    collected_at: datetime = Field(default_factory=_utcnow)
+
+
+class ArkhamCollectResult(BaseModel):
+    """Outcome of an Arkham address intelligence lookup."""
+
+    request_id: UUID
+    address: str
+    from_cache: bool = False
+    http_status_code: int | None = None
+    artifact: ArkhamAddressArtifact | None = None
+    error: str | None = None
     completed_at: datetime = Field(default_factory=_utcnow)
 
 
@@ -630,6 +701,10 @@ __all__ = [
     "ShodanServiceBanner",
     "ShodanReconArtifact",
     "ShodanCollectResult",
+    "ArkhamEntityRef",
+    "ArkhamChainIntelligence",
+    "ArkhamAddressArtifact",
+    "ArkhamCollectResult",
     "RedisTrophySample",
     "RedisEmulationResult",
     "MetasploitExecutionResult",

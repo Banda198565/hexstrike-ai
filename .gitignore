@@ -30,3 +30,7 @@ scripts/sandbox/mainnet.env
 bin/hexstrike-agent
 artifacts/sandbox/
 config/samson/scope.bulk-overlay.yaml
+
+# Samson runtime recon / guardrail artifacts (generated during audits)
+samson/rag/docs/emulation/*.md
+samson/redteam/guardrail/configs/*.json

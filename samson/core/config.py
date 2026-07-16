@@ -122,6 +122,12 @@ class SamsonSettings(BaseSettings):
     max_gas_transactions: int = 100
     web3_allow_mainnet: bool = False
 
+    # Arkham Intel on-chain OSINT (key via SAMSON_ARKHAM_API_KEY — never hardcode)
+    arkham_api_key: str = ""
+    arkham_api_base_url: HttpUrl = Field(default="https://api.arkm.com")
+    arkham_min_interval_sec: float = 1.0
+    arkham_cache_ttl_sec: int = 86_400
+
     @field_validator("shodan_api_key", mode="before")
     @classmethod
     def _coerce_shodan_api_key(cls, value: object) -> str:
@@ -141,6 +147,20 @@ class SamsonSettings(BaseSettings):
         if text:
             return text
         return (os.environ.get("SAMSON_WEB3_PRIVATE_KEY") or os.environ.get("WEB3_PRIVATE_KEY") or "").strip()
+
+    @field_validator("arkham_api_key", mode="before")
+    @classmethod
+    def _coerce_arkham_api_key(cls, value: object) -> str:
+        import os
+
+        text = str(value or "").strip()
+        if text:
+            return text
+        return (
+            os.environ.get("SAMSON_ARKHAM_API_KEY")
+            or os.environ.get("ARKHAM_API_KEY")
+            or ""
+        ).strip()
 
     @field_validator(
         "scope_config_path",

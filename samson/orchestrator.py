@@ -51,6 +51,7 @@ from samson.redteam.schemas import (
 )
 from samson.redteam.financial_sandbox import FinancialSandboxAgent
 from samson.redteam.shodan_collector import SamsonShodanClient
+from samson.redteam.arkham_client import ArkhamClient
 from samson.redteam.validation_node import LocalBlockchainSandbox
 from samson.redteam.web3_gas_governor import get_gas_governor
 
@@ -105,6 +106,7 @@ def cmd_migrate(_: argparse.Namespace) -> int:
             str(migration_dir / "003_guardrail_proxy.sql"),
             str(migration_dir / "004_shodan_recon.sql"),
             str(migration_dir / "005_synthetic_emulation.sql"),
+            str(migration_dir / "006_arkham_recon.sql"),
         ]
     )
     logger.info("Schema migration applied")
@@ -751,9 +753,19 @@ async def _execute_continuous_audit_loop(
     sandbox = FinancialSandboxAgent(settings)
     gas = get_gas_governor(settings)
     chain_sandbox = LocalBlockchainSandbox(settings)
+    arkham = ArkhamClient(settings)
     synthetic_loss_wei = 0
     wallet_depletions = 0
     validation_tx_hashes: list[str] = []
+    arkham_lookups = 0
+    arkham_entities: list[str] = []
+    ingested_web3 = None
+    if isinstance(target_meta, dict):
+        ingested_web3 = target_meta.get("web3_address") or (
+            (target_meta.get("arkham") or {}).get("address")
+            if isinstance(target_meta.get("arkham"), dict)
+            else None
+        )
 
     try:
         if (settings.web3_private_key or "").strip():
@@ -902,6 +914,48 @@ async def _execute_continuous_audit_loop(
                             "validation_node_error": compromise.error,
                         }
 
+                # Arkham on-chain OSINT → web3_recon_artifacts (signer + ingested Web3 target)
+                arkham_addresses: list[str] = []
+                for candidate in (ingested_web3, signer_address):
+                    if isinstance(candidate, str) and candidate.startswith("0x") and len(candidate) == 42:
+                        if candidate.lower() not in {a.lower() for a in arkham_addresses}:
+                            arkham_addresses.append(candidate)
+                if (settings.arkham_api_key or "").strip():
+                    for addr in arkham_addresses:
+                        try:
+                            intel_row = await arkham.fetch_address_data(
+                                addr,
+                                operator_id=req.operator_id,
+                                run_id=run_id,
+                                request_id=request_id,
+                            )
+                            arkham_lookups += 1
+                            step.arkham_entity = intel_row.get("entity_name") or step.arkham_entity
+                            step.arkham_label = intel_row.get("label_name") or step.arkham_label
+                            step.arkham_from_cache = bool(intel_row.get("from_cache"))
+                            if intel_row.get("entity_name"):
+                                arkham_entities.append(str(intel_row["entity_name"]))
+                            if intel_row.get("is_risk") and addr not in step.intercepted_financial_entities:
+                                step.intercepted_financial_entities.append(addr)
+                            step.proxy_response = {
+                                **step.proxy_response,
+                                "arkham": {
+                                    "address": addr,
+                                    "entity": intel_row.get("entity_name"),
+                                    "label": intel_row.get("label_name"),
+                                    "risk_level": intel_row.get("risk_level"),
+                                    "is_risk": intel_row.get("is_risk"),
+                                    "chains": intel_row.get("chains_seen") or [],
+                                    "from_cache": intel_row.get("from_cache"),
+                                },
+                            }
+                        except Exception as arkham_exc:  # noqa: BLE001
+                            logger.warning("Arkham enrichment failed for %s: %s", addr, arkham_exc)
+                            step.proxy_response = {
+                                **step.proxy_response,
+                                "arkham_error": f"{type(arkham_exc).__name__}: {arkham_exc}",
+                            }
+
                 # Round 2: deploy proxy → replay attack → tear down before next payload index
                 try:
                     deploy = await deployer.deploy_from_execution(
@@ -922,10 +976,41 @@ async def _execute_continuous_audit_loop(
                     step.proxy_listen_url = deploy.listen_url
                     guardrails_deployed += 1
 
+                    # Ensure Arkham high-risk wallets appear in Round-2 body so proxy can block.
+                    replay_payload = payload
+                    risk_addrs = [
+                        e
+                        for e in step.intercepted_financial_entities
+                        if isinstance(e, str) and e.startswith("0x") and len(e) == 42
+                    ]
+                    if risk_addrs:
+                        try:
+                            body_obj = json.loads(payload.raw_payload_data)
+                            if isinstance(body_obj, dict):
+                                body_obj = {
+                                    **body_obj,
+                                    "destination_wallet": risk_addrs[0],
+                                    "arkham_risk_addresses": risk_addrs,
+                                }
+                                replay_payload = ExecutionPayload(
+                                    payload_id=payload.payload_id,
+                                    attack_vector=payload.attack_vector,
+                                    raw_payload_data=json.dumps(body_obj, ensure_ascii=False),
+                                )
+                        except (json.JSONDecodeError, TypeError):
+                            replay_payload = ExecutionPayload(
+                                payload_id=payload.payload_id,
+                                attack_vector=payload.attack_vector,
+                                raw_payload_data=(
+                                    f"{payload.raw_payload_data}\n"
+                                    f"destination_wallet={risk_addrs[0]}"
+                                ),
+                            )
+
                     proxy_result = await _rerun_through_proxy(
                         settings=settings,
                         target_endpoint=str(req.target_endpoint),
-                        payload=payload,
+                        payload=replay_payload,
                         target=target,
                     )
                     step.after_http_status = proxy_result["status_code"]
@@ -989,6 +1074,8 @@ async def _execute_continuous_audit_loop(
             synthetic_loss_wei=synthetic_loss_wei,
             wallet_depletions=wallet_depletions,
             validation_tx_hashes=validation_tx_hashes,
+            arkham_lookups=arkham_lookups,
+            arkham_entities=arkham_entities,
         )
 
         if settings.audit_enabled:
@@ -1009,6 +1096,7 @@ async def _execute_continuous_audit_loop(
         executor.close()
         sandbox.close()
         await chain_sandbox.close()
+        await arkham.close()
         await deployer.close_proxy()
 
 
@@ -1089,6 +1177,10 @@ def _print_bulk_audit_matrix(matrix: BulkAuditMatrix) -> None:
         f"guardrail_blocks={matrix.proxy_blocks}"
     )
     print(
+        f"Arkham intel:        lookups={matrix.arkham_lookups}  "
+        f"risk_hits={sum(1 for r in matrix.rows if r.arkham_is_risk)}"
+    )
+    print(
         f"Assertions:          PASS={matrix.assertion_pass_count}  "
         f"FAIL={matrix.assertion_fail_count}  ERROR={matrix.error_count}"
     )
@@ -1096,7 +1188,7 @@ def _print_bulk_audit_matrix(matrix: BulkAuditMatrix) -> None:
     header = (
         f"{'#':>3}  {'KIND':<6}  {'TARGET':<22}  "
         f"{'BR':>3}  {'GR':>3}  {'BLK':>3}  {'W3':>3}  "
-        f"{'LOSS_WEI':>12}  {'DEP':>3}  "
+        f"{'RISK':<6}  {'LOSS_WEI':>12}  {'DEP':>3}  "
         f"{'PROXY':<8}  {'ASSERT':<6}  {'ms':>7}"
     )
     print(header)
@@ -1115,13 +1207,19 @@ def _print_bulk_audit_matrix(matrix: BulkAuditMatrix) -> None:
         if len(target) > 22:
             target = target[:19] + "..."
         dep = "Y" if row.wallet_depleted else "N"
+        risk = (row.arkham_risk or "-")[:6]
         print(
             f"{index:>3}  {row.kind:<6}  {target:<22}  "
             f"{row.breaches_logged:>3}  {row.guardrails_deployed:>3}  {row.proxy_blocks:>3}  "
             f"{row.web3_signed:>3}  "
-            f"{row.synthetic_loss_wei:>12}  {dep:>3}  "
+            f"{risk:<6}  {row.synthetic_loss_wei:>12}  {dep:>3}  "
             f"{row.proxy_status:<8}  {assert_label:<6}  {row.duration_ms:>7}"
         )
+        if row.arkham_entity or row.arkham_label:
+            print(
+                f"     arkham entity={row.arkham_entity or '-'} "
+                f"label={row.arkham_label or '-'} risk={row.arkham_risk or '-'}"
+            )
         if row.validation_tx_hash:
             print(f"     validation_tx={row.validation_tx_hash}")
         if row.error:
@@ -1170,6 +1268,48 @@ async def _shodan_enrich_target(
     return result
 
 
+async def _arkham_enrich_target(
+    client: ArkhamClient,
+    target: IngestedTarget,
+    *,
+    operator_id: str,
+    run_id: UUID | None,
+    force_refresh: bool,
+) -> dict | None:
+    """Arkham Web3 enrichment for IngestedWeb3Target (parallel layer to Shodan)."""
+    address: str | None = None
+    if target.kind == IngestedTargetKind.WEB3:
+        address = target.normalized_value
+    elif target.web3 is not None:
+        address = target.web3.address
+    else:
+        meta_addr = target.metadata.get("web3_address")
+        if isinstance(meta_addr, str):
+            address = meta_addr
+    if not address:
+        return None
+    if not (client._settings.arkham_api_key or "").strip():  # noqa: SLF001
+        logger.warning("Arkham API key missing; skipping Web3 enrichment for %s", address)
+        return None
+    row = await client.fetch_address_data(
+        address,
+        operator_id=operator_id,
+        run_id=run_id,
+        force_refresh=force_refresh,
+    )
+    target.metadata["arkham"] = {
+        "address": address,
+        "risk_level": row.get("risk_level"),
+        "is_risk": row.get("is_risk"),
+        "entity_name": row.get("entity_name"),
+        "label_name": row.get("label_name"),
+        "from_cache": row.get("from_cache"),
+        "chains_seen": row.get("chains_seen") or [],
+    }
+    target.metadata["web3_address"] = address
+    return row
+
+
 async def _execute_bulk_audit(
     settings: SamsonSettings,
     *,
@@ -1182,10 +1322,12 @@ async def _execute_bulk_audit(
     limit: int | None,
     skip_shodan: bool,
     force_shodan_refresh: bool,
+    skip_arkham: bool,
+    force_arkham_refresh: bool,
     run_id: UUID | None,
     max_gas_transactions: int | None = None,
 ) -> BulkAuditMatrix:
-    """Desktop pool → Shodan → Round1 → Web3/Stripe/IBAN → :8787 → Round2 → close_proxy."""
+    """Desktop pool → Shodan ∥ Arkham → Continuous Audit → Guardrail → Matrix."""
     from samson.redteam.web3_gas_governor import get_gas_governor, reset_gas_governor
 
     reset_gas_governor()
@@ -1222,6 +1364,21 @@ async def _execute_bulk_audit(
     )
     settings = settings.model_copy(update={"scope_config_path": overlay_path})
 
+    # Shared exercise run so Arkham web3_recon rows link to guardrail compile.
+    db = Database(settings)
+    if run_id is None:
+        run_id = await asyncio.to_thread(
+            _ensure_exercise_run,
+            db,
+            settings,
+            operator_id=operator_id,
+            scenario_id=scenario_id,
+            target_endpoint=f"bulk://{pool.source_root}",
+            interface_type=interface_type,
+        )
+    else:
+        await asyncio.to_thread(_assert_run_approved, db, run_id)
+
     targets = pool.targets
     if limit is not None and limit >= 0:
         targets = targets[:limit]
@@ -1237,6 +1394,7 @@ async def _execute_bulk_audit(
         gas_remaining=settings.max_gas_transactions,
     )
     shodan = SamsonShodanClient(settings)
+    arkham = ArkhamClient(settings)
     try:
         for target in targets:
             started = time.perf_counter()
@@ -1248,24 +1406,53 @@ async def _execute_bulk_audit(
                 ip_address=target.ip_address,
             )
             try:
+                # Parallel enrichment layers: Shodan (IP) + Arkham (Web3).
+                async def _noop() -> None:
+                    return None
+
+                enrichers = []
                 if not skip_shodan:
-                    shodan_result = await _shodan_enrich_target(
-                        shodan,
-                        target,
-                        operator_id=operator_id,
-                        run_id=run_id,
-                        force_refresh=force_shodan_refresh,
+                    enrichers.append(
+                        _shodan_enrich_target(
+                            shodan,
+                            target,
+                            operator_id=operator_id,
+                            run_id=run_id,
+                            force_refresh=force_shodan_refresh,
+                        )
                     )
-                    if shodan_result is not None:
-                        matrix.shodan_lookups += 1
-                        row.shodan_from_cache = shodan_result.from_cache
-                        row.shodan_credits_spent = shodan_result.credits_spent
-                        row.shodan_blocked = shodan_result.is_blocked
-                        row.open_ports = list(target.open_ports)
-                        row.detected_vulnerabilities = list(target.detected_vulnerabilities)
-                        matrix.shodan_credits_spent += shodan_result.credits_spent
-                        if shodan_result.from_cache:
-                            matrix.shodan_cache_hits += 1
+                else:
+                    enrichers.append(_noop())
+                if not skip_arkham:
+                    enrichers.append(
+                        _arkham_enrich_target(
+                            arkham,
+                            target,
+                            operator_id=operator_id,
+                            run_id=run_id,
+                            force_refresh=force_arkham_refresh,
+                        )
+                    )
+                else:
+                    enrichers.append(_noop())
+
+                shodan_result, arkham_row = await asyncio.gather(*enrichers)
+                if shodan_result is not None:
+                    matrix.shodan_lookups += 1
+                    row.shodan_from_cache = shodan_result.from_cache
+                    row.shodan_credits_spent = shodan_result.credits_spent
+                    row.shodan_blocked = shodan_result.is_blocked
+                    row.open_ports = list(target.open_ports)
+                    row.detected_vulnerabilities = list(target.detected_vulnerabilities)
+                    matrix.shodan_credits_spent += shodan_result.credits_spent
+                    if shodan_result.from_cache:
+                        matrix.shodan_cache_hits += 1
+                if arkham_row is not None:
+                    matrix.arkham_lookups += 1
+                    row.arkham_entity = arkham_row.get("entity_name")
+                    row.arkham_label = arkham_row.get("label_name")
+                    row.arkham_risk = arkham_row.get("risk_level")
+                    row.arkham_is_risk = bool(arkham_row.get("is_risk"))
 
                 TargetLoader.resolve_audit_endpoint(
                     target,
@@ -1291,6 +1478,8 @@ async def _execute_bulk_audit(
                         "kind": target.kind.value,
                         "source_files": target.source_files,
                         "shodan": target.metadata.get("shodan"),
+                        "arkham": target.metadata.get("arkham"),
+                        "web3_address": target.metadata.get("web3_address"),
                     },
                 )
                 _print_continuous_audit_metrics(audit_result)
@@ -1305,6 +1494,7 @@ async def _execute_bulk_audit(
                 matrix.web3_frozen = matrix.web3_frozen or audit_result.web3_frozen
                 matrix.synthetic_loss_wei += audit_result.synthetic_loss_wei
                 matrix.wallet_depletions += audit_result.wallet_depletions
+                matrix.arkham_lookups += audit_result.arkham_lookups
                 if audit_result.assertion_passed:
                     matrix.assertion_pass_count += 1
                 else:
@@ -1323,9 +1513,22 @@ async def _execute_bulk_audit(
                     if audit_result.validation_tx_hashes
                     else None
                 )
+                if not row.arkham_entity and audit_result.arkham_entities:
+                    row.arkham_entity = audit_result.arkham_entities[-1]
+                for step in reversed(audit_result.steps):
+                    if step.arkham_label or step.arkham_entity:
+                        row.arkham_label = step.arkham_label or row.arkham_label
+                        row.arkham_entity = step.arkham_entity or row.arkham_entity
+                        risk_info = (step.proxy_response or {}).get("arkham") or {}
+                        if isinstance(risk_info, dict) and risk_info.get("risk_level"):
+                            row.arkham_risk = str(risk_info.get("risk_level"))
+                            row.arkham_is_risk = bool(risk_info.get("is_risk"))
+                        break
                 row.proxy_status = "closed"
                 if audit_result.guardrails_deployed > 0:
                     row.proxy_status = "closed"  # deployer.close_proxy() always runs in Round-2 finally
+                if row.arkham_is_risk and audit_result.proxy_blocks > 0:
+                    row.proxy_status = "arkham_risk_block"
                 if audit_result.web3_frozen or any(s.web3_frozen for s in audit_result.steps):
                     row.proxy_status = "web3_frozen"
                 elif any(s.proxy_response.get("round2_error") for s in audit_result.steps):
@@ -1349,13 +1552,14 @@ async def _execute_bulk_audit(
                 matrix.rows.append(row)
     finally:
         await shodan.close()
+        await arkham.close()
 
     matrix.completed_at = datetime.now(timezone.utc)
     return matrix
 
 
 def cmd_run_bulk_audit(args: argparse.Namespace) -> int:
-    """Ingest desktop/container target pool → Shodan recon → continuous-audit per target."""
+    """Ingest desktop/container target pool → Shodan/Arkham → continuous-audit matrix."""
     settings = get_settings()
     updates: dict[str, object] = {}
     if args.unattended:
@@ -1377,6 +1581,8 @@ def cmd_run_bulk_audit(args: argparse.Namespace) -> int:
             limit=args.limit,
             skip_shodan=bool(args.skip_shodan),
             force_shodan_refresh=bool(args.force_shodan_refresh),
+            skip_arkham=bool(args.skip_arkham),
+            force_arkham_refresh=bool(args.force_arkham_refresh),
             run_id=UUID(args.run_id) if args.run_id else None,
             max_gas_transactions=getattr(args, "max_gas_transactions", None),
         )
@@ -1410,6 +1616,40 @@ def cmd_shodan_lookup(args: argparse.Namespace) -> int:
             if result.is_blocked:
                 return 3
             return 0
+        finally:
+            await client.close()
+
+    return asyncio.run(_run())
+
+
+def cmd_arkham_lookup(args: argparse.Namespace) -> int:
+    """Authorized Arkham address intel → web3_recon_artifacts + risk classification."""
+    settings = get_settings()
+    if not (settings.arkham_api_key or "").strip():
+        print(
+            "ERROR: Arkham API key missing. Set SAMSON_ARKHAM_API_KEY or ARKHAM_API_KEY.",
+            file=sys.stderr,
+        )
+        return 2
+
+    async def _run() -> int:
+        client = ArkhamClient(settings)
+        try:
+            row = await client.fetch_address_data(
+                args.address,
+                operator_id=args.operator,
+                run_id=UUID(args.run_id) if args.run_id else None,
+                force_refresh=bool(args.force_refresh),
+            )
+            # Never dump full raw_payload to stdout by default (can be large).
+            printable = {k: v for k, v in row.items() if k != "raw_payload"}
+            if args.json:
+                printable["raw_payload"] = row.get("raw_payload")
+            print(json.dumps(printable, indent=2, default=str))
+            return 0
+        except Exception as exc:  # noqa: BLE001
+            print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
+            return 1
         finally:
             await client.close()
 
@@ -1493,7 +1733,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     bulk = sub.add_parser(
         "run-bulk-audit",
-        help="Ingest desktop/container target pool → Shodan recon → continuous-audit matrix",
+        help="Ingest target pool → Shodan ∥ Arkham → continuous-audit → guardrail matrix",
     )
     bulk.add_argument(
         "--source-root",
@@ -1513,6 +1753,8 @@ def build_parser() -> argparse.ArgumentParser:
     bulk.add_argument("--limit", type=int, default=None, help="Audit at most N unique targets")
     bulk.add_argument("--skip-shodan", action="store_true", help="Skip Shodan recon enrichment")
     bulk.add_argument("--force-shodan-refresh", action="store_true", help="Bypass Shodan Postgres cache")
+    bulk.add_argument("--skip-arkham", action="store_true", help="Skip Arkham Web3 enrichment")
+    bulk.add_argument("--force-arkham-refresh", action="store_true", help="Bypass Arkham Postgres cache")
     bulk.add_argument(
         "--max-gas-transactions",
         type=int,
@@ -1536,6 +1778,17 @@ def build_parser() -> argparse.ArgumentParser:
     shodan.add_argument("--minify", action="store_true")
     shodan.add_argument("--force-refresh", action="store_true", help="Bypass local Postgres cache")
     shodan.set_defaults(func=cmd_shodan_lookup)
+
+    arkham = sub.add_parser(
+        "arkham-lookup",
+        help="Authorized Arkham address intel with risk classification → web3_recon_artifacts",
+    )
+    arkham.add_argument("--address", required=True, help="EVM address (0x…40 hex)")
+    arkham.add_argument("--operator", default="operator-alpha")
+    arkham.add_argument("--run-id", default=None)
+    arkham.add_argument("--force-refresh", action="store_true", help="Bypass local Postgres cache")
+    arkham.add_argument("--json", action="store_true", help="Include raw_payload in output")
+    arkham.set_defaults(func=cmd_arkham_lookup)
 
     return parser
 

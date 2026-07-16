@@ -86,7 +86,17 @@ class GuardrailConfigCompiler:
                     blocked_ibans.append(normalized)
 
         blocked_ibans = sorted(set(blocked_ibans))
-        regex_patterns = self._build_regex_patterns(blocked_ibans, emulation.intercepted_financial_entities)
+        blocked_web3 = self._load_arkham_risk_addresses(run_id=run_id)
+        # Also block any 0x addresses present in emulation entities that match risk list.
+        for entity in emulation.intercepted_financial_entities:
+            if isinstance(entity, str) and entity.startswith("0x") and len(entity) == 42:
+                if entity.lower() in {a.lower() for a in blocked_web3}:
+                    continue
+        regex_patterns = self._build_regex_patterns(
+            blocked_ibans,
+            emulation.intercepted_financial_entities,
+            blocked_web3_addresses=blocked_web3,
+        )
         allowed_hosts = self._resolve_allowed_hosts()
 
         enforcement = GuardrailEnforcementConfig(
@@ -104,10 +114,11 @@ class GuardrailConfigCompiler:
             listen_host=self._settings.guardrail_proxy_host,
             listen_port=self._settings.guardrail_proxy_port,
             upstream_base_url=upstream_base_url,
-            policy_profile=policy_profile,
+            policy_profile=policy_profile,  # type: ignore[arg-type]
             iban_whitelist=sorted(whitelist),
             blocked_ibans=blocked_ibans,
             observed_ibans=observed_ibans,
+            blocked_web3_addresses=blocked_web3,
             strict_regex_patterns=regex_patterns,
             allowed_destination_hosts=allowed_hosts,
             enforce_human_approval=enforcement.enforce_human_approval,
@@ -126,7 +137,46 @@ class GuardrailConfigCompiler:
         )
         return proxy_config, enforcement
 
-    def _build_regex_patterns(self, blocked_ibans: list[str], entities: list[str]) -> list[str]:
+    def _load_arkham_risk_addresses(self, *, run_id: UUID | None) -> list[str]:
+        """Pull high-risk wallets from web3_recon_artifacts for guardrail blocking."""
+        from samson.core.database import Database
+
+        db = Database(self._settings)
+        try:
+            # Prefer this run's rows, but always include recent high-risk so
+            # Shodan→Arkham→Audit→Guardrail stays linked across nested run_ids.
+            if run_id is not None:
+                rows = db.fetchall(
+                    """
+                    SELECT DISTINCT address FROM web3_recon_artifacts
+                    WHERE is_risk = TRUE
+                      AND (
+                        run_id = :run_id
+                        OR collected_at >= NOW() - INTERVAL '7 days'
+                      )
+                    """,
+                    {"run_id": str(run_id)},
+                )
+            else:
+                rows = db.fetchall(
+                    """
+                    SELECT DISTINCT address FROM web3_recon_artifacts
+                    WHERE is_risk = TRUE
+                      AND collected_at >= NOW() - INTERVAL '7 days'
+                    """,
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Arkham risk address load failed: %s", exc)
+            return []
+        return sorted({str(r["address"]).lower() for r in rows or [] if r.get("address")})
+
+    def _build_regex_patterns(
+        self,
+        blocked_ibans: list[str],
+        entities: list[str],
+        *,
+        blocked_web3_addresses: list[str] | None = None,
+    ) -> list[str]:
         patterns: list[str] = []
         for iban in blocked_ibans:
             spaced = r"\s*".join(re.escape(ch) for ch in iban)
@@ -136,6 +186,10 @@ class GuardrailConfigCompiler:
                 patterns.append(re.escape(entity))
             if entity.lower().startswith("bearer "):
                 patterns.append(r"Bearer\s+[A-Za-z0-9\-._~+/]+=*")
+        for addr in blocked_web3_addresses or []:
+            # Case-insensitive 0x…40 hex match
+            hex_body = addr[2:] if addr.startswith("0x") else addr
+            patterns.append(r"(?i)0x" + "".join(f"[{c}{c.upper()}]" if c.isalpha() else c for c in hex_body.lower()))
         return sorted(set(patterns))
 
     def _resolve_allowed_hosts(self) -> list[str]:

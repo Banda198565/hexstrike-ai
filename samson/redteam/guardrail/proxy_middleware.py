@@ -144,10 +144,15 @@ class AsyncFinancialGuardrailProxy:
                         blocked_ibans.append(iban)
 
         blocked_ibans = sorted(set(blocked_ibans))
-        if not blocked_ibans and not any(p.search(text) for p in self._state.compiled_patterns):
+        # Body + path/query: outbound wallet destinations often appear in URL or JSON body.
+        haystack = f"{text}\n{request_path}"
+        blocked_web3 = self._find_blocked_web3(haystack, config.blocked_web3_addresses)
+        pattern_hit = any(p.search(haystack) for p in self._state.compiled_patterns)
+        if not blocked_ibans and not blocked_web3 and not pattern_hit:
             return GuardrailInterceptionDecision(
                 action=InterceptionAction.ALLOW.value,
                 blocked_ibans=[],
+                blocked_web3_addresses=[],
                 reason="No policy violations detected",
                 request_path=request_path,
             )
@@ -157,10 +162,18 @@ class AsyncFinancialGuardrailProxy:
             if config.enforce_human_approval and config.on_mismatch_action == "hitl"
             else InterceptionAction.DROP.value
         )
+        reason_parts = []
+        if blocked_ibans:
+            reason_parts.append("IBAN policy mismatch")
+        if blocked_web3:
+            reason_parts.append("Arkham high-risk Web3 address")
+        if pattern_hit and not reason_parts:
+            reason_parts.append("pattern policy mismatch")
         return GuardrailInterceptionDecision(
             action=action,
             blocked_ibans=blocked_ibans,
-            reason=f"IBAN policy mismatch on path {request_path}",
+            blocked_web3_addresses=blocked_web3,
+            reason=f"{'; '.join(reason_parts)} on path {request_path}",
             request_path=request_path,
         )
 
@@ -188,6 +201,7 @@ class AsyncFinancialGuardrailProxy:
                     "status": "blocked",
                     "reason": decision.reason,
                     "blocked_ibans": decision.blocked_ibans,
+                    "blocked_web3_addresses": decision.blocked_web3_addresses,
                     "deployment_id": str(config.deployment_id),
                 },
                 status=403,
@@ -208,6 +222,7 @@ class AsyncFinancialGuardrailProxy:
                     "status": "awaiting_operator_review",
                     "pending_id": str(pending.pending_id),
                     "blocked_ibans": decision.blocked_ibans,
+                    "blocked_web3_addresses": decision.blocked_web3_addresses,
                     "deployment_id": str(config.deployment_id),
                 },
                 status=202,
@@ -247,6 +262,18 @@ class AsyncFinancialGuardrailProxy:
             raise web.HTTPForbidden(text=f"Destination host not allowlisted: {host}")
 
     @staticmethod
+    def _find_blocked_web3(text: str, blocked: list[str]) -> list[str]:
+        if not blocked or not text:
+            return []
+        lowered = text.lower()
+        hits: list[str] = []
+        for addr in blocked:
+            needle = addr.lower()
+            if needle in lowered:
+                hits.append(needle)
+        return sorted(set(hits))
+
+    @staticmethod
     def _forward_headers(request: web.Request) -> dict[str, str]:
         skip = {"host", "content-length", "transfer-encoding"}
         return {k: v for k, v in request.headers.items() if k.lower() not in skip}
@@ -267,6 +294,7 @@ class AsyncFinancialGuardrailProxy:
             "path": path,
             "action": decision.action,
             "blocked_ibans": decision.blocked_ibans,
+            "blocked_web3_addresses": decision.blocked_web3_addresses,
             "body_hash": body_hash,
         }
 

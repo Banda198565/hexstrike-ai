@@ -70,6 +70,7 @@ _JUNK_NAME_FRAGMENTS = (
 )
 
 _URL_RE = re.compile(r"https?://[^\s<>\"')\]]+", re.IGNORECASE)
+_EVM_ADDRESS_RE = re.compile(r"(?<![a-fA-F0-9])0x[a-fA-F0-9]{40}(?![a-fA-F0-9])")
 _IPV4_RE = re.compile(
     r"(?<![\w.])(?:(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}"
     r"(?:25[0-5]|2[0-4]\d|[01]?\d?\d)(?![\w.])"
@@ -132,6 +133,15 @@ class IngestedTargetKind(str, Enum):
     IP = "ip"
     DOMAIN = "domain"
     URL = "url"
+    WEB3 = "web3"
+
+
+class IngestedWeb3Target(BaseModel):
+    """Web3 wallet / contract address extracted for Arkham enrichment."""
+
+    address: str
+    checksum: str | None = None
+    source_files: list[str] = Field(default_factory=list)
 
 
 class IngestedTarget(BaseModel):
@@ -150,6 +160,7 @@ class IngestedTarget(BaseModel):
     open_ports: list[int] = Field(default_factory=list)
     detected_vulnerabilities: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    web3: IngestedWeb3Target | None = None
 
     @field_validator("normalized_value")
     @classmethod
@@ -408,6 +419,9 @@ class TargetLoader:
                 if host:
                     url_hosts.add(host.lower())
 
+        for match in _EVM_ADDRESS_RE.finditer(text):
+            _add(IngestedTargetKind.WEB3, match.group(0))
+
         for match in _IPV4_RE.finditer(text):
             raw = match.group(0)
             try:
@@ -438,12 +452,17 @@ class TargetLoader:
 
     @staticmethod
     def _kind_rank(kind: IngestedTargetKind) -> int:
-        return {IngestedTargetKind.URL: 3, IngestedTargetKind.DOMAIN: 2, IngestedTargetKind.IP: 1}[
-            kind
-        ]
+        return {
+            IngestedTargetKind.URL: 3,
+            IngestedTargetKind.DOMAIN: 2,
+            IngestedTargetKind.IP: 1,
+            IngestedTargetKind.WEB3: 4,
+        }[kind]
 
     @staticmethod
     def _host_dedupe_key(kind: IngestedTargetKind, value: str) -> str | None:
+        if kind == IngestedTargetKind.WEB3:
+            return f"web3:{value.lower()}"
         if kind == IngestedTargetKind.URL:
             host = urlparse(value).hostname
             port = urlparse(value).port
@@ -465,6 +484,12 @@ class TargetLoader:
             return "empty"
         if _INVALID_TEXT_RE.match(text):
             return "invalid_text_pattern"
+        if kind == IngestedTargetKind.WEB3:
+            if not _EVM_ADDRESS_RE.fullmatch(text):
+                return "invalid_evm_address"
+            if text.lower() == "0x" + ("0" * 40):
+                return "zero_address"
+            return None
         if kind == IngestedTargetKind.IP:
             try:
                 ip = ipaddress.IPv4Address(text)
@@ -523,6 +548,9 @@ class TargetLoader:
     @classmethod
     def _probe_live(cls, target: IngestedTarget) -> tuple[bool, str]:
         """Strict live check — HTTP(S) response required for audit destinations."""
+        # Web3 addresses are validated structurally; Arkham enrichment is the live check.
+        if target.kind == IngestedTargetKind.WEB3:
+            return True, "web3_address_structurally_valid"
         endpoint = str(target.audit_endpoint) if target.audit_endpoint else target.normalized_value
         parsed = urlparse(endpoint if "://" in endpoint else f"http://{endpoint}")
         host = parsed.hostname
@@ -562,6 +590,23 @@ class TargetLoader:
         """Attach a concrete HTTP(S) audit endpoint for continuous-audit."""
         target.interface_type = interface_type
         ports = list(preferred_ports) if preferred_ports is not None else list(target.open_ports)
+
+        if target.kind == IngestedTargetKind.WEB3:
+            # Continuous-audit still needs an HTTP arena endpoint; wallet itself is in metadata.
+            from samson.core.config import get_settings
+
+            arena = get_settings().arena_base_url_str.rstrip("/")
+            endpoint = f"{arena}/api/v1/arena/financial/transfers"
+            target.audit_endpoint = endpoint  # type: ignore[assignment]
+            target.web3 = IngestedWeb3Target(
+                address=target.normalized_value,
+                checksum=target.normalized_value,
+                source_files=list(target.source_files),
+            )
+            target.metadata["web3_address"] = target.normalized_value
+            target.metadata["ingested_web3"] = True
+            target.interface_type = interface_type
+            return target
 
         if target.kind == IngestedTargetKind.URL:
             target.audit_endpoint = target.normalized_value  # type: ignore[assignment]
@@ -707,6 +752,10 @@ class TargetLoader:
             path = parsed.path or "/"
             query = f"?{parsed.query}" if parsed.query else ""
             return f"{parsed.scheme}://{parsed.netloc}{path}{query}"
+        if kind == IngestedTargetKind.WEB3:
+            if not _EVM_ADDRESS_RE.fullmatch(text):
+                return None
+            return "0x" + text[2:].lower()
         if kind == IngestedTargetKind.IP:
             try:
                 return str(ipaddress.IPv4Address(text))
@@ -719,6 +768,7 @@ class TargetLoader:
     def _build_target(kind: IngestedTargetKind, value: str, *, source_file: str) -> IngestedTarget:
         ip_address = value if kind == IngestedTargetKind.IP else None
         domain = value.split(":", 1)[0] if kind == IngestedTargetKind.DOMAIN else None
+        web3: IngestedWeb3Target | None = None
         if kind == IngestedTargetKind.URL:
             host = urlparse(value).hostname
             domain = host
@@ -728,6 +778,8 @@ class TargetLoader:
                     ip_address = host
                 except ValueError:
                     pass
+        if kind == IngestedTargetKind.WEB3:
+            web3 = IngestedWeb3Target(address=value, checksum=value, source_files=[source_file])
         return IngestedTarget(
             kind=kind,
             raw_value=value,
@@ -735,6 +787,8 @@ class TargetLoader:
             source_files=[source_file],
             ip_address=ip_address,
             domain=domain,
+            web3=web3,
+            metadata={"web3_address": value, "ingested_web3": True} if kind == IngestedTargetKind.WEB3 else {},
         )
 
     @staticmethod
