@@ -127,6 +127,11 @@ class SamsonSettings(BaseSettings):
     arkham_api_base_url: HttpUrl = Field(default="https://api.arkm.com")
     arkham_min_interval_sec: float = 1.0
     arkham_cache_ttl_sec: int = 86_400
+    # Skip Web3 signer when Arkham total_balance_usd is below this USD threshold.
+    arkham_min_balance_usd: float = 10.0
+    arkham_balance_gate_enabled: bool = True
+    # Local Anvil/Hardhat drills keep gas free — still fetch+persist, but do not skip signer.
+    arkham_balance_gate_bypass_local_chains: bool = True
 
     @field_validator("shodan_api_key", mode="before")
     @classmethod

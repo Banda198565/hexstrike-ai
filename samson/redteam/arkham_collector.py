@@ -30,6 +30,7 @@ from samson.redteam.schemas import (
     ArkhamChainIntelligence,
     ArkhamCollectResult,
     ArkhamEntityRef,
+    ArkhamIntelArtifact,
 )
 
 logger = logging.getLogger(__name__)
@@ -95,6 +96,174 @@ class SamsonArkhamClient:
                 if wait > 0:
                     await asyncio.sleep(wait)
             self._last_query_monotonic = time.monotonic()
+
+    async def fetch_address_intelligence(
+        self,
+        address: str,
+        *,
+        operator_id: str = "operator-alpha",
+        request_id: UUID | None = None,
+        run_id: UUID | None = None,
+        chains: str | None = None,
+        force_refresh: bool = False,
+    ) -> ArkhamIntelArtifact:
+        """Fetch live Arkham balance + entity profile for dynamic gas gating.
+
+        Official endpoint: ``GET https://api.arkm.com/balances/address/{address}``
+        with ``API-Key`` header (see https://arkm.com/llms/guides/api-keys-authentication.md).
+        """
+        request_id = request_id or uuid4()
+        addr = (address or "").strip()
+        if not _EVM_ADDRESS_RE.match(addr):
+            raise ConfigurationError(
+                "Invalid EVM address for Arkham intelligence",
+                address=address,
+            )
+        self._scope.assert_operator(operator_id, request_id=request_id)
+
+        if not force_refresh:
+            cached = await asyncio.to_thread(self.get_cached_intel_artifact, addr)
+            if cached is not None:
+                logger.info(
+                    "[+] Arkham intel cache hit address=%s balance_usd=%.4f",
+                    addr,
+                    cached.total_balance_usd,
+                )
+                if self._settings.audit_enabled:
+                    await asyncio.to_thread(
+                        self._audit.write_redteam_audit,
+                        request_id=request_id,
+                        tool="arkham_collector",
+                        operator_id=operator_id,
+                        action="fetch_address_intelligence_cache",
+                        outcome="pass",
+                        payload_hash=sha256_payload(
+                            {
+                                "address": addr,
+                                "total_balance_usd": cached.total_balance_usd,
+                                "from_cache": True,
+                            }
+                        ),
+                        duration_ms=0,
+                        run_id=run_id,
+                    )
+                return cached.model_copy(update={"from_cache": True})
+
+        if not self._api_key:
+            raise ConfigurationError(
+                "Arkham API key missing — set SAMSON_ARKHAM_API_KEY or ARKHAM_API_KEY",
+            )
+
+        await self._pace()
+        client = await self._ensure_client()
+        started = time.perf_counter()
+        path = f"/balances/address/{addr}"
+        params: dict[str, str] | None = {"chains": chains} if chains else None
+        headers = {"API-Key": self._api_key}
+
+        httpx_log = logging.getLogger("httpx")
+        prev = httpx_log.level
+        try:
+            httpx_log.setLevel(logging.WARNING)
+            logger.info("Arkham GET %s%s (api_key=REDACTED)", self._base_url, path)
+            response = await client.get(path, headers=headers, params=params)
+        except httpx.HTTPError as exc:
+            raise NetworkError(
+                f"Arkham balances transport failure for {addr}",
+                address=addr,
+                error=str(exc),
+            ) from exc
+        finally:
+            httpx_log.setLevel(prev)
+
+        duration_ms = int((time.perf_counter() - started) * 1000)
+        if response.status_code == 401:
+            raise ConfigurationError("Arkham API key rejected (401)", address=addr)
+        if response.status_code == 403:
+            raise ConfigurationError(
+                "Arkham API forbidden (403) — trial/plan limits?",
+                address=addr,
+            )
+        if response.status_code == 404:
+            intel = ArkhamIntelArtifact(
+                address=addr,
+                total_balance_usd=0.0,
+                active_chains=[],
+                last_updated=_utcnow(),
+                http_status_code=404,
+                raw_balances_payload={"status": 404},
+            )
+            await asyncio.to_thread(
+                self._persist_intel_artifact,
+                intel,
+                request_id=request_id,
+                operator_id=operator_id,
+                run_id=run_id,
+            )
+            return intel
+        if response.status_code >= 400:
+            raise NetworkError(
+                f"Arkham balances failed HTTP {response.status_code}",
+                address=addr,
+                status_code=response.status_code,
+                body=response.text[:2000],
+            )
+
+        try:
+            payload = response.json()
+        except json.JSONDecodeError as exc:
+            raise NetworkError(
+                "Arkham balances returned non-JSON payload",
+                address=addr,
+            ) from exc
+
+        if not isinstance(payload, dict):
+            raise NetworkError(
+                "Arkham balances payload must be a JSON object",
+                address=addr,
+            )
+
+        intel = self._normalize_balances_payload(
+            payload,
+            address=addr,
+            http_status_code=response.status_code,
+        )
+        await asyncio.to_thread(
+            self._persist_intel_artifact,
+            intel,
+            request_id=request_id,
+            operator_id=operator_id,
+            run_id=run_id,
+        )
+
+        if self._settings.audit_enabled:
+            await asyncio.to_thread(
+                self._audit.write_redteam_audit,
+                request_id=request_id,
+                tool="arkham_collector",
+                operator_id=operator_id,
+                action="fetch_address_intelligence",
+                outcome="pass",
+                payload_hash=sha256_payload(
+                    {
+                        "address": addr,
+                        "total_balance_usd": intel.total_balance_usd,
+                        "entity_name": intel.entity_name,
+                        "active_chains": intel.active_chains,
+                    }
+                ),
+                duration_ms=duration_ms,
+                run_id=run_id,
+            )
+
+        logger.warning(
+            "Arkham intel address=%s entity=%s balance_usd=%.4f chains=%s",
+            addr,
+            intel.entity_name or "-",
+            intel.total_balance_usd,
+            ",".join(intel.active_chains) or "-",
+        )
+        return intel
 
     async def lookup_address(
         self,
@@ -259,6 +428,7 @@ class SamsonArkhamClient:
             FROM arkham_recon_artifacts
             WHERE LOWER(address) = LOWER(:address)
               AND collected_at >= NOW() - (:ttl * INTERVAL '1 second')
+              AND COALESCE(raw_payload->>'source', '') <> 'balances'
             ORDER BY collected_at DESC
             LIMIT 1
             """,
@@ -292,6 +462,197 @@ class SamsonArkhamClient:
             rag_doc_path=row.get("rag_doc_path"),
             collected_at=row.get("collected_at") or _utcnow(),
         )
+
+    def get_cached_intel_artifact(self, address: str) -> ArkhamIntelArtifact | None:
+        """Return a recent balances-profile cache hit as ``ArkhamIntelArtifact``."""
+        ttl = int(self._settings.arkham_cache_ttl_sec)
+        row = self._db.fetchone(
+            """
+            SELECT address, entity_name, entity_id, entity_type, labels, chains_seen,
+                   raw_payload, collected_at
+            FROM arkham_recon_artifacts
+            WHERE LOWER(address) = LOWER(:address)
+              AND collected_at >= NOW() - (:ttl * INTERVAL '1 second')
+              AND raw_payload->>'source' = 'balances'
+            ORDER BY collected_at DESC
+            LIMIT 1
+            """,
+            {"address": address, "ttl": ttl},
+        )
+        if not row:
+            return None
+        raw = row.get("raw_payload") or {}
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except json.JSONDecodeError:
+                raw = {}
+        if not isinstance(raw, dict):
+            raw = {}
+        balance_by_chain = raw.get("balance_by_chain_usd") or {}
+        if not isinstance(balance_by_chain, dict):
+            balance_by_chain = {}
+        try:
+            total = float(raw.get("total_balance_usd") or 0.0)
+        except (TypeError, ValueError):
+            total = 0.0
+        return ArkhamIntelArtifact(
+            address=row["address"],
+            entity_name=row.get("entity_name"),
+            entity_id=row.get("entity_id"),
+            entity_type=row.get("entity_type"),
+            labels=list(row.get("labels") or []),
+            total_balance_usd=total,
+            active_chains=list(row.get("chains_seen") or []),
+            balance_by_chain_usd={
+                str(k): float(v)
+                for k, v in balance_by_chain.items()
+                if self._is_number(v)
+            },
+            last_updated=row.get("collected_at") or _utcnow(),
+            raw_balances_payload=raw.get("raw_balances_payload")
+            if isinstance(raw.get("raw_balances_payload"), dict)
+            else raw,
+            http_status_code=200,
+            from_cache=True,
+        )
+
+    @classmethod
+    def _normalize_balances_payload(
+        cls,
+        payload: dict[str, Any],
+        *,
+        address: str,
+        http_status_code: int,
+    ) -> ArkhamIntelArtifact:
+        total_by_chain_raw = payload.get("totalBalance") or {}
+        balance_by_chain: dict[str, float] = {}
+        if isinstance(total_by_chain_raw, dict):
+            for chain_name, usd_value in total_by_chain_raw.items():
+                if cls._is_number(usd_value):
+                    balance_by_chain[str(chain_name)] = float(usd_value)
+        total_balance_usd = float(sum(balance_by_chain.values()))
+        active_chains = sorted(
+            chain for chain, usd in balance_by_chain.items() if usd > 0.0
+        )
+        if not active_chains:
+            balances = payload.get("balances")
+            if isinstance(balances, dict):
+                active_chains = sorted(str(k) for k in balances.keys())
+
+        entity_name: str | None = None
+        entity_id: str | None = None
+        entity_type: str | None = None
+        labels: set[str] = set()
+        addresses_block = payload.get("addresses")
+        if isinstance(addresses_block, dict):
+            for chain_map in addresses_block.values():
+                if not isinstance(chain_map, dict):
+                    continue
+                for meta in chain_map.values():
+                    if not isinstance(meta, dict):
+                        continue
+                    entity = meta.get("arkhamEntity") or {}
+                    if isinstance(entity, dict):
+                        if not entity_name and entity.get("name"):
+                            entity_name = str(entity.get("name"))
+                        if not entity_id and entity.get("id"):
+                            entity_id = str(entity.get("id"))
+                        if not entity_type and entity.get("type"):
+                            entity_type = str(entity.get("type"))
+                        if entity.get("name"):
+                            labels.add(str(entity["name"]))
+                    label = meta.get("arkhamLabel") or {}
+                    if isinstance(label, dict) and label.get("name"):
+                        labels.add(str(label["name"]))
+                    elif isinstance(label, str) and label:
+                        labels.add(label)
+
+        return ArkhamIntelArtifact(
+            address=address,
+            entity_name=entity_name,
+            entity_id=entity_id,
+            entity_type=entity_type,
+            labels=sorted(labels),
+            total_balance_usd=total_balance_usd,
+            active_chains=active_chains,
+            balance_by_chain_usd=balance_by_chain,
+            last_updated=_utcnow(),
+            raw_balances_payload=payload,
+            http_status_code=http_status_code,
+            from_cache=False,
+        )
+
+    def _persist_intel_artifact(
+        self,
+        intel: ArkhamIntelArtifact,
+        *,
+        request_id: UUID,
+        operator_id: str,
+        run_id: UUID | None,
+    ) -> None:
+        """Persist balances profile into arkham_recon_artifacts for cache + explainability."""
+        wrapped = {
+            "source": "balances",
+            "total_balance_usd": intel.total_balance_usd,
+            "balance_by_chain_usd": intel.balance_by_chain_usd,
+            "raw_balances_payload": intel.raw_balances_payload,
+        }
+        artifact_id = uuid4()
+        self._db.execute(
+            """
+            INSERT INTO arkham_recon_artifacts (
+                artifact_id, request_id, run_id, operator_id, address, chain,
+                entity_name, entity_id, entity_type, label_name, is_contract,
+                is_user_address, chains_seen, labels, raw_payload, rag_doc_path,
+                collected_at
+            ) VALUES (
+                :artifact_id, :request_id, :run_id, :operator_id, :address, :chain,
+                :entity_name, :entity_id, :entity_type, :label_name, :is_contract,
+                :is_user_address, :chains_seen, :labels, CAST(:raw_payload AS jsonb),
+                :rag_doc_path, :collected_at
+            )
+            ON CONFLICT (artifact_id) DO UPDATE SET
+                raw_payload = EXCLUDED.raw_payload,
+                entity_name = EXCLUDED.entity_name,
+                labels = EXCLUDED.labels,
+                chains_seen = EXCLUDED.chains_seen,
+                collected_at = EXCLUDED.collected_at
+            """,
+            {
+                "artifact_id": str(artifact_id),
+                "request_id": str(request_id),
+                "run_id": str(run_id) if run_id else None,
+                "operator_id": operator_id,
+                "address": intel.address,
+                "chain": intel.active_chains[0] if intel.active_chains else None,
+                "entity_name": intel.entity_name,
+                "entity_id": intel.entity_id,
+                "entity_type": intel.entity_type,
+                "label_name": intel.labels[0] if intel.labels else None,
+                "is_contract": None,
+                "is_user_address": None,
+                "chains_seen": intel.active_chains,
+                "labels": intel.labels,
+                "raw_payload": json.dumps(wrapped, ensure_ascii=False),
+                "rag_doc_path": None,
+                "collected_at": intel.last_updated.isoformat(),
+            },
+        )
+
+    @staticmethod
+    def _is_number(value: object) -> bool:
+        if isinstance(value, bool):
+            return False
+        if isinstance(value, (int, float)):
+            return True
+        if isinstance(value, str):
+            try:
+                float(value)
+                return True
+            except ValueError:
+                return False
+        return False
 
     @staticmethod
     def _empty_artifact(

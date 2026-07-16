@@ -406,6 +406,26 @@ class ArkhamCollectResult(BaseModel):
     completed_at: datetime = Field(default_factory=_utcnow)
 
 
+class ArkhamIntelArtifact(BaseModel):
+    """Production Arkham Intel profile used for balance gating and explainability."""
+
+    address: str
+    entity_name: str | None = Field(
+        default=None,
+        description="Real-world owner name annotated by Arkham",
+    )
+    labels: list[str] = Field(default_factory=list)
+    total_balance_usd: float = 0.0
+    active_chains: list[str] = Field(default_factory=list)
+    last_updated: datetime = Field(default_factory=_utcnow)
+    entity_id: str | None = None
+    entity_type: str | None = None
+    balance_by_chain_usd: dict[str, float] = Field(default_factory=dict)
+    raw_balances_payload: dict[str, Any] = Field(default_factory=dict)
+    http_status_code: int | None = None
+    from_cache: bool = False
+
+
 class RedisTrophySample(BaseModel):
     """One AI/LLM-related Redis key with a truncated sample value."""
 
@@ -705,6 +725,7 @@ __all__ = [
     "ArkhamChainIntelligence",
     "ArkhamAddressArtifact",
     "ArkhamCollectResult",
+    "ArkhamIntelArtifact",
     "RedisTrophySample",
     "RedisEmulationResult",
     "MetasploitExecutionResult",

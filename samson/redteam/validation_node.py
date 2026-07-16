@@ -24,8 +24,13 @@ from samson.core.config import SamsonSettings, get_settings
 from samson.core.database import AuditRepository, Database, sha256_payload, vector_literal
 from samson.core.errors import ConfigurationError
 from samson.core.http_client import OllamaClient
+from samson.redteam.arkham_collector import SamsonArkhamClient
+from samson.redteam.schemas import ArkhamIntelArtifact
 
 logger = logging.getLogger(__name__)
+
+# Local Anvil / Hardhat chain ids (gas is free; balance gate still fetches + persists).
+_LOCAL_CHAIN_IDS = frozenset({31337, 1337})
 
 # Allowed RPC hostnames for the local / Docker sandbox (no public mainnet RPCs).
 _LOCAL_RPC_HOSTS = frozenset(
@@ -87,6 +92,7 @@ class LocalBlockchainSandbox:
         self._settings = settings or get_settings()
         self._db = Database(self._settings)
         self._audit = AuditRepository(self._db)
+        self._arkham = SamsonArkhamClient(self._settings)
         self._w3: AsyncWeb3 | None = None
         self._rpc_url = str(self._settings.web3_rpc_url).rstrip("/")
 
@@ -125,6 +131,7 @@ class LocalBlockchainSandbox:
                 if asyncio.iscoroutine(close):
                     await close
             self._w3 = None
+        await self._arkham.close()
 
     @property
     def connected(self) -> bool:
@@ -225,6 +232,7 @@ class LocalBlockchainSandbox:
             )
         )
 
+        arkham_intel: ArkhamIntelArtifact | None = None
         try:
             if self._w3 is None:
                 await self.connect()
@@ -241,6 +249,50 @@ class LocalBlockchainSandbox:
                     signer=signer,
                     target_wallet=target,
                 )
+
+            # Dynamic Balance Profiling — query Arkham before any signer work.
+            arkham_intel = await self._profile_address_balance(
+                target,
+                operator_id=operator_id,
+                run_id=run_id,
+                request_id=request_id,
+            )
+            if self._should_skip_signer(arkham_intel, chain_id=chain_id):
+                threshold = float(self._settings.arkham_min_balance_usd)
+                skipped = WalletCompromiseResult(
+                    validated=False,
+                    synthetic=True,
+                    target_wallet=target,
+                    chain_id=chain_id,
+                    rpc_url=self._rpc_url,
+                    execution_id=execution_id,
+                    error=(
+                        "arkham_balance_below_threshold: "
+                        f"total_balance_usd={arkham_intel.total_balance_usd:.4f} "
+                        f"< threshold={threshold:.2f} — signer phase skipped to preserve gas"
+                    ),
+                    metadata={
+                        "skipped_signer": True,
+                        "arkham_balance_gate": True,
+                        "arkham_min_balance_usd": threshold,
+                        "arkham_intel": arkham_intel.model_dump(mode="json"),
+                    },
+                )
+                await asyncio.to_thread(
+                    self._persist_emulation_result,
+                    skipped,
+                    operator_id=operator_id,
+                    run_id=run_id,
+                    request_id=request_id,
+                    arkham_intel=arkham_intel,
+                )
+                logger.warning(
+                    "SKIP signer wallet=%s arkham_balance_usd=%.4f threshold=%.2f",
+                    target,
+                    arkham_intel.total_balance_usd,
+                    threshold,
+                )
+                return skipped
 
             diversion_to = self._checksum(w3, self._settings.web3_diversion_to)
             seed = int(fund_wei if fund_wei is not None else _DEFAULT_FUND_WEI)
@@ -320,6 +372,7 @@ class LocalBlockchainSandbox:
                     "status": int(receipt.get("status", 0)),
                     "block_number": int(receipt.get("blockNumber", 0)),
                     "transfer_value_wei": value,
+                    "arkham_intel": arkham_intel.model_dump(mode="json") if arkham_intel else None,
                 },
             )
             await asyncio.to_thread(
@@ -328,6 +381,7 @@ class LocalBlockchainSandbox:
                 operator_id=operator_id,
                 run_id=run_id,
                 request_id=request_id,
+                arkham_intel=arkham_intel,
             )
             logger.warning(
                 "SYNTHETIC wallet compromise validated wallet=%s loss_wei=%s tx=%s depleted=%s",
@@ -346,6 +400,9 @@ class LocalBlockchainSandbox:
                 rpc_url=self._rpc_url,
                 execution_id=execution_id,
                 error=f"{type(exc).__name__}: {exc}",
+                metadata={
+                    "arkham_intel": arkham_intel.model_dump(mode="json") if arkham_intel else None,
+                },
             )
             try:
                 await asyncio.to_thread(
@@ -354,10 +411,56 @@ class LocalBlockchainSandbox:
                     operator_id=operator_id,
                     run_id=run_id,
                     request_id=request_id,
+                    arkham_intel=arkham_intel,
                 )
             except Exception as persist_exc:  # noqa: BLE001
                 logger.error("Failed to persist synthetic emulation row: %s", persist_exc)
             return failed
+
+    async def _profile_address_balance(
+        self,
+        address: str,
+        *,
+        operator_id: str,
+        run_id: UUID | None,
+        request_id: UUID,
+    ) -> ArkhamIntelArtifact | None:
+        """Call Arkham balances API; return None only when API key is absent."""
+        if not (self._settings.arkham_api_key or "").strip():
+            logger.warning(
+                "Arkham API key missing — balance gate disabled for %s",
+                address,
+            )
+            return None
+        try:
+            return await self._arkham.fetch_address_intelligence(
+                address,
+                operator_id=operator_id,
+                run_id=run_id,
+                request_id=request_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            # Fail-open for sandbox continuity; still surface in logs.
+            logger.error("Arkham balance profiling failed for %s: %s", address, exc)
+            return None
+
+    def _should_skip_signer(
+        self,
+        intel: ArkhamIntelArtifact | None,
+        *,
+        chain_id: int,
+    ) -> bool:
+        if intel is None:
+            return False
+        if not bool(self._settings.arkham_balance_gate_enabled):
+            return False
+        if (
+            bool(self._settings.arkham_balance_gate_bypass_local_chains)
+            and chain_id in _LOCAL_CHAIN_IDS
+        ):
+            return False
+        threshold = float(self._settings.arkham_min_balance_usd)
+        return float(intel.total_balance_usd) < threshold
 
     def _persist_emulation_result(
         self,
@@ -366,9 +469,15 @@ class LocalBlockchainSandbox:
         operator_id: str,
         run_id: UUID | None,
         request_id: UUID,
+        arkham_intel: ArkhamIntelArtifact | None = None,
     ) -> None:
-        """Insert into adversary_emulation_results with synthetic=True."""
+        """Insert into adversary_emulation_results with synthetic=True + ArkhamIntelArtifact."""
         execution_id = result.execution_id or uuid4()
+        intel_dump = None
+        if arkham_intel is not None:
+            intel_dump = arkham_intel.model_dump(mode="json")
+        elif isinstance(result.metadata.get("arkham_intel"), dict):
+            intel_dump = result.metadata.get("arkham_intel")
         payload = {
             "synthetic": True,
             "validation": "local_blockchain_wallet_compromise",
@@ -387,6 +496,7 @@ class LocalBlockchainSandbox:
             "validated": result.validated,
             "error": result.error,
             "metadata": result.metadata,
+            "arkham_intel": intel_dump,
         }
         entities: list[str] = []
         if result.target_wallet:
