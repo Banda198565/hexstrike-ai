@@ -107,8 +107,88 @@ Target:     Passkeys / WebAuthn (+ hardware key for privileged roles)
 
 ---
 
+## 8. SIM800C AT-команды (lab / authorized SIM only)
+
+Commodity GSM modems (SIM800C and family) speak **Hayes AT**. Below is the public SMS subset used in IoT labs and in abuse reports as a **downstream OTP collector** on a line the operator already controls.
+
+**Scope lock:** use only on **your** SIM / authorized test numbers. This section does **not** cover SS7, IMSI-catchers, or redirecting a third party’s SMS.
+
+### 8.1 Serial / UART baseline
+
+Typical USB-UART: `115200 8N1` (module-dependent; some boards `9600`).
+
+| Command | Meaning |
+| --- | --- |
+| `AT` | Smoke: expect `OK` |
+| `ATE0` | Echo off (cleaner logs) |
+| `AT+CPIN?` | SIM status (`READY` / need PIN) |
+| `AT+CPIN="xxxx"` | Enter SIM PIN (if required) |
+| `AT+CSQ` | Signal quality (`rssi,ber`) |
+| `AT+CREG?` | Network registration |
+| `AT+COPS?` | Current operator |
+| `AT+CMEE=2` | Verbose CME errors |
+
+### 8.2 SMS mode and receive
+
+| Command | Meaning |
+| --- | --- |
+| `AT+CMGF=1` | Text mode (PDU = `0`) |
+| `AT+CSCS="GSM"` | Character set (or `"UCS2"` for Unicode) |
+| `AT+CNMI=2,2,0,0,0` | New SMS forwarded to UART as `+CMT: ...` (live) |
+| `AT+CNMI=2,1,0,0,0` | New SMS stored; UART gets `+CMTI: "SM",index` |
+| `AT+CPMS="SM","SM","SM"` | Prefer SIM storage |
+| `AT+CMGL="ALL"` | List all stored SMS |
+| `AT+CMGL="REC UNREAD"` | List unread |
+| `AT+CMGR=index` | Read SMS at index |
+| `AT+CMGD=index` | Delete one SMS |
+| `AT+CMGD=1,4` | Delete all (SIM800 family variant — verify on device) |
+
+**Live indication example (text mode):**
+
+```text
++CMT: "+79001234567","","26/07/16,16:00:00+12"
+Your code is 482193
+```
+
+**Stored indication:**
+
+```text
++CMTI: "SM",3
+AT+CMGR=3
++CMGR: "REC UNREAD","+79001234567",,"26/07/16,16:00:00+12"
+Your code is 482193
+```
+
+### 8.3 Send SMS (lab self-test only)
+
+| Command | Meaning |
+| --- | --- |
+| `AT+CMGS="+79001234567"` | Prompt `>`; type body; end with `Ctrl+Z` (`0x1A`) |
+| `AT+CMSS=index` | Send from storage |
+
+Self-test loop: module A → SMS → module B → parse on UART → proves collector path without touching foreign subscribers.
+
+### 8.4 Defender / purple-team notes
+
+| Signal | Why it matters |
+| --- | --- |
+| Host process holding `/dev/ttyUSB*` + `AT+CNMI` + regex on `\b\d{4,8}\b` | Classic OTP harvester pattern |
+| Sudden SMS silence on victim handset + auth success elsewhere | Consistent with redirect **or** SIM-swap — respond with MFA upgrade, not SMS resend |
+| Product dependency on SMS OTP | Architectural debt — see §4 ladder (WebAuthn/passkeys) |
+
+Samson mapping: treat UART OTP collectors as **untrusted channel endpoints** (same class as “untrusted proxy” in `docs/ARCHITECTURE.md`). No Samson runtime module drives SIM800C in-repo by default.
+
+### 8.5 What this module is *not*
+
+- Not an SS7 gateway  
+- Not an IMSI-catcher / rogue BTS  
+- Not a tool to request foreign IMSI / UpdateLocation  
+
+---
+
 ## Document history
 
 | Version | Change |
 | --- | --- |
 | 1.0 | Attack→layer→defense table; comparative 2FA matrix; remediation ladder; no operational SS7 guidance |
+| 1.1 | Appendix: SIM800C AT SMS command reference (authorized lab / defender awareness) |
