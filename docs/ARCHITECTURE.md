@@ -276,6 +276,7 @@ Exit code policy for Go agent (target):
 | No cryptographic replay binding | Replay variants may slip | Intent hash + nonce accounting |
 | Alerting without paging SLO | Detection ≠ response | Runbooks + severity matrix below |
 | Samson vs HexStrike sandbox docs | Two stacks | Cross-link core spec; do not conflate ports/roles |
+| SMS OTP as auth factor | Breaks at network / carrier / device / radio | See `docs/intel/SMS-2FA-THREAT-MODEL.md` — prefer WebAuthn/passkeys |
 
 ---
 
