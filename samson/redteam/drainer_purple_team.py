@@ -100,28 +100,35 @@ class MultiDrainerPurpleTeam:
         selected = tuple(families or ("evm_erc20", "usdt_evm", "trx_trc20"))
         results: list[DrainerFamilyResult] = []
 
-        for family in selected:
-            if family in ("evm_erc20", "usdt_evm"):
-                results.append(
-                    await self._run_evm_family(
-                        family=family,  # type: ignore[arg-type]
-                        request_id=request_id,
-                        operator_id=operator_id,
-                        run_id=run_id,
-                        token_amount=token_amount,
+        needs_sandbox = any(f in ("evm_erc20", "usdt_evm") for f in selected)
+        try:
+            if needs_sandbox:
+                await self._sandbox.connect()
+            for family in selected:
+                if family in ("evm_erc20", "usdt_evm"):
+                    results.append(
+                        await self._run_evm_family(
+                            family=family,  # type: ignore[arg-type]
+                            request_id=request_id,
+                            operator_id=operator_id,
+                            run_id=run_id,
+                            token_amount=token_amount,
+                        )
                     )
-                )
-            elif family == "trx_trc20":
-                results.append(
-                    await asyncio.to_thread(
-                        self._run_trx_defense,
-                        request_id=request_id,
-                        operator_id=operator_id,
-                        run_id=run_id,
+                elif family == "trx_trc20":
+                    results.append(
+                        await asyncio.to_thread(
+                            self._run_trx_defense,
+                            request_id=request_id,
+                            operator_id=operator_id,
+                            run_id=run_id,
+                        )
                     )
-                )
-            else:
-                raise ConfigurationError(f"Unknown drainer family: {family}")
+                else:
+                    raise ConfigurationError(f"Unknown drainer family: {family}")
+        finally:
+            if needs_sandbox:
+                await self._sandbox.close()
 
         assertion_passed = all(
             (item.attack_success and item.defense_blocked)
@@ -177,7 +184,8 @@ class MultiDrainerPurpleTeam:
             deployer = Account.from_key(deployer_key)
             victim = Account.from_key(victim_key)
 
-            await self._sandbox.connect()
+            if not self._sandbox.connected:
+                await self._sandbox.connect()
             w3 = self._sandbox._w3_or_raise()  # noqa: SLF001
             chain_id = int(await w3.eth.chain_id)
             self._sandbox._assert_safe_chain(chain_id)  # noqa: SLF001
