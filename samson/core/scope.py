@@ -140,8 +140,15 @@ class ScopeEnforcer:
 
         for target in self._scope.targets.values():
             if self._url_matches_target(url, target.base_url):
-                for cidr in target.network_cidrs:
-                    self._assert_host_in_cidr(parsed.hostname or "", cidr, request_id=request_id)
+                if target.network_cidrs:
+                    host = parsed.hostname or ""
+                    if not any(self._host_in_cidr(host, cidr) for cidr in target.network_cidrs):
+                        raise ScopeViolationError(
+                            f"Host '{host}' outside allowed CIDRs {target.network_cidrs}",
+                            request_id=request_id,
+                            host=host,
+                            cidrs=target.network_cidrs,
+                        )
                 return
 
     def assert_doc_type(self, doc_type: str, *, request_id: UUID | None = None) -> None:
@@ -165,6 +172,13 @@ class ScopeEnforcer:
         if host.endswith(".svc") or host.endswith(".svc.cluster.local"):
             return False
         return True
+
+    @staticmethod
+    def _host_in_cidr(host: str, cidr: str) -> bool:
+        try:
+            return ipaddress.ip_address(host) in ipaddress.ip_network(cidr, strict=False)
+        except ValueError:
+            return False
 
     @staticmethod
     def _assert_host_in_cidr(host: str, cidr: str, *, request_id: UUID | None = None) -> None:

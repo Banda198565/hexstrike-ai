@@ -146,7 +146,7 @@ class RemediationDemonstrationAgent:
             INSERT INTO guardrail_deployments (
                 deployment_id, demo_id, arena_namespace, policy_rules, status
             ) VALUES (
-                :deployment_id, :demo_id, :arena_namespace, :policy_rules::jsonb, 'active'
+                :deployment_id, :demo_id, :arena_namespace, CAST(:policy_rules AS jsonb), 'active'
             )
             """,
             {

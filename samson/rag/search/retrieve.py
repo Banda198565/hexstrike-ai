@@ -71,7 +71,7 @@ class ContextRetriever:
                 d.source_path,
                 d.doc_type,
                 d.tags,
-                1 - (e.embedding <=> :embedding::vector) AS score
+                1 - (e.embedding <=> CAST(:embedding AS vector)) AS score
             FROM embeddings e
             JOIN document_chunks c ON c.chunk_id = e.chunk_id
             JOIN documents d ON d.doc_id = c.doc_id
@@ -79,7 +79,7 @@ class ContextRetriever:
               AND d.environment = :environment
               AND d.index_version = :index_version
               {tag_clause}
-            ORDER BY e.embedding <=> :embedding::vector
+            ORDER BY e.embedding <=> CAST(:embedding AS vector)
             LIMIT :top_k
         """
         rows = self._db.fetchall(sql, params)

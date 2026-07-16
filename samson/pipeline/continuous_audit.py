@@ -37,7 +37,7 @@ class ContinuousAuditPipeline:
     def __init__(self, settings: SamsonSettings | None = None) -> None:
         self._settings = settings or get_settings()
         self._db = Database(self._settings)
-        self._audit = AuditRepository(self._settings)
+        self._audit = AuditRepository(self._db)
         self._loader = RagPayloadLoader(self._settings)
         self._executor = AdversaryEmulationExecutor(self._settings)
         self._deployer = FinancialGuardrailDeployer(self._settings)
@@ -252,7 +252,7 @@ class ContinuousAuditPipeline:
             INSERT INTO exercise_runs (
                 run_id, operator_id, scenario_id, project, environment, status, approved_at, metadata
             ) VALUES (
-                :run_id, :operator_id, :scenario_id, :project, :environment, 'approved', NOW(), :metadata::jsonb
+                :run_id, :operator_id, :scenario_id, :project, :environment, 'approved', NOW(), CAST(:metadata AS jsonb)
             )
             ON CONFLICT (run_id) DO NOTHING
             """,

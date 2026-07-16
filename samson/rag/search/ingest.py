@@ -182,7 +182,7 @@ class DocumentIngester:
         self._db.execute(
             """
             INSERT INTO embeddings (embedding_id, chunk_id, embedding, embedding_model, embedding_dim)
-            VALUES (:embedding_id, :chunk_id, :embedding::vector, :embedding_model, :embedding_dim)
+            VALUES (:embedding_id, :chunk_id, CAST(:embedding AS vector), :embedding_model, :embedding_dim)
             ON CONFLICT (chunk_id) DO UPDATE SET
                 embedding = EXCLUDED.embedding,
                 embedding_model = EXCLUDED.embedding_model,

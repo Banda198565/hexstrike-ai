@@ -433,7 +433,7 @@ def _ensure_exercise_run(
         INSERT INTO exercise_runs (
             run_id, operator_id, scenario_id, project, environment, status, approved_at, metadata
         ) VALUES (
-            :run_id, :operator_id, :scenario_id, :project, :environment, 'approved', NOW(), :metadata::jsonb
+            :run_id, :operator_id, :scenario_id, :project, :environment, 'approved', NOW(), CAST(:metadata AS jsonb)
         )
         ON CONFLICT (run_id) DO NOTHING
         """,
@@ -608,7 +608,7 @@ async def _execute_continuous_audit_loop(
     target_meta: dict | None = None,
 ) -> ContinuousAuditResult:
     db = Database(settings)
-    audit = AuditRepository(settings)
+    audit = AuditRepository(db)
     executor = AdversaryEmulationExecutor(settings)
     deployer = FinancialGuardrailDeployer(settings)
 

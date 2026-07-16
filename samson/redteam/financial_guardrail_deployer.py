@@ -177,7 +177,7 @@ class FinancialGuardrailDeployer:
             ) VALUES (
                 :deployment_id, :execution_id, :run_id, :operator_id, :policy_profile,
                 :listen_host, :listen_port, :upstream_base_url, :config_path,
-                :proxy_config::jsonb, :enforcement_config::jsonb, :blocked_ibans, 'active'
+                CAST(:proxy_config AS jsonb), CAST(:enforcement_config AS jsonb), :blocked_ibans, 'active'
             )
             """,
             {

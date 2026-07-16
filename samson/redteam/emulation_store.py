@@ -54,8 +54,8 @@ class EmulationResultStore:
             ) VALUES (
                 :execution_id, :target_id, :payload_id, :run_id, :request_id, :operator_id,
                 :attack_vector, :interface_type, :http_status_code, :vulnerability_verified,
-                :response_payload::jsonb, :intercepted_financial_entities,
-                :response_embedding::vector, :rag_document_id
+                CAST(:response_payload AS jsonb), :intercepted_financial_entities,
+                CAST(:response_embedding AS vector), :rag_document_id
             )
             ON CONFLICT (execution_id) DO UPDATE SET
                 response_payload = EXCLUDED.response_payload,

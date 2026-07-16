@@ -93,7 +93,7 @@ class FinancialGuardrailAgent:
                 INSERT INTO financial_guardrail_deployments (
                     deployment_id, simulation_id, policy_profile, rules_applied, status
                 ) VALUES (
-                    :deployment_id, :simulation_id, :policy_profile, :rules_applied::jsonb, 'active'
+                    :deployment_id, :simulation_id, :policy_profile, CAST(:rules_applied AS jsonb), 'active'
                 )
                 """,
                 {
