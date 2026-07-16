@@ -105,7 +105,7 @@ for u in urls:
 fi
 
 mkdir -p "$(dirname "$OUTPUT")"
-export PASS="$pass" FAIL="$fail" OUTPUT
+export PASS="$pass" FAIL="$fail" OUTPUT ROOT="$ROOT" MCP_BINDINGS="$BINDINGS" TARGET="$TARGET"
 python3 - <<'PY'
 import json, os
 from datetime import datetime, timezone
@@ -113,12 +113,19 @@ from datetime import datetime, timezone
 checks_passed = int(os.environ.get("PASS", "0"))
 checks_failed = int(os.environ.get("FAIL", "0"))
 out = os.environ["OUTPUT"]
+bindings_path = os.environ.get("MCP_BINDINGS", os.path.join(os.environ.get("ROOT", "."), "mcp/agent-bindings.json"))
+target = os.environ.get("TARGET", "")
+if not target and os.path.isfile(bindings_path):
+    try:
+        target = json.load(open(bindings_path)).get("target", "")
+    except (OSError, json.JSONDecodeError):
+        pass
 report = {
     "generated_at": datetime.now(timezone.utc).isoformat(),
     "agent": "Agent-Graph-01",
     "task": "bind-mcp-tools",
     "mode": "read-only",
-    "target": os.environ.get("TARGET", ""),
+    "target": target,
     "bindings": os.environ.get("MCP_BINDINGS", "mcp/agent-bindings.json"),
     "checks_passed": checks_passed,
     "checks_failed": checks_failed,
