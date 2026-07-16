@@ -83,6 +83,16 @@ class PayloadRegistry:
     def list_for_technique(self, technique: str) -> list[PayloadDefinition]:
         return [p for p in self._payloads.values() if p.technique == technique]
 
+    def list_all(self) -> list[PayloadDefinition]:
+        return list(self._payloads.values())
+
+    def list_active(self) -> list[PayloadDefinition]:
+        return [
+            payload
+            for payload in self._payloads.values()
+            if (payload.metadata or {}).get("active", True) is not False
+        ]
+
 
 class PayloadOrchestrator:
     """Executes registered payloads against in-scope arena targets with template substitution."""
