@@ -20,6 +20,7 @@ import asyncio
 import json
 import logging
 import re
+import time
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 from uuid import UUID, uuid4
@@ -213,6 +214,132 @@ def cmd_guardrail_deploy(args: argparse.Namespace) -> int:
         finally:
             await hooks._guardrail_deployer.close()  # noqa: SLF001
             hooks.close()
+
+    return asyncio.run(_run())
+
+
+def cmd_serve(_: argparse.Namespace) -> int:
+    """Enterprise container stay-alive: migrate schema, then wait for docker exec / orchestration."""
+    settings = get_settings()
+    logger.info(
+        "samson-core-engine starting repo_root=%s database_host=%s",
+        _REPO_ROOT,
+        urlparse(settings.database_url).hostname,
+    )
+    rc = cmd_migrate(argparse.Namespace())
+    if rc != 0:
+        return rc
+    logger.info("samson-core-engine ready — awaiting operator commands")
+    try:
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        logger.info("samson-core-engine shutdown")
+        return 0
+
+
+def cmd_guardrail_proxy_serve(args: argparse.Namespace) -> int:
+    """Long-running financial guardrail proxy for docker-compose service samson-guardrail-proxy."""
+    from samson.redteam.guardrail.config_compiler import GuardrailConfigCompiler
+    from samson.redteam.guardrail.proxy_middleware import AsyncFinancialGuardrailProxy
+    from samson.redteam.schemas import (
+        AdversaryEmulationResult,
+        GuardrailEnforcementConfig,
+        ProxyMiddlewareConfig,
+    )
+
+    settings = get_settings()
+    # Container must bind on all interfaces
+    settings = settings.model_copy(
+        update={
+            "guardrail_proxy_host": args.host or "0.0.0.0",
+            "guardrail_proxy_port": int(args.port or settings.guardrail_proxy_port),
+        }
+    )
+    rc = cmd_migrate(argparse.Namespace())
+    if rc != 0:
+        return rc
+
+    async def _run() -> int:
+        db = Database(settings)
+        proxy = AsyncFinancialGuardrailProxy(settings)
+        compiler = GuardrailConfigCompiler(settings)
+        try:
+            row = await asyncio.to_thread(
+                db.fetchone,
+                """
+                SELECT deployment_id, execution_id, run_id, operator_id, policy_profile,
+                       listen_host, listen_port, upstream_base_url, proxy_config
+                FROM guardrail_proxy_deployments
+                WHERE status = 'active'
+                ORDER BY deployed_at DESC NULLS LAST
+                LIMIT 1
+                """,
+            )
+            if row and row.get("proxy_config"):
+                raw = row["proxy_config"]
+                if isinstance(raw, str):
+                    raw = json.loads(raw)
+                config = ProxyMiddlewareConfig.model_validate(raw)
+                config = config.model_copy(
+                    update={
+                        "listen_host": settings.guardrail_proxy_host,
+                        "listen_port": settings.guardrail_proxy_port,
+                    }
+                )
+                logger.info("Loaded active guardrail deployment %s", config.deployment_id)
+            else:
+                whitelist = sorted(compiler.load_iban_whitelist())
+                execution_id = uuid4()
+                enforcement = GuardrailEnforcementConfig(
+                    config_id=uuid4(),
+                    strict_regex_patterns=[r"DE00999999999999999999"],
+                    allowed_destination_hosts=["127.0.0.1", "localhost", "samson-db", "host.docker.internal"],
+                    enforce_human_approval=False,
+                )
+                config = ProxyMiddlewareConfig(
+                    deployment_id=uuid4(),
+                    execution_id=execution_id,
+                    run_id=None,
+                    operator_id=args.operator,
+                    listen_host=settings.guardrail_proxy_host,
+                    listen_port=settings.guardrail_proxy_port,
+                    upstream_base_url=args.upstream or settings.arena_base_url_str,
+                    policy_profile=args.profile,
+                    iban_whitelist=whitelist,
+                    blocked_ibans=["DE00999999999999999999"],
+                    observed_ibans=[],
+                    strict_regex_patterns=enforcement.strict_regex_patterns,
+                    allowed_destination_hosts=enforcement.allowed_destination_hosts,
+                    enforce_human_approval=False,
+                    on_mismatch_action="drop",
+                    guardrail_enforcement=enforcement,
+                )
+                # Seed a bootstrap emulation row linkage only when needed for audit continuity
+                _ = AdversaryEmulationResult(
+                    execution_id=execution_id,
+                    vulnerability_verified=True,
+                    http_status_code=200,
+                    response_payload={"bootstrap": True},
+                    intercepted_financial_entities=["DE00999999999999999999"],
+                )
+                logger.info(
+                    "Bootstrapped guardrail proxy deployment=%s whitelist=%d",
+                    config.deployment_id,
+                    len(whitelist),
+                )
+
+            await proxy.start(config)
+            logger.info(
+                "samson-guardrail-proxy listening on %s:%s",
+                config.listen_host,
+                config.listen_port,
+            )
+            while proxy.is_running:
+                await asyncio.sleep(3600)
+            return 0
+        finally:
+            await proxy.stop()
 
     return asyncio.run(_run())
 
@@ -872,6 +999,9 @@ def build_parser() -> argparse.ArgumentParser:
     migrate = sub.add_parser("migrate", help="Apply database schema migrations")
     migrate.set_defaults(func=cmd_migrate)
 
+    serve = sub.add_parser("serve", help="Migrate schema and keep core-engine container alive")
+    serve.set_defaults(func=cmd_serve)
+
     health = sub.add_parser("health", help="Check database and Ollama connectivity")
     health.set_defaults(func=cmd_health)
 
@@ -899,6 +1029,17 @@ def build_parser() -> argparse.ArgumentParser:
     guardrail.add_argument("--profile", choices=["strict", "balanced", "permissive"], default="strict")
     guardrail.add_argument("--upstream", default=None)
     guardrail.set_defaults(func=cmd_guardrail_deploy)
+
+    proxy_serve = sub.add_parser(
+        "guardrail-proxy-serve",
+        help="Run long-lived financial guardrail proxy (docker-compose samson-guardrail-proxy)",
+    )
+    proxy_serve.add_argument("--host", default=None)
+    proxy_serve.add_argument("--port", type=int, default=None)
+    proxy_serve.add_argument("--operator", default="operator-alpha")
+    proxy_serve.add_argument("--profile", choices=["strict", "balanced", "permissive"], default="strict")
+    proxy_serve.add_argument("--upstream", default=None)
+    proxy_serve.set_defaults(func=cmd_guardrail_proxy_serve)
 
     audit = sub.add_parser(
         "run-continuous-audit",

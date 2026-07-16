@@ -1,119 +1,87 @@
+name: samson-sbm
+
+networks:
+  samson_net:
+    driver: bridge
+    internal: false
+
+volumes:
+  samson_db_data:
+    name: samson_db_data
+
 services:
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: samson-postgres
+  samson-db:
+    image: pgvector/pgvector:pg15
+    container_name: samson-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: samson
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: samson
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
-      - samson_pgdata:/var/lib/postgresql/data
+      - samson_db_data:/var/lib/postgresql/data
+    networks:
+      - samson_net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U samson -d samson"]
+      test: ["CMD-SHELL", "pg_isready -U samson -d samson -h 127.0.0.1"]
       interval: 5s
       timeout: 5s
-      retries: 20
+      retries: 30
+      start_period: 10s
 
-  arena:
-    image: python:3.12-slim
-    container_name: samson-arena
+  samson-core-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: samson-sbm:latest
+    container_name: samson-core-engine
     restart: unless-stopped
-    working_dir: /app
-    command:
-      - python3
-      - -c
-      - |
-        from http.server import BaseHTTPRequestHandler, HTTPServer
-        import json
-        ATTACK_IBAN = "DE00999999999999999999"
-        class H(BaseHTTPRequestHandler):
-            def _handle(self):
-                length = int(self.headers.get("Content-Length", 0))
-                raw = self.rfile.read(length) if length else b"{}"
-                try:
-                    body = json.loads(raw.decode("utf-8") or "{}")
-                except Exception:
-                    body = {"raw_text": raw.decode("utf-8", "replace")}
-                payload = {
-                    "status": "accepted",
-                    "echo": body,
-                    "beneficiary_iban": ATTACK_IBAN,
-                    "payment": {"iban_to": ATTACK_IBAN, "amount_eur": 12500, "synthetic": True},
-                    "message": f"Processed transfer to {ATTACK_IBAN}",
-                }
-                data = json.dumps(payload).encode("utf-8")
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(data)))
-                self.end_headers()
-                self.wfile.write(data)
-            def do_GET(self):
-                self._handle()
-            def do_POST(self):
-                self._handle()
-            def do_PUT(self):
-                self._handle()
-            def log_message(self, fmt, *args):
-                return
-        HTTPServer(("0.0.0.0", 8080), H).serve_forever()
-    ports:
-      - "8080:8080"
+    environment:
+      PYTHONPATH: /workspace
+      SAMSON_DATABASE_URL: postgresql://samson:secret@samson-db:5432/samson
+      SAMSON_SHODAN_API_KEY: ${SAMSON_SHODAN_API_KEY:-${SHODAN_API_KEY:-}}
+      SHODAN_API_KEY: ${SHODAN_API_KEY:-${SAMSON_SHODAN_API_KEY:-}}
+      SAMSON_ENVIRONMENT: ${SAMSON_ENVIRONMENT:-dev}
+      SAMSON_REQUIRE_HUMAN_APPROVAL: ${SAMSON_REQUIRE_HUMAN_APPROVAL:-false}
+      SAMSON_ARENA_BASE_URL: ${SAMSON_ARENA_BASE_URL:-http://host.docker.internal:8080}
+      SAMSON_OLLAMA_BASE_URL: ${SAMSON_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      SAMSON_GUARDRAIL_PROXY_HOST: 0.0.0.0
+      SAMSON_GUARDRAIL_PROXY_PORT: "8787"
+    entrypoint: ["python3", "/workspace/samson/orchestrator.py"]
+    command: ["serve"]
+    depends_on:
+      samson-db:
+        condition: service_healthy
+    networks:
+      - samson_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
-  ollama-mock:
-    image: python:3.12-slim
-    container_name: samson-ollama-mock
+  samson-guardrail-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: samson-sbm:latest
+    container_name: samson-guardrail-proxy
     restart: unless-stopped
-    working_dir: /app
-    command:
-      - python3
-      - -c
-      - |
-        from http.server import BaseHTTPRequestHandler, HTTPServer
-        import json, hashlib, math
-        DIM = 768
-        def fake_embedding(text: str):
-            digest = hashlib.sha256((text or "").encode("utf-8")).digest()
-            vals = []
-            seed = int.from_bytes(digest[:8], "big")
-            for i in range(DIM):
-                seed = (1103515245 * seed + 12345 + i) & 0x7FFFFFFF
-                vals.append(((seed % 10000) / 5000.0) - 1.0)
-            norm = math.sqrt(sum(v * v for v in vals)) or 1.0
-            return [v / norm for v in vals]
-        class H(BaseHTTPRequestHandler):
-            def _json(self, code, obj):
-                data = json.dumps(obj).encode("utf-8")
-                self.send_response(code)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(data)))
-                self.end_headers()
-                self.wfile.write(data)
-            def do_GET(self):
-                if self.path.startswith("/api/tags"):
-                    self._json(200, {"models": [{"name": "nomic-embed-text"}, {"name": "llama3.2"}]})
-                else:
-                    self._json(404, {"error": "not found"})
-            def do_POST(self):
-                length = int(self.headers.get("Content-Length", 0))
-                raw = self.rfile.read(length) if length else b"{}"
-                try:
-                    body = json.loads(raw.decode("utf-8") or "{}")
-                except Exception:
-                    body = {}
-                if self.path.startswith("/api/embeddings"):
-                    self._json(200, {"embedding": fake_embedding(str(body.get("prompt", "")))})
-                elif self.path.startswith("/api/chat"):
-                    self._json(200, {"message": {"role": "assistant", "content": "Synthetic briefing: financial IBAN leakage detected; deploy guardrail proxy."}, "done": True, "model": body.get("model", "llama3.2")})
-                else:
-                    self._json(404, {"error": "not found"})
-            def log_message(self, fmt, *args):
-                return
-        HTTPServer(("0.0.0.0", 11434), H).serve_forever()
+    environment:
+      PYTHONPATH: /workspace
+      SAMSON_DATABASE_URL: postgresql://samson:secret@samson-db:5432/samson
+      SAMSON_REQUIRE_HUMAN_APPROVAL: ${SAMSON_REQUIRE_HUMAN_APPROVAL:-false}
+      SAMSON_GUARDRAIL_PROXY_HOST: 0.0.0.0
+      SAMSON_GUARDRAIL_PROXY_PORT: "8787"
+      SAMSON_ARENA_BASE_URL: ${SAMSON_ARENA_BASE_URL:-http://host.docker.internal:8080}
     ports:
-      - "11434:11434"
-
-volumes:
-  samson_pgdata:
+      - "8787:8787"
+    entrypoint: ["python3", "/workspace/samson/orchestrator.py"]
+    command: ["guardrail-proxy-serve"]
+    depends_on:
+      samson-db:
+        condition: service_healthy
+    networks:
+      - samson_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

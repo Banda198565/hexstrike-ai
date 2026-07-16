@@ -113,6 +113,16 @@ class SamsonSettings(BaseSettings):
     shodan_initial_credits: int = 77
     shodan_reserve_credits: int = 5
 
+    @field_validator("shodan_api_key", mode="before")
+    @classmethod
+    def _coerce_shodan_api_key(cls, value: object) -> str:
+        import os
+
+        text = str(value or "").strip()
+        if text:
+            return text
+        return (os.environ.get("SHODAN_API_KEY") or "").strip()
+
     @field_validator(
         "scope_config_path",
         "payload_registry_path",
