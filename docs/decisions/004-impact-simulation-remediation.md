@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (reframed from initial "Combat Exploit & Monetizer" proposal)
+Accepted — final version (reframed from initial "Combat Exploit & Monetizer" proposal)
 
 ## Date
 
@@ -18,7 +18,7 @@ An initial proposal suggested modules named "Combat Exploit Agent" and "Monetize
 |---|---|
 | Monetization of simulated attacks | Conflicts with authorized testing scope; risks normalizing harm-for-profit workflows |
 | Ransom-Defense subscription offers | Indistinguishable from extortion patterns; not appropriate in a security lab ADR |
-| Financial Drainer (ADR-005 proposal) | Out of scope; prohibited — no architecture for fund diversion, IBAN abuse, or payment fraud simulation beyond abstract fraud-awareness training |
+| Financial Drainer (original ADR-005 proposal) | Rejected; replaced by ADR-005 Financial Impact Simulation (mock-only, no real transactions) |
 
 ### What Samson SBM needs instead
 
@@ -116,9 +116,9 @@ Produces stakeholder-facing evidence and validates defensive controls. This is *
 
 | Capability | Purpose | Approval |
 |---|---|---|
-| **Executive PoC Report** | Interactive summary for leadership (findings, ATLAS map, business impact narrative) | Human approval required |
+| **Impact & Protection Report** | Leadership summary: simulated impact narrative + remediation evidence (not an attack PoC) | Human approval required |
 | **Remediation Walkthrough** | Step-by-step control implementation guide linked to findings | Auto-generated; no deployment |
-| **Guardrail Middleware Demo** | Deploy arena-scoped LLM proxy with policy rules to show blocked attacks | Human approval + PyRIT re-score required |
+| **Guardrail Container Demo** | Deploy arena-scoped middleware proxy with policy rules to demonstrate blocked attack patterns | Human approval + PyRIT re-score required |
 
 #### Forbidden capabilities
 
@@ -134,7 +134,7 @@ class RemediationDemoRequest(BaseModel):
     run_id: UUID
     simulation_id: UUID
     operator_id: str
-    demo_type: Literal["executive_poc", "remediation_walkthrough", "guardrail_middleware"]
+    demo_type: Literal["impact_protection_report", "remediation_walkthrough", "guardrail_container"]
     audience: Literal["operator", "leadership", "blue_team"]
 
 class RemediationDemoResult(BaseModel):
@@ -155,7 +155,7 @@ class RemediationDemoResult(BaseModel):
 
 10. Impact Simulation Agent (if approved in scenario scope)
 11. ATLAS Mapper → impact-phase technique IDs
-12. Remediation Demonstration Agent (executive PoC / walkthrough / guardrail demo)
+12. Remediation Demonstration Agent (impact & protection report / walkthrough / guardrail container)
 13. PyRIT re-score (guardrail demo only)
 14. Audit Agent → redteam_audit_log
 15. Report Writer → RAG ingest
@@ -304,9 +304,10 @@ Samson SBM **does**:
 
 - **Rejected**: Naming and monetization framing normalizes harm-for-profit; ransom-adjacent subscription flows are inappropriate
 
-### ADR-005 "Financial Drainer" (IBAN/Stripe sandbox)
+### ADR-005 "Financial Drainer" (original proposal)
 
-- **Rejected**: Payment diversion and drainer architecture is out of scope and prohibited regardless of sandbox labeling
+- **Rejected**: Payment diversion and drainer architecture prohibited
+- **Accepted alternative**: ADR-005 Financial Impact Simulation — mock-only IBAN/Stripe fixtures, no real transactions (see `docs/decisions/005-financial-impact-simulation.md`)
 
 ### Skip impact simulation entirely
 
@@ -339,7 +340,7 @@ Samson SBM **does**:
 2. Add `migrations/004_impact_remediation.sql`
 3. Create `target-arena/fixtures/synthetic/` seed data
 4. Extend Orchestrator hooks and integration tests
-5. **Do not** implement Financial Drainer or monetization payment flows
+5. Implement ADR-005 Financial Impact Simulation as a specialized arena track (mock-only)
 
 ---
 
@@ -347,10 +348,11 @@ Samson SBM **does**:
 
 The following will **not** be documented or implemented in Samson SBM:
 
-- ADR-005 Financial Drainer
-- IBAN / Stripe / crypto drainer sandboxes
+- Financial Drainer or real payment diversion flows
+- Real IBAN / Stripe / crypto transactions or external payment APIs
 - Ransom or subscription monetization tied to simulated compromise
 - Combat Exploit Agent as an autonomous offensive executor outside arena policy
+- Attack PoC delivery to clients (reports demonstrate impact + protection only)
 
 ---
 
