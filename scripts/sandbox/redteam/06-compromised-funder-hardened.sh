@@ -26,7 +26,8 @@ except FileNotFoundError:
 for line in lines[since:]:
     d = json.loads(line)
     r = str(d.get("result", ""))
-    if r.startswith("blocked_"):
+    g = str(d.get("guard_event", ""))
+    if r.startswith("blocked_") or r == "BLOCK_COMPROMISED_FUNDER" or g == "BLOCK_COMPROMISED_FUNDER":
         n += 1
 print(n)
 PY

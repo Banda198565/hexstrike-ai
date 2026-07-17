@@ -5,8 +5,10 @@ on:
     paths:
       - 'cmd/agent/**'
       - 'scripts/sandbox/**'
+      - 'docs/GO_LIVE_CHECKLIST.md'
       - 'docs/GO-LIVE-MERGE-GATE-CHECKLIST.md'
       - '.github/workflows/go-live-merge-gate.yml'
+      - '.github/workflows/policy-gate.yml'
   push:
     branches: [master, main]
     paths:
@@ -41,8 +43,10 @@ jobs:
       - name: Hardening tamper simulation
         run: python3 scripts/sandbox/test_attack_blocked.py
 
-      - name: Verify merge gate checklist exists
-        run: test -f docs/GO-LIVE-MERGE-GATE-CHECKLIST.md
+      - name: Verify go-live checklists exist
+        run: |
+          test -f docs/GO_LIVE_CHECKLIST.md
+          test -f docs/GO-LIVE-MERGE-GATE-CHECKLIST.md
 
       - name: Block raw prod keys in tracked env
         run: |

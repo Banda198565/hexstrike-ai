@@ -34,6 +34,10 @@ def test_intent_hash_stable() -> None:
     assert h1 == h2
     h3 = compute_intent_hash(to="0xabc", value_wei=1001, chain_id=56, nonce=3)
     assert h1 != h3
+    h4 = compute_intent_hash(
+        to="0xabc", value_wei=1000, chain_id=56, nonce=3, policy_version="v2"
+    )
+    assert h1 != h4
     print("PASS intent_hash")
 
 
@@ -60,7 +64,7 @@ def test_attack_06_allowlist_blocks_compromised_funder() -> None:
         destination="0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
     )
     assert not ok
-    assert reason == "destination_not_allowlisted"
+    assert reason == "BLOCK_COMPROMISED_FUNDER"
     print("PASS attack_06_allowlist")
 
 

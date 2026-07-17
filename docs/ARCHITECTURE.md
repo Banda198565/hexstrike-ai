@@ -139,7 +139,7 @@ Proxy :8546 remains untrusted read path for polling only.
 
 \* “DEFENDED” here means **risk-reduced under the lab threat model**, not production-complete.
 
-**Attack #06 — Compromised funder:** status is **`PARTIAL / NOT DEFENDED YET`**. Do **not** mark as defended until a funder/destination allowlist (or equivalent policy) is implemented and covered by a battle test.
+**Attack #06 — Compromised funder:** hardened path is **`DEFENDED*`** when `ALLOWED_FUNDERS` / `ALLOWED_DESTINATIONS` + `GO_LIVE_GATES=true`. Legacy dummy bot without gates remains VULN by design (battle baseline).
 
 ---
 
@@ -362,7 +362,7 @@ Required before any non-lab value path:
 | G-Lab | Steps 1–3 runnable; artifacts written | Harness broken |
 | G-Score | Score ≥ 70 under v2 | Score < 70 |
 | G-Critical | No critical blockers | Any `BLOCK_*` |
-| G-Allowlist | `06` DEFENDED with test | `06` NOT DEFENDED YET (prod candidate) |
+| G-Allowlist | `06` DEFENDED with test | `06` NOT DEFENDED (prod candidate) |
 | G-TOCTOU | Post-sign recheck + nonce lock implemented | Sign/broadcast without recheck |
 | G-RPC | Quorum 2/3 in staging/prod design | Single RPC as sole truth in prod |
 | G-Ops | Runbooks + alert sinks wired | Alerts only to local jsonl |

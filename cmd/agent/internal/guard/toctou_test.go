@@ -15,6 +15,10 @@ func TestIntentHashCanonical(t *testing.T) {
 	if h1 == h3 {
 		t.Fatal("value change must alter hash")
 	}
+	h4 := IntentHashWithPolicy("0xabc", big.NewInt(1000), "0x", 56, 3, "v2")
+	if h1 == h4 {
+		t.Fatal("policyVersion change must alter hash")
+	}
 }
 
 func TestIntentDedup(t *testing.T) {

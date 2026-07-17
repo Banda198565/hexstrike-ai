@@ -1,6 +1,9 @@
-# GO-LIVE Merge Gate Checklist
+# GO-LIVE Merge Gate Checklist (technical map)
 
-Use this checklist in PR descriptions and CI before enabling any non-lab money path.
+Operator decision checklist (canonical): [`docs/GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md)  
+PR template: `.github/pull_request_template.md` · CI: `policy-gate.yml` + this file
+
+Use this technical map for implementation verification before enabling any non-lab money path.
 **If any Phase 0 item is unchecked → NO-GO.**
 
 ## Phase 0 — Pre-Go (mandatory)

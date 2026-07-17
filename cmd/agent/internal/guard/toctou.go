@@ -11,29 +11,43 @@ import (
 	"sync"
 )
 
+// PolicyVersionDefault binds intent hashes to the active go-live policy.
+const PolicyVersionDefault = "v1"
+
 // IntentFields canonical tx intent for hashing.
+// Hash = H(chainId,to,value,data,nonce,policyVersion).
 type IntentFields struct {
-	To      string `json:"to"`
-	Value   string `json:"value"`
-	Data    string `json:"data"`
-	ChainID int64  `json:"chainId"`
-	Nonce   uint64 `json:"nonce"`
+	ChainID       int64  `json:"chainId"`
+	To            string `json:"to"`
+	Value         string `json:"value"`
+	Data          string `json:"data"`
+	Nonce         uint64 `json:"nonce"`
+	PolicyVersion string `json:"policyVersion"`
 }
 
 // IntentHash returns SHA-256 of canonical JSON intent (TOCTOU binding).
 func IntentHash(to string, value *big.Int, data string, chainID int64, nonce uint64) string {
+	return IntentHashWithPolicy(to, value, data, chainID, nonce, PolicyVersionDefault)
+}
+
+// IntentHashWithPolicy includes an explicit policy version in the binding.
+func IntentHashWithPolicy(to string, value *big.Int, data string, chainID int64, nonce uint64, policyVersion string) string {
 	if value == nil {
 		value = big.NewInt(0)
 	}
 	if data == "" {
 		data = "0x"
 	}
+	if policyVersion == "" {
+		policyVersion = PolicyVersionDefault
+	}
 	payload := IntentFields{
-		To:      strings.ToLower(strings.TrimSpace(to)),
-		Value:   value.String(),
-		Data:    data,
-		ChainID: chainID,
-		Nonce:   nonce,
+		ChainID:       chainID,
+		To:            strings.ToLower(strings.TrimSpace(to)),
+		Value:         value.String(),
+		Data:          data,
+		Nonce:         nonce,
+		PolicyVersion: policyVersion,
 	}
 	raw, _ := json.Marshal(payload)
 	sum := sha256.Sum256(raw)

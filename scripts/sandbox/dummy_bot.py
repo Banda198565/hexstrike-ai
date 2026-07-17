@@ -396,7 +396,8 @@ def run_once(cfg: BotConfig, guard_state: Any | None = None) -> None:
             return
         ok, reason = check_allowlist(gate_cfg, cfg.funder_address, cfg.funder_address)
         if not ok:
-            event["result"] = f"blocked_{reason}"
+            event["result"] = reason or "BLOCK_COMPROMISED_FUNDER"
+            event["guard_event"] = "BLOCK_COMPROMISED_FUNDER"
             log.error("BLOCKED allowlist (#06): %s", reason)
             append_event(event)
             return

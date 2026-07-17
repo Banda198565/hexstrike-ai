@@ -45,6 +45,9 @@ def parse_csv_addresses(raw: str) -> frozenset[str]:
     return frozenset(items)
 
 
+POLICY_VERSION_DEFAULT = "v1"
+
+
 def compute_intent_hash(
     *,
     to: str,
@@ -52,14 +55,16 @@ def compute_intent_hash(
     data: str = "0x",
     chain_id: int,
     nonce: int,
+    policy_version: str = POLICY_VERSION_DEFAULT,
 ) -> str:
-    """Canonical intent hash bound to sign decision."""
+    """Canonical intent hash: H(chainId,to,value,data,nonce,policyVersion)."""
     payload = {
+        "chainId": chain_id,
         "to": _norm_addr(to),
         "value": str(value_wei),
         "data": data if data.startswith("0x") else f"0x{data}",
-        "chainId": chain_id,
         "nonce": nonce,
+        "policyVersion": policy_version,
     }
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode()).hexdigest()
@@ -198,9 +203,31 @@ def check_allowlist(cfg: ProductionGateConfig, funder: str, destination: str) ->
     dest = _norm_addr(destination)
     fund = _norm_addr(funder)
     if cfg.allowed_destinations and dest not in cfg.allowed_destinations:
-        return False, "destination_not_allowlisted"
+        alert = {
+            "ts": utc_now(),
+            "type": "BLOCK_COMPROMISED_FUNDER",
+            "severity": "critical",
+            "action": "block_signing",
+            "reason": "destination_not_allowlisted",
+            "destination": dest,
+            "funder": fund,
+            "message": "Destination not in allowlist — possible compromised funder (#06)",
+        }
+        append_alert(alert)
+        return False, "BLOCK_COMPROMISED_FUNDER"
     if cfg.allowed_funders and fund not in cfg.allowed_funders:
-        return False, "funder_not_allowlisted"
+        alert = {
+            "ts": utc_now(),
+            "type": "BLOCK_COMPROMISED_FUNDER",
+            "severity": "critical",
+            "action": "block_signing",
+            "reason": "funder_not_allowlisted",
+            "destination": dest,
+            "funder": fund,
+            "message": "Funder not in allowlist — compromised funder (#06)",
+        }
+        append_alert(alert)
+        return False, "BLOCK_COMPROMISED_FUNDER"
     return True, None
 
 
