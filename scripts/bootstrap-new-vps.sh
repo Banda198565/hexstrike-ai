@@ -1,18 +1,24 @@
 #!/usr/bin/env bash
 # bootstrap-new-vps.sh — first-time HexStrike VPS setup from YOUR Mac/iMac.
 #
-# Cloud agents often get Connection reset during SSH KEX (provider/fail2ban).
-# Run this on a machine that can password-login as root.
+# Ideal path when cloud agents cannot SSH (KEX reset / fail2ban):
+#   A) This script from Mac (password login), OR
+#   B) Paste onbox script in hoster VNC/console:
+#        curl -fsSL https://raw.githubusercontent.com/Banda198565/hexstrike-ai/master/scripts/bootstrap-new-vps-onbox.sh | bash
 #
-# Usage (never put the password in the command line / git):
+# Usage (password via env — never argv / never git):
 #   read -s VPS_PASSWORD; export VPS_PASSWORD; echo
 #   bash scripts/bootstrap-new-vps.sh root@78.27.235.70
 #
-# Optional:
-#   VPS_PASSWORD=... LOCAL_ENV=/path/to/.env bash scripts/bootstrap-new-vps.sh root@HOST
-#   SKIP_PASSWD_ROTATE=1 ...  # do NOT change root password (default: rotate — chat passwords are burned)
-#   SKIP_OSINT=1 ...          # skip Shodan/Arkham smoke after install
-#   KEEP_PASSWORD_AUTH=1 ...  # do not disable password auth yet
+# Defaults (first-day safe):
+#   SKIP_PASSWD_ROTATE=1   — do NOT change root password
+#   KEEP_PASSWORD_AUTH=1   — keep password login until you harden later
+#
+# Optional overrides:
+#   SKIP_PASSWD_ROTATE=0   — rotate root password (prints once)
+#   KEEP_PASSWORD_AUTH=0   — key-only SSH after key install
+#   SKIP_OSINT=1           — skip Shodan/Arkham smoke
+#   LOCAL_ENV=/path/.env   — source of secrets to scp
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -21,6 +27,12 @@ KEY="${HEXSTRIKE_VPS_KEY:-$HOME/.ssh/hexstrike_vps}"
 LOCAL_ENV="${LOCAL_ENV:-$ROOT/.env}"
 REPO_URL="${REPO_URL:-https://github.com/Banda198565/hexstrike-ai.git}"
 REMOTE_DIR="${REMOTE_DIR:-/root/hexstrike-ai}"
+BRANCH="${BOOTSTRAP_BRANCH:-master}"
+
+# First-day defaults (operator asked: continue without password change)
+SKIP_PASSWD_ROTATE="${SKIP_PASSWD_ROTATE:-1}"
+KEEP_PASSWORD_AUTH="${KEEP_PASSWORD_AUTH:-1}"
+SKIP_OSINT="${SKIP_OSINT:-0}"
 
 log() { echo "[bootstrap-vps] $*"; }
 die() { echo "[bootstrap-vps] ERROR: $*" >&2; exit 1; }
@@ -28,46 +40,52 @@ die() { echo "[bootstrap-vps] ERROR: $*" >&2; exit 1; }
 [[ -n "$TARGET" ]] || die "usage: bash scripts/bootstrap-new-vps.sh root@HOST"
 [[ "$TARGET" == *@* ]] || die "TARGET must look like root@IP"
 command -v ssh >/dev/null || die "ssh required"
-command -v sshpass >/dev/null || die "sshpass required (brew install sshpass / apt install sshpass)"
+command -v sshpass >/dev/null || die "sshpass required (brew install hudochenkov/sshpass/sshpass || apt install sshpass)"
 
 if [[ -z "${VPS_PASSWORD:-}" ]]; then
-  die "Set VPS_PASSWORD in the environment (use: read -s VPS_PASSWORD; export VPS_PASSWORD)"
+  die "Set VPS_PASSWORD (read -s VPS_PASSWORD; export VPS_PASSWORD)"
 fi
 export SSHPASS="$VPS_PASSWORD"
 
-SSH_BASE=(ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20)
+SSH_BASE=(ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=25 -o ServerAliveInterval=5)
 SSHP=(sshpass -e "${SSH_BASE[@]}" -o PreferredAuthentications=password -o PubkeyAuthentication=no)
-SCPP=(sshpass -e scp -o StrictHostKeyChecking=accept-new -o PreferredAuthentications=password -o PubkeyAuthentication=no)
 
 # ── Step 1: password login ──────────────────────────────────────
-log "Step 1: password login → $TARGET"
-"${SSHP[@]}" "$TARGET" 'echo LOGIN_OK; uname -a; whoami' || die "SSH password login failed"
+log "Step 1/7: password login → $TARGET"
+if ! "${SSHP[@]}" "$TARGET" 'echo LOGIN_OK; uname -a; whoami'; then
+  cat <<'EOF' >&2
 
-# ── Step 2: optional root password rotate ───────────────────────
-if [[ "${SKIP_PASSWD_ROTATE:-0}" == "1" ]]; then
-  log "Step 2: SKIP password rotate (SKIP_PASSWD_ROTATE=1)"
-else
-  NEW_PASS="$(python3 - <<'PY'
-import secrets, string
-alphabet = string.ascii_letters + string.digits
-print("".join(secrets.choice(alphabet) for _ in range(28)))
-PY
-)"
-  log "Step 2: rotating root password (new password printed ONCE below)"
-  "${SSHP[@]}" "$TARGET" "echo 'root:${NEW_PASS}' | chpasswd && echo PASSWD_OK"
-  cat <<EOF
+[bootstrap-vps] SSH password login failed (or Connection reset during KEX).
 
-========== SAVE THIS ROOT PASSWORD (password auth may be disabled later) ==========
-${NEW_PASS}
-====================================================================================
+Fallback — open hoster VNC/console as root and run:
+
+  curl -fsSL https://raw.githubusercontent.com/Banda198565/hexstrike-ai/master/scripts/bootstrap-new-vps-onbox.sh | bash
+
+Then from Mac:
+  ssh-copy-id -i ~/.ssh/hexstrike_vps.pub root@HOST
+  scp .env root@HOST:/root/hexstrike-ai/.env
 
 EOF
-  export SSHPASS="$NEW_PASS"
-  VPS_PASSWORD="$NEW_PASS"
+  die "SSH login failed"
 fi
 
-# ── Step 3: SSH key ─────────────────────────────────────────────
-log "Step 3: ensure local key + install pubkey on VPS"
+# ── Step 2: optional password rotate (OFF by default) ───────────
+if [[ "$SKIP_PASSWD_ROTATE" == "1" ]]; then
+  log "Step 2/7: SKIP password rotate (SKIP_PASSWD_ROTATE=1)"
+else
+  NEW_PASS="$(python3 -c 'import secrets,string; a=string.ascii_letters+string.digits; print("".join(secrets.choice(a) for _ in range(28)))')"
+  log "Step 2/7: rotating root password (printed ONCE)"
+  "${SSHP[@]}" "$TARGET" "echo 'root:${NEW_PASS}' | chpasswd && echo PASSWD_OK"
+  echo
+  echo "========== NEW ROOT PASSWORD (save now) =========="
+  echo "$NEW_PASS"
+  echo "=================================================="
+  echo
+  export SSHPASS="$NEW_PASS"
+fi
+
+# ── Step 3: local key + install pubkey ──────────────────────────
+log "Step 3/7: install ed25519 pubkey"
 if [[ ! -f "$KEY" ]]; then
   ssh-keygen -t ed25519 -f "$KEY" -N "" -C "hexstrike-vps-$(whoami)@$(hostname)-$(date +%Y%m%d)"
 fi
@@ -75,112 +93,79 @@ chmod 600 "$KEY" "${KEY}.pub"
 PUB="$(cat "${KEY}.pub")"
 "${SSHP[@]}" "$TARGET" "bash -s" <<EOF
 set -euo pipefail
-mkdir -p /root/.ssh
-chmod 700 /root/.ssh
-touch /root/.ssh/authorized_keys
-chmod 600 /root/.ssh/authorized_keys
+mkdir -p /root/.ssh && chmod 700 /root/.ssh
+touch /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys
 grep -qxF '$PUB' /root/.ssh/authorized_keys || echo '$PUB' >> /root/.ssh/authorized_keys
 echo KEY_INSTALLED
 EOF
 
-# Switch to key auth for the rest
 SSHK=(ssh -i "$KEY" -o IdentitiesOnly=yes "${SSH_BASE[@]}")
 SCPK=(scp -i "$KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new)
-"${SSHK[@]}" "$TARGET" 'echo KEY_LOGIN_OK' || die "key login failed after install"
+"${SSHK[@]}" "$TARGET" 'echo KEY_LOGIN_OK' || die "key login failed"
 
-# Optional harden (disable password) unless KEEP_PASSWORD_AUTH=1
-if [[ "${KEEP_PASSWORD_AUTH:-0}" != "1" ]]; then
-  log "Disabling PasswordAuthentication (KEEP_PASSWORD_AUTH=1 to skip)"
-  "${SSHK[@]}" "$TARGET" 'bash -s' <<'EOF'
-set -euo pipefail
-mkdir -p /etc/ssh/sshd_config.d
-cat >/etc/ssh/sshd_config.d/00-hexstrike-bootstrap.conf <<'CFG'
-PasswordAuthentication no
-KbdInteractiveAuthentication no
-PermitRootLogin prohibit-password
-PubkeyAuthentication yes
-CFG
-if [[ -f /etc/ssh/sshd_config.d/50-cloud-init.conf ]]; then
-  sed -i 's/^PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config.d/50-cloud-init.conf || true
-fi
-sshd -t
-systemctl reload sshd 2>/dev/null || systemctl reload ssh 2>/dev/null || service ssh reload
-echo HARDEN_OK
-EOF
-fi
+# ── Step 4: upload onbox script + run (single source of truth) ──
+log "Step 4/7: remote onbox bootstrap (apt/clone/venv/harden)"
+"${SCPK[@]}" "$ROOT/scripts/bootstrap-new-vps-onbox.sh" "$TARGET:/tmp/bootstrap-new-vps-onbox.sh"
+"${SSHK[@]}" "$TARGET" \
+  "KEEP_PASSWORD_AUTH=$KEEP_PASSWORD_AUTH SKIP_OSINT=1 REPO_URL='$REPO_URL' REMOTE_DIR='$REMOTE_DIR' BOOTSTRAP_BRANCH='$BRANCH' bash /tmp/bootstrap-new-vps-onbox.sh"
 
-# ── Step 4: packages + clone ─────────────────────────────────────
-log "Step 4: apt + clone repo"
-"${SSHK[@]}" "$TARGET" "bash -s" <<EOF
-set -euo pipefail
-export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq
-apt-get upgrade -y -qq
-apt-get install -y -qq python3 python3-pip python3-venv git curl ca-certificates
-if [[ -d '$REMOTE_DIR/.git' ]]; then
-  cd '$REMOTE_DIR' && git fetch origin && git checkout master && git pull --ff-only origin master
-else
-  rm -rf '$REMOTE_DIR'
-  git clone '$REPO_URL' '$REMOTE_DIR'
-fi
-cd '$REMOTE_DIR'
-python3 -m venv hexstrike-env
-# shellcheck disable=SC1091
-source hexstrike-env/bin/activate
-pip install -q --upgrade pip
-if [[ -f requirements-samson.txt ]]; then
-  pip install -q -r requirements-samson.txt
-elif [[ -f requirements.txt ]]; then
-  pip install -q -r requirements.txt
-fi
-echo CLONE_OK
-EOF
-
-# ── Step 5: .env ────────────────────────────────────────────────
-log "Step 5: sync .env (secrets not printed)"
+# ── Step 5: sync .env ───────────────────────────────────────────
+log "Step 5/7: sync .env (values not printed)"
 if [[ -f "$LOCAL_ENV" ]]; then
   "${SCPK[@]}" "$LOCAL_ENV" "$TARGET:$REMOTE_DIR/.env"
   "${SSHK[@]}" "$TARGET" "chmod 600 '$REMOTE_DIR/.env' && echo ENV_SYNC_OK"
 else
-  log "WARN: $LOCAL_ENV missing — create .env on VPS manually"
+  log "WARN: $LOCAL_ENV missing — fill keys on VPS later"
 fi
 
-# ── Step 6: OSINT smoke (optional) ──────────────────────────────
-if [[ "${SKIP_OSINT:-0}" != "1" ]]; then
-  log "Step 6: OSINT smoke (RU/KZ/Arkham) — may take a few minutes"
+# ── Step 6: OSINT smoke ─────────────────────────────────────────
+if [[ "$SKIP_OSINT" != "1" ]]; then
+  log "Step 6/7: OSINT smoke"
   "${SSHK[@]}" "$TARGET" "bash -s" <<EOF
 set -euo pipefail
 cd '$REMOTE_DIR'
 set -a
 # shellcheck disable=SC1091
-source .env
+[[ -f .env ]] && source .env
 set +a
 # shellcheck disable=SC1091
 source hexstrike-env/bin/activate
 export PYTHONPATH='$REMOTE_DIR:$REMOTE_DIR/src:\${PYTHONPATH:-}'
+export ARKHAM_API_KEY="\${ARKHAM_API_KEY:-\${SAMSON_ARKHAM_API_KEY:-}}"
 mkdir -p artifacts docs/recon
-if [[ -x scripts/run-ru-shodan-recon.sh ]]; then bash scripts/run-ru-shodan-recon.sh || true; fi
-if [[ -x scripts/run-kz-shodan-recon.sh ]]; then bash scripts/run-kz-shodan-recon.sh || true; fi
-if [[ -x scripts/arkham-probe.sh ]]; then bash scripts/arkham-probe.sh || true; fi
+[[ -n "\${SHODAN_API_KEY:-}" ]] && bash scripts/run-ru-shodan-recon.sh || true
+[[ -n "\${SHODAN_API_KEY:-}" ]] && bash scripts/run-kz-shodan-recon.sh || true
+[[ -n "\${ARKHAM_API_KEY:-}" ]] && bash scripts/arkham-probe.sh || true
 echo OSINT_SMOKE_DONE
 EOF
 else
-  log "Step 6 skipped (SKIP_OSINT=1)"
+  log "Step 6/7: SKIP OSINT (SKIP_OSINT=1)"
 fi
+
+# ── Step 7: verify ──────────────────────────────────────────────
+log "Step 7/7: verify"
+"${SSHK[@]}" "$TARGET" "bash -s" <<EOF
+set -euo pipefail
+cd '$REMOTE_DIR'
+test -d hexstrike-env
+test -f artifacts/vps-bootstrap-status.json && cat artifacts/vps-bootstrap-status.json || true
+# shellcheck disable=SC1091
+source hexstrike-env/bin/activate
+python3 -c 'import sys; print("python", sys.version.split()[0])'
+echo VERIFY_OK
+EOF
 
 cat <<EOF
 
-[bootstrap-vps] DONE
-
-Login:
+[bootstrap-vps] DONE (ideal first-day profile)
   ssh -i $KEY $TARGET
+  cd $REMOTE_DIR
 
-Repo:
-  $REMOTE_DIR
+  Defaults used:
+    SKIP_PASSWD_ROTATE=$SKIP_PASSWD_ROTATE
+    KEEP_PASSWORD_AUTH=$KEEP_PASSWORD_AUTH
 
-Remember:
-  - Password from chat is BURNED — use the new password printed above (or key-only).
-  - Do not commit .env
-  - From this Mac, prefer: ssh -i $KEY $TARGET
+  Later (key-only harden):
+    ssh -i $KEY $TARGET 'cd $REMOTE_DIR && KEEP_PASSWORD_AUTH=0 bash scripts/vps-ssh-harden.sh'
 
 EOF
