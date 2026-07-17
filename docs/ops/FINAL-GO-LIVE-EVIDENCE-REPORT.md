@@ -44,7 +44,10 @@ Policy: **FAIL-CLOSED**.
 
 ## How to close PENDING rows
 
-Follow [`GLOBAL-GO-OPERATOR-RUNBOOK.md`](GLOBAL-GO-OPERATOR-RUNBOOK.md) steps 1–5, then paste artifact paths for final **GLOBAL GO / NO-GO**.
+1. Follow [`GLOBAL-GO-OPERATOR-RUNBOOK.md`](GLOBAL-GO-OPERATOR-RUNBOOK.md) steps 1–4 (real KMS/IAM/paging/shadow).  
+2. Run **`./scripts/ops/collect_artifacts.sh`** (`COLLECT_MODE=live`) → `docs/ops/evidence/*.json` + `verdict.json` with `global_go_eligible=true`.  
+3. `COLLECT_MODE=demo` is schema CI only — **never** GLOBAL GO.  
+4. Paste evidence paths for human **GLOBAL GO / NO-GO**.
 
 ---
 
