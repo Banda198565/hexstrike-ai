@@ -62,6 +62,8 @@ def run_task(agent: str, task: str, output: str | None, extra: dict) -> int:
         env["OUTPUT"] = os.path.join(ROOT, out_file) if not os.path.isabs(out_file) else out_file
     if spec.get("input"):
         env["INPUT"] = os.path.join(ROOT, spec["input"])
+    for k, v in (spec.get("env") or {}).items():
+        env[k.upper() if k.islower() else k] = str(v)
 
     for k, v in extra.items():
         env[k.upper()] = str(v)
@@ -133,6 +135,8 @@ def main() -> int:
         env["OUTPUT"] = os.path.join(ROOT, out_file) if not os.path.isabs(out_file) else out_file
     if spec.get("input"):
         env["INPUT"] = os.path.join(ROOT, spec["input"])
+    for k, v in (spec.get("env") or {}).items():
+        env[k.upper() if k.islower() else k] = str(v)
     for k, v in extra.items():
         env[k.upper()] = str(v)
     env["HEXSTRIKE_TASK"] = args.task

@@ -23,11 +23,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "src"))
 REGISTRY = ROOT / "agents/registry.json"
 WORKFLOWS = ROOT / "agents/workflows.json"
 AGENT_RUNNER = ROOT / "scripts/hexstrike-agent.py"
 QUEUE_DIR = ROOT / "agents/queue"
+from hexstrike.agent_controller import AgentController
+
 LOG_DIR = ROOT / "artifacts/orchestrator"
+CONTROLLER = AgentController()
 
 
 def utc_now() -> str:
@@ -51,13 +55,93 @@ def log_run(record: dict) -> Path:
     return path
 
 
-def run_agent(agent: str, task: str, env: dict | None = None) -> dict:
-    cmd = [sys.executable, str(AGENT_RUNNER), "--agent", agent, "--task", task]
+def task_constraints(agent: str, task: str) -> dict:
+    reg = load_json(REGISTRY)
+    return reg.get("agents", {}).get(agent, {}).get("tasks", {}).get(task, {})
+
+
+def sandbox_enabled(env: dict) -> bool:
+    val = env.get("HEXSTRIKE_SANDBOX", "").lower()
+    return val in ("1", "true", "yes")
+
+
+def enforce_task_policy(agent: str, task: str, env: dict) -> str | None:
+    """Block offense/sandbox tasks when HEXSTRIKE_SANDBOX is not set."""
+    if CONTROLLER.limits_disabled():
+        env.setdefault("HEXSTRIKE_SANDBOX", "1")
+        env.setdefault("DUAL_MODE_SANDBOX", "1")
+        return None
+    spec = task_constraints(agent, task)
+    constraints = spec.get("constraints") or []
+    if "sandbox-only" in constraints or "offense" in constraints:
+        if not sandbox_enabled(env):
+            return "Blocked: offense/sandbox task requires HEXSTRIKE_SANDBOX=1"
+    return None
+
+
+def run_agent(agent: str, task: str, env: dict | None = None, *, mode: str | None = None) -> dict:
+    ok_auth, auth_msg = CONTROLLER.check_authorization()
+    if not ok_auth:
+        started = utc_now()
+        return {
+            "agent": agent,
+            "task": task,
+            "started_at": started,
+            "finished_at": utc_now(),
+            "exit_code": 3,
+            "stdout": "",
+            "stderr": f"Authorization blocked: {auth_msg}",
+            "success": False,
+            "blocked": True,
+        }
+
+    agent_key = f"{agent}:{task}"
+    run_mode = mode or (env or {}).get("HEXSTRIKE_MODE") or os.environ.get("HEXSTRIKE_MODE")
+    try:
+        CONTROLLER.acquire(agent_key, mode=run_mode)
+    except RuntimeError as exc:
+        started = utc_now()
+        return {
+            "agent": agent,
+            "task": task,
+            "started_at": started,
+            "finished_at": utc_now(),
+            "exit_code": 4,
+            "stdout": "",
+            "stderr": str(exc),
+            "success": False,
+            "blocked": True,
+        }
+
     proc_env = os.environ.copy()
     if env:
         proc_env.update({k.upper() if k.islower() else k: str(v) for k, v in env.items()})
+
+    spec = task_constraints(agent, task)
+    for k, v in (spec.get("env") or {}).items():
+        proc_env[k.upper() if k.islower() else k] = str(v)
+
+    blocked = enforce_task_policy(agent, task, proc_env)
+    if blocked:
+        started = utc_now()
+        return {
+            "agent": agent,
+            "task": task,
+            "started_at": started,
+            "finished_at": utc_now(),
+            "exit_code": 2,
+            "stdout": "",
+            "stderr": blocked,
+            "success": False,
+            "blocked": True,
+        }
+
+    cmd = [sys.executable, str(AGENT_RUNNER), "--agent", agent, "--task", task]
     started = utc_now()
-    proc = subprocess.run(cmd, cwd=str(ROOT), env=proc_env, capture_output=True, text=True)
+    try:
+        proc = subprocess.run(cmd, cwd=str(ROOT), env=proc_env, capture_output=True, text=True)
+    finally:
+        CONTROLLER.release(agent_key)
     return {
         "agent": agent,
         "task": task,
@@ -171,6 +255,17 @@ def extract_highlights(path: Path, data: object) -> list[str]:
         s = data.get("summary", {})
         lines.append(f"Readiness: {s.get('readiness_score')}/100")
         lines.append(f"vuln={s.get('vuln_confirmed')} defended={s.get('defended')} inconclusive={s.get('inconclusive')}")
+
+    elif name.startswith("report-") and "dual-mode" in str(path):
+        lines.append(f"Mode: {data.get('mode')}")
+        lines.append(f"Risks: {data.get('risk_count', 0)}")
+        tools = data.get("tools_detected") or {}
+        installed = [k for k, v in tools.items() if v]
+        if installed:
+            lines.append(f"Tools: {', '.join(installed)}")
+        defense = data.get("defense", {})
+        for rec in (defense.get("remediation_priority") or [])[:3]:
+            lines.append(f"→ {rec}")
 
     elif name == "infra-targets.json":
         targets = data.get("infra_targets") or data.get("linked_ips") or []
@@ -291,6 +386,10 @@ def run_workflow(name: str, env: dict | None = None, print_all: bool = True) -> 
     step_env["ORCHESTRATOR_WORKFLOW"] = name
 
     mode = wf.get("mode") or os.environ.get("HEXSTRIKE_MODE")
+    ok_auth, auth_msg = CONTROLLER.check_authorization()
+    if not ok_auth:
+        print(json.dumps({"success": False, "error": f"Authorization: {auth_msg}"}))
+        return 3
     mode_prefix = f"mode={mode} " if mode else ""
     print(f"▶ {mode_prefix}workflow={name} run_id={run_id} steps={len(wf.get('steps', []))}")
 
@@ -305,7 +404,7 @@ def run_workflow(name: str, env: dict | None = None, print_all: bool = True) -> 
             pass  # sequential order already enforces deps
 
         print(f"  [{i}/{len(wf['steps'])}] {agent} / {task}")
-        result = run_agent(agent, task, step_env)
+        result = run_agent(agent, task, step_env, mode=mode)
         steps_out.append(result)
         completed.add(task)
 

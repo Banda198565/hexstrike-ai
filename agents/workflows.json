@@ -102,6 +102,48 @@
       ],
       "note": "Requires Foundry (anvil, cast). LOCAL SANDBOX ONLY."
     },
+    "dual-mode-defense": {
+      "description": "Contract defense audit — Slither, Mythril, Echidna, remediation report",
+      "mode": "defense",
+      "env": {
+        "HEXSTRIKE_MODE": "defense",
+        "DUAL_MODE_CONTRACT": "scripts/sandbox/contracts/RevertOnWithdraw.sol"
+      },
+      "steps": [
+        {"agent": "Agent-DualMode-08", "task": "contract-audit-defense"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "optional": true, "depends_on": "contract-audit-defense"}
+      ],
+      "note": "Read-only static/dynamic audit. Set DUAL_MODE_CONTRACT for custom target."
+    },
+    "dual-mode-offense": {
+      "description": "Sandbox Foundry PoC — local Anvil only (HEXSTRIKE_SANDBOX=1)",
+      "mode": "offense",
+      "env": {
+        "HEXSTRIKE_MODE": "offense",
+        "HEXSTRIKE_SANDBOX": "1",
+        "DUAL_MODE_CONTRACT": "scripts/sandbox/contracts/RevertOnWithdraw.sol",
+        "DUAL_MODE_POC_TEST": "test/"
+      },
+      "steps": [
+        {"agent": "Agent-DualMode-08", "task": "contract-audit-offense"},
+        {"agent": "Agent-Battle-07", "task": "battle-suite", "optional": true},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "optional": true}
+      ],
+      "note": "PoC simulation in local Foundry sandbox only — never mainnet."
+    },
+    "dual-mode-full": {
+      "description": "Defense audit then optional sandbox offense + battle suite",
+      "env": {
+        "DUAL_MODE_CONTRACT": "scripts/sandbox/contracts/RevertOnWithdraw.sol",
+        "HEXSTRIKE_SANDBOX": "1"
+      },
+      "steps": [
+        {"agent": "Agent-DualMode-08", "task": "contract-audit-defense"},
+        {"agent": "Agent-DualMode-08", "task": "contract-audit-offense", "optional": true},
+        {"agent": "Agent-Battle-07", "task": "battle-suite", "optional": true}
+      ],
+      "note": "Blue team first, then optional red-team PoC if Foundry sandbox is available."
+    },
     "vps-full-readonly": {
       "description": "VPS end-to-end: full recon + master report (no Mac operator audit)",
       "steps": [

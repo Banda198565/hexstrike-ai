@@ -36,7 +36,8 @@
         "Agent-Malware-10",
         "Agent-Malware-11",
         "Agent-Malware-12",
-        "Agent-Forensics-01"
+        "Agent-Forensics-01",
+        "Agent-DualMode-08"
       ]
     },
     "Agent-OSINT-03": {
@@ -334,6 +335,26 @@
           "output": "artifacts/forensics/create2-drainer-report.json"
         }
       }
+    },
+    "Agent-DualMode-08": {
+      "role": "dual-mode-contract",
+      "description": "Defense/offense contract expert — Slither, Mythril, Echidna, Foundry sandbox PoC",
+      "tasks": {
+        "contract-audit-defense": {
+          "script": "scripts/agents/agent_dual_mode_08.py",
+          "output": "artifacts/dual-mode/report-defense.json",
+          "constraints": ["defense", "read-only-mainnet", "remediation"],
+          "env": {"HEXSTRIKE_MODE": "defense"}
+        },
+        "contract-audit-offense": {
+          "script": "scripts/agents/agent_dual_mode_08.py",
+          "output": "artifacts/dual-mode/report-offense.json",
+          "constraints": ["offense", "sandbox-only", "local-anvil"],
+          "env": {"HEXSTRIKE_MODE": "offense", "HEXSTRIKE_SANDBOX": "1"}
+        }
+      },
+      "depends_on": ["python3"],
+      "optional_tools": ["slither", "mythril", "echidna", "foundry"]
     }
   }
 }

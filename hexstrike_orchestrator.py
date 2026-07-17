@@ -33,6 +33,7 @@ from hexstrike.paths import MANIFEST_PATH, PENDING_ACTION, RPC_CONFIG
 from hexstrike.skills.bytecode_deobfuscator import BytecodeDeobfuscatorSkill
 from hexstrike.skills.chain_tracer import ChainTracerSkill
 from hexstrike.skills.dedup_engine import DedupEngine
+from hexstrike.skills.dual_mode_agent import DualModeAgent
 from hexstrike.skills.recon_osint import ReconOsintSkill
 from hexstrike.skills.timing_analysis import TimingAnalysisSkill
 from hexstrike.instructions import load_instruction
@@ -90,6 +91,7 @@ class HexStrikeOrchestrator:
         self.timing = TimingAnalysisSkill(bus=self.bus, config_path=config_path)
         self.bytecode = BytecodeDeobfuscatorSkill(bus=self.bus, config_path=config_path)
         self.vuln_scanner = VulnerabilityScanner(bus=self.bus)
+        self.dual_mode = DualModeAgent(bus=self.bus, llm=self.llm)
 
         self.agent_manager = AgentManager(
             bus=self.bus,
@@ -105,6 +107,7 @@ class HexStrikeOrchestrator:
                 "core.execution": self.broadcaster,
                 "skill.recon_osint": self.recon,
                 "skill.timing_analysis": self.timing,
+                "skill.dual_mode": self.dual_mode,
             },
         )
         self.agent_manager.initialize_all()
@@ -180,6 +183,16 @@ class HexStrikeOrchestrator:
 
     def run_vuln_scan(self) -> dict[str, Any]:
         return self.vuln_scanner.run_full_scan()
+
+    def run_dual_mode(
+        self,
+        contract: str,
+        *,
+        mode: str = "defense",
+        poc_test: str | None = None,
+    ) -> dict[str, Any]:
+        """Dual-Mode audit: Slither/Mythril/Echidna + defense fixes or sandbox PoC."""
+        return self.dual_mode.analyze(contract, mode=mode, poc_test=poc_test)
 
     def run_analyze(self, address: str) -> dict[str, Any]:
         """Instruction-driven forensics analysis (hot-wallet protocol)."""
@@ -367,6 +380,11 @@ def main() -> int:
     sub.add_parser("timing", help="RPC latency profile for gas-war positioning")
     sub.add_parser("vuln-scan", help="Run vulnerability scanner")
 
+    dm_p = sub.add_parser("dual-mode", help="Dual-Mode contract audit (defense/offense)")
+    dm_p.add_argument("contract", help="Path to .sol file or Foundry project")
+    dm_p.add_argument("--mode", choices=("defense", "offense", "forensics"), default="defense")
+    dm_p.add_argument("--poc-test", default=None, help="Foundry test path for offense PoC")
+
     bc_p = sub.add_parser("bytecode", help="Analyze contract bytecode")
     bc_p.add_argument("address", help="Contract address (0x...)")
 
@@ -433,6 +451,9 @@ def main() -> int:
         return 0
     if args.command == "vuln-scan":
         print(json.dumps(orch.run_vuln_scan(), indent=2))
+        return 0
+    if args.command == "dual-mode":
+        print(json.dumps(orch.run_dual_mode(args.contract, mode=args.mode, poc_test=args.poc_test), indent=2))
         return 0
     if args.command == "monitor":
         result = orch.run_monitor_loop(

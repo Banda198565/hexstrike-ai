@@ -69,6 +69,19 @@
         "description": "Contract bytecode analysis — proxies, delegatecall, implementation resolution",
         "path": "src/hexstrike/skills/bytecode_deobfuscator.py",
         "status": "active"
+      },
+      "skill.dual_mode": {
+        "description": "Defense/offense contract audit — Slither, Mythril, Echidna, Foundry sandbox PoC",
+        "path": "src/hexstrike/skills/dual_mode_agent.py",
+        "status": "active",
+        "config": "config/dual-mode.json",
+        "dependencies": ["skill.contract_toolchain"]
+      },
+      "skill.contract_toolchain": {
+        "description": "External Solidity toolchain wrappers — Slither, Mythril, Echidna, Foundry",
+        "path": "src/hexstrike/skills/contract_toolchain.py",
+        "status": "active",
+        "config": "config/dual-mode.json"
       }
     },
     "mcps": {
@@ -114,6 +127,10 @@
     },
     "skill.timing_analysis": {
       "file": "src/hexstrike/instructions/timing_analysis.md",
+      "status": "active"
+    },
+    "skill.dual_mode": {
+      "file": "src/hexstrike/instructions/dual_mode.md",
       "status": "active"
     }
   },
