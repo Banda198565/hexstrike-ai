@@ -29,7 +29,8 @@ sys.path.insert(0, str(ROOT / "scripts" / "sandbox"))
 from alert_paging import page_alert, should_page  # noqa: E402
 from balance_guard import append_alert  # noqa: E402
 
-ACK_STATE = ROOT / "artifacts" / "ops" / "paging-drill-ack.json"
+# Must NOT match paging-drill-YYYYMMDD…json glob (was causing --record-ack FAIL).
+ACK_STATE = ROOT / "artifacts" / "ops" / "paging_ack_state.json"
 
 
 def _ack_true() -> bool:
@@ -41,6 +42,15 @@ def _ack_true() -> bool:
         except (OSError, json.JSONDecodeError):
             return False
     return False
+
+
+def _drill_artifacts(out_dir: Path) -> list[Path]:
+    """Timestamped drills only: paging-drill-20260717T131518Z.json"""
+    return sorted(
+        p
+        for p in out_dir.glob("paging-drill-*.json")
+        if p.name != "paging-drill-ack.json" and p.stem.count("T") >= 1
+    )
 
 
 def main() -> int:
@@ -57,7 +67,7 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if args.record_ack:
-        if not _ack_true() and os.getenv("PAGING_DRILL_ACK", "").strip().lower() not in (
+        if os.getenv("PAGING_DRILL_ACK", "").strip().lower() not in (
             "1",
             "true",
             "yes",
@@ -72,17 +82,18 @@ def main() -> int:
             )
             + "\n"
         )
-        # Refresh latest drill file if present
-        drills = sorted(out_dir.glob("paging-drill-*.json"))
+        drills = _drill_artifacts(out_dir)
         if drills:
             latest = drills[-1]
             data = json.loads(latest.read_text())
             data["ack_received"] = True
             data["result"] = "PASS" if data.get("alert_sent") else data.get("result", "FAIL")
+            data["verdict"] = data["result"]
             latest.write_text(json.dumps(data, indent=2) + "\n")
             print(json.dumps(data, indent=2))
+            print(f"updated {latest}", file=sys.stderr)
             return 0 if data.get("result") == "PASS" else 1
-        print(f"ack recorded → {ACK_STATE}", file=sys.stderr)
+        print(f"ack recorded → {ACK_STATE} (no drill json yet)", file=sys.stderr)
         return 0
 
     entry = {

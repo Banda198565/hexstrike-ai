@@ -7,7 +7,7 @@
 #
 # Usage:
 #   export GCP_PROJECT_ID=gen-lang-client-0574318762   # staging-only label
-#   export GCP_LOCATION=global                        # or europe-west1
+#   export GCP_LOCATION=europe-west1                  # regional (HSM); not global
 #   export CONFIRM_STAGING=YES
 #   ./scripts/ops/gcp-staging-bootstrap.sh
 #
