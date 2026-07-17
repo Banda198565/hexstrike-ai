@@ -10,7 +10,8 @@
 #
 # Optional:
 #   VPS_PASSWORD=... LOCAL_ENV=/path/to/.env bash scripts/bootstrap-new-vps.sh root@HOST
-#   SKIP_OSINT=1 ...   # skip Shodan/Arkham smoke after install
+#   SKIP_PASSWD_ROTATE=1 ...  # do NOT change root password (default: rotate — chat passwords are burned)
+#   SKIP_OSINT=1 ...          # skip Shodan/Arkham smoke after install
 #   KEEP_PASSWORD_AUTH=1 ...  # do not disable password auth yet
 set -euo pipefail
 
@@ -42,25 +43,28 @@ SCPP=(sshpass -e scp -o StrictHostKeyChecking=accept-new -o PreferredAuthenticat
 log "Step 1: password login → $TARGET"
 "${SSHP[@]}" "$TARGET" 'echo LOGIN_OK; uname -a; whoami' || die "SSH password login failed"
 
-# ── Step 2: rotate root password (chat passwords are burned) ────
-NEW_PASS="$(python3 - <<'PY'
+# ── Step 2: optional root password rotate ───────────────────────
+if [[ "${SKIP_PASSWD_ROTATE:-0}" == "1" ]]; then
+  log "Step 2: SKIP password rotate (SKIP_PASSWD_ROTATE=1)"
+else
+  NEW_PASS="$(python3 - <<'PY'
 import secrets, string
 alphabet = string.ascii_letters + string.digits
 print("".join(secrets.choice(alphabet) for _ in range(28)))
 PY
 )"
-log "Step 2: rotating root password (new password printed ONCE below)"
-"${SSHP[@]}" "$TARGET" "echo 'root:${NEW_PASS}' | chpasswd && echo PASSWD_OK"
-cat <<EOF
+  log "Step 2: rotating root password (new password printed ONCE below)"
+  "${SSHP[@]}" "$TARGET" "echo 'root:${NEW_PASS}' | chpasswd && echo PASSWD_OK"
+  cat <<EOF
 
 ========== SAVE THIS ROOT PASSWORD (password auth may be disabled later) ==========
 ${NEW_PASS}
 ====================================================================================
 
 EOF
-# Prefer key auth going forward; update SSHPASS for remaining password steps
-export SSHPASS="$NEW_PASS"
-VPS_PASSWORD="$NEW_PASS"
+  export SSHPASS="$NEW_PASS"
+  VPS_PASSWORD="$NEW_PASS"
+fi
 
 # ── Step 3: SSH key ─────────────────────────────────────────────
 log "Step 3: ensure local key + install pubkey on VPS"
