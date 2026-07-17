@@ -37,8 +37,12 @@ fi
 # ── 3. Lab configs ─────────────────────────────────────────────
 mkdir -p "$CFG_DIR"
 if [[ ! -f "$CFG_DIR/osmo-stp.cfg" ]]; then
-  cp /etc/osmocom/osmo-stp.cfg "$CFG_DIR/osmo-stp.cfg"
-  log "Copied default osmo-stp.cfg → $CFG_DIR/"
+  if [[ -f /etc/osmocom/osmo-stp.cfg ]]; then
+    cp /etc/osmocom/osmo-stp.cfg "$CFG_DIR/osmo-stp.cfg"
+    log "Copied default osmo-stp.cfg → $CFG_DIR/"
+  else
+    warn "Source /etc/osmocom/osmo-stp.cfg missing — skip copy; create $CFG_DIR/osmo-stp.cfg manually"
+  fi
 fi
 
 # ── 4. Start services ──────────────────────────────────────────

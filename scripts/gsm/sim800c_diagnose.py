@@ -126,21 +126,26 @@ def diagnose(explicit_port: str | None, explicit_baud: int | None) -> dict:
         report["errors"].append("No serial ports found. Check USB cable, driver, permissions.")
         return report
 
-    if explicit_port and explicit_baud:
-        hit = probe_port(explicit_port, explicit_baud)
-        if hit:
-            report["modem"] = hit
-        else:
-            report["errors"].append(f"No AT OK on {explicit_port} @ {explicit_baud}")
-        return report
+    # --baud alone: honor that rate on every candidate port.
+    # --port + --baud: try the requested rate first, then fall back on that port
+    # so a wrong env baud does not abort detection.
+    # --port alone / neither: full BAUD_RATES scan.
+    if explicit_port and explicit_baud is not None:
+        baud_rates: tuple[int, ...] = (explicit_baud,) + tuple(
+            b for b in BAUD_RATES if b != explicit_baud
+        )
+    elif explicit_baud is not None:
+        baud_rates = (explicit_baud,)
+    else:
+        baud_rates = BAUD_RATES
 
     for port in ports:
-        for baud in BAUD_RATES:
+        for baud in baud_rates:
             hit = probe_port(port, baud)
             if hit:
                 report["modem"] = hit
                 return report
-        report["errors"].append(f"No AT response on {port} (tried {BAUD_RATES})")
+        report["errors"].append(f"No AT response on {port} (tried {list(baud_rates)})")
 
     return report
 

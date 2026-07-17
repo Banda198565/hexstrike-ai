@@ -130,6 +130,7 @@ def main() -> int:
 
         print(f"[sms-monitor] Listening {args.duration}s ... (Ctrl+C stop)")
         buffer = ""
+        pending_cmt: str | None = None
         start = time.time()
         try:
             while args.duration == 0 or time.time() - start < args.duration:
@@ -137,21 +138,16 @@ def main() -> int:
                     buffer += ser.read(ser.in_waiting).decode(errors="replace")
                     while "\n" in buffer:
                         line, buffer = buffer.split("\n", 1)
-                        line = line.strip()
+                        line = line.replace("\r", "").strip()
                         if not line:
                             continue
-                        if line.startswith("+CMT:") or (
-                            buffer and "+CMT:" in buffer
-                        ):
-                            chunk = line + "\n" + buffer.split("\n", 1)[0] if line.startswith("+CMT:") else buffer
-                            parsed = parse_sms_urc(chunk if line.startswith("+CMT:") else line + "\n" + buffer)
-                        else:
-                            parsed = None
                         if line.startswith("+CMT:"):
-                            # accumulate next line as body
+                            # Header arrives first; body is typically the next line.
+                            pending_cmt = line
                             continue
-                        if buffer and line and not line.startswith("+"):
-                            parsed = parse_sms_urc("+CMT: ?\n" + line)
+                        if pending_cmt is not None:
+                            parsed = parse_sms_urc(pending_cmt + "\n" + line)
+                            pending_cmt = None
                             if parsed:
                                 print(f"\n>>> NEW SMS <<<\n{parsed['body']}\n")
                                 if parsed.get("otp_candidate"):
