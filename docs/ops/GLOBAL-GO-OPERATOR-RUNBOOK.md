@@ -5,6 +5,22 @@ When all artifacts exist, paste paths into chat for final GO/NO-GO.
 
 Canonical evidence matrix: [`FINAL-GO-LIVE-EVIDENCE-REPORT.md`](FINAL-GO-LIVE-EVIDENCE-REPORT.md).
 
+**Path B (chosen): GCP staging live evidence** — start here:  
+[`GCP-STAGING-BOOTSTRAP.md`](GCP-STAGING-BOOTSTRAP.md) → `scripts/ops/gcp-staging-bootstrap.sh`  
+(Staging only — not production. Demo schemas = Path A, not this path.)
+
+---
+
+## Шаг 0 — GCP staging bootstrap (Path B)
+
+```bash
+export GCP_PROJECT_ID=<staging-project>   # e.g. gen-lang-client-0574318762 as STAGING only
+export GCP_LOCATION=global
+export CONFIRM_STAGING=YES
+export CREATE_SA_KEY=YES                  # optional local SA JSON — never commit
+./scripts/ops/gcp-staging-bootstrap.sh
+```
+
 ---
 
 ## Шаг 1 — Live KMS smoke (§4c)
