@@ -7,15 +7,30 @@ set -euo pipefail
 INSTALL_DIR="${HEXSTRIKE_DIR:-/opt/hexstrike-ai}"
 BRANCH="cursor/hexstrike-agents-a1cf"
 REPO="https://github.com/Banda198565/hexstrike-ai.git"
-CLOUD_AGENT_PUBKEYS=(
-  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOc4+341bbWPywULPF8MTDq9VpaDMT4+TqKLpK4Uo2Gs hexstrike-01@cursor-20260714"
-  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIByufH4aDtJgrm/Udc3Vai4heLmGhT2N4xKdZ5bjZ0DH cursor-cloud-hexstrike"
-)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PUBKEY_FILE="${HEXSTRIKE_VPS_PUBKEY_FILE:-$SCRIPT_DIR/hexstrike_vps_key.pub}"
+PUBKEY_PRIMARY_FALLBACK="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOc4+341bbWPywULPF8MTDq9VpaDMT4+TqKLpK4Uo2Gs hexstrike-01@cursor-20260714"
+PUBKEY_LEGACY_FALLBACK="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIByufH4aDtJgrm/Udc3Vai4heLmGhT2N4xKdZ5bjZ0DH cursor-cloud-hexstrike"
 
 log() { echo "[hexstrike] $*"; }
 die() { echo "[hexstrike] ERROR: $*" >&2; exit 1; }
 
 [[ $(id -u) -eq 0 ]] || die "Run as root: curl -fsSL ... | sudo bash"
+
+load_cloud_agent_pubkeys() {
+  CLOUD_AGENT_PUBKEYS=()
+  if [[ -f "$PUBKEY_FILE" ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      [[ -z "${line// }" || "$line" =~ ^# ]] && continue
+      CLOUD_AGENT_PUBKEYS+=("$line")
+    done <"$PUBKEY_FILE"
+  fi
+  if [[ ${#CLOUD_AGENT_PUBKEYS[@]} -eq 0 ]]; then
+    CLOUD_AGENT_PUBKEYS=("$PUBKEY_PRIMARY_FALLBACK" "$PUBKEY_LEGACY_FALLBACK")
+  elif [[ ${#CLOUD_AGENT_PUBKEYS[@]} -eq 1 ]]; then
+    CLOUD_AGENT_PUBKEYS+=("$PUBKEY_LEGACY_FALLBACK")
+  fi
+}
 
 log "Installing packages..."
 export DEBIAN_FRONTEND=noninteractive
@@ -26,6 +41,7 @@ log "SSH: allow cursor-cloud agent keys (optional future access)"
 mkdir -p /root/.ssh
 chmod 700 /root/.ssh
 touch /root/.ssh/authorized_keys
+load_cloud_agent_pubkeys
 for key in "${CLOUD_AGENT_PUBKEYS[@]}"; do
   grep -qF "$key" /root/.ssh/authorized_keys 2>/dev/null || echo "$key" >> /root/.ssh/authorized_keys
 done
