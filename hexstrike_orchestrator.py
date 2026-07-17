@@ -19,7 +19,12 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from hexstrike.agent_manager import AgentManager
 from hexstrike.bus.context_bus import ContextBus
-from hexstrike.llm.provider import LocalLlmProvider, LlmConfig, resolve_llm_config
+from hexstrike.llm.provider import (
+    LocalLlmProvider,
+    LlmConfig,
+    resolve_llm_config,
+    write_env_llm_block,
+)
 from hexstrike.core.execution.broadcaster import ExecutionBroadcaster, SnipingProfile
 from hexstrike.core.forensics.engine import ForensicsEngine
 from hexstrike.core.monitor.mempool import MempoolMonitor, MonitorConfig
@@ -50,15 +55,17 @@ MONITOR_SYSTEM_PROMPT = load_instruction(MONITOR_AGENT_ID)
 
 
 def _bootstrap_llm_env() -> LlmConfig:
-    """Initialize LLM_PROVIDER and related env vars for local deepseek-r1."""
+    """Initialize LLM env vars without pointing OLLAMA_HOST at llama-server."""
     config = resolve_llm_config()
     os.environ.setdefault("LLM_PROVIDER", config.provider)
     os.environ.setdefault("LLM_BASE_URL", config.base_url)
     os.environ.setdefault("LLM_MODEL", config.model)
-    os.environ.setdefault("OLLAMA_HOST", config.host)
+    os.environ.setdefault("LLAMA_SERVER_HOST", config.llama_host)
+    # Always the Ollama daemon (:11434), never llama-server (:8080)
+    os.environ.setdefault("OLLAMA_HOST", config.ollama_host)
     if config.bypass_tunnel:
         os.environ.setdefault("OLLAMA_BYPASS_TUNNEL", "true")
-        os.environ.setdefault("OLLAMA_PUBLIC_BASE_URL", config.base_url)
+        # Do not overwrite OLLAMA_PUBLIC_BASE_URL with a local base_url
     return config
 
 
@@ -414,10 +421,45 @@ def main() -> int:
     ops_p.add_argument("--target-ip", default="51.250.97.223")
     ops_p.add_argument("--wallet", default="0xcfc85f21f5f01ab24d6b7a3b93ef097099ebde3a")
 
-    llm_p = sub.add_parser("llm-handshake", help="Verify Ollama hook + latency diagnostic (local or cloud)")
+    llm_p = sub.add_parser(
+        "llm-handshake",
+        help="Verify LLM hook + latency diagnostic (local/cloud; alias of: llm handshake)",
+    )
     llm_p.add_argument("--probe", choices=("models", "chat", "both"), default="both")
 
+    llm_cmd = sub.add_parser("llm", help="Local LLM connect / status / handshake (llama-server > ollama)")
+    llm_sub = llm_cmd.add_subparsers(dest="llm_cmd")
+    llm_sub.add_parser("connect", help="Detect running LLM, write .env, run defense handshake")
+    llm_sub.add_parser("status", help="Show resolved provider + reachability")
+    llm_hs = llm_sub.add_parser("handshake", help="Defense-prompted chat + latency probes")
+    llm_hs.add_argument("--probe", choices=("models", "chat", "both"), default="both")
+
     args = parser.parse_args()
+
+    # Lightweight LLM subcommands (no full orchestrator bootstrap required)
+    if args.command == "llm":
+        cfg = resolve_llm_config()
+        provider = LocalLlmProvider(cfg)
+        if args.llm_cmd == "status":
+            st = provider.status()
+            print(json.dumps(st, indent=2))
+            return 0 if st.get("selected_provider_reachable") else 1
+        if args.llm_cmd == "connect":
+            env_path = ROOT / ".env"
+            write_env_llm_block(env_path, cfg)
+            # Re-resolve after writing auto-detect keys
+            provider = LocalLlmProvider(resolve_llm_config())
+            report = provider.handshake(probe="both")
+            report["env_written"] = str(env_path)
+            print(json.dumps(report, indent=2))
+            return 0 if report.get("llm", {}).get("selected_provider_reachable") else 1
+        if args.llm_cmd == "handshake":
+            report = provider.handshake(probe=getattr(args, "probe", "both"))
+            print(json.dumps(report, indent=2))
+            return 0 if report.get("llm", {}).get("selected_provider_reachable") else 1
+        print("usage: hexstrike_orchestrator.py llm {connect|status|handshake}", file=sys.stderr)
+        return 2
+
     orch = HexStrikeOrchestrator(config_path=Path(args.config))
 
     if args.command == "status":
@@ -496,15 +538,11 @@ def main() -> int:
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
     if args.command == "llm-handshake":
-        probes = ["models", "chat"] if args.probe == "both" else [args.probe]
-        report = {
-            "integration_mode": orch.llm_config.integration_mode,
-            "llm": orch.llm.status(),
-            "latency": {p: orch.llm.measure_hook_latency(probe=p) for p in probes},
-        }
+        report = orch.llm.handshake(probe=args.probe)
+        report["integration_mode"] = orch.llm_config.integration_mode
         print(json.dumps(report, indent=2))
         llm = report["llm"]
-        ok = llm.get("endpoint_reachable") or llm.get("local_inference")
+        ok = llm.get("selected_provider_reachable") or llm.get("endpoint_reachable")
         return 0 if ok else 1
 
     return 1

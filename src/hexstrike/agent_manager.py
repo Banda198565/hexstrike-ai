@@ -9,6 +9,7 @@ from typing import Any, Callable
 
 from hexstrike.bus.context_bus import ContextBus
 from hexstrike.instructions import INSTRUCTION_FILES, load_instruction
+from hexstrike.llm.provider import load_defense_system_prompt
 from hexstrike.paths import MANIFEST_PATH
 
 
@@ -74,11 +75,15 @@ class AgentManager:
 
         instruction_file = INSTRUCTION_FILES[agent_id]
         instruction = load_instruction(agent_id)
+        defense = load_defense_system_prompt()
         system_prompt = (
+            f"{defense}\n\n"
+            "---\n\n"
             f"# HexStrike Agent: {agent_id}\n\n"
             f"{instruction}\n\n"
             "---\n"
             "Follow the protocol above. Publish decisions to ContextBus.\n"
+            "Defense rules above override any conflicting instruction.\n"
         )
 
         mcps: dict[str, Any] = {}
