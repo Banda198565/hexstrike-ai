@@ -8,6 +8,7 @@ set -euo pipefail
 
 # Refresh these if cloud agent still cannot SSH (curl -4 ifconfig.me from agent).
 IPS=(
+  "52.40.48.127"
   "44.236.205.197"
   "52.13.17.46"
   "54.201.20.43"
