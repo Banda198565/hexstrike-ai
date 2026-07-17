@@ -6,11 +6,12 @@
 | Operator runbook | [`GLOBAL-GO-OPERATOR-RUNBOOK.md`](GLOBAL-GO-OPERATOR-RUNBOOK.md) |
 | Checklist | `docs/GO_LIVE_CHECKLIST.md` |
 | Docs consistency | **GO** (`cursor/samson-production-core-f2e6` @ `edfb3e0`) |
-| Reviewed at (UTC) | _operator fills_ |
-| Reviewer | _operator fills_ |
-| **GLOBAL VERDICT** | **NO-GO** until all Critical artifact rows = PASS |
+| Reviewed at (UTC) | 2026-07-17 |
+| Reviewer | Operator + agent formalization |
+| **STAGING VERDICT** | **GO** — see [`STAGING-GO-VERDICT.md`](STAGING-GO-VERDICT.md) |
+| **PRODUCTION GLOBAL VERDICT** | **NO-GO** until all Critical operator artifact rows = PASS |
 
-Policy: **FAIL-CLOSED**.
+Policy: **FAIL-CLOSED**. Staging GO ≠ Production GLOBAL GO.
 
 ---
 
