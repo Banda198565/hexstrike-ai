@@ -6,6 +6,7 @@
 Technical implementation map: [`docs/GO-LIVE-MERGE-GATE-CHECKLIST.md`](GO-LIVE-MERGE-GATE-CHECKLIST.md)  
 CI: `.github/workflows/policy-gate.yml` + `.github/workflows/go-live-merge-gate.yml`  
 **Final evidence report:** [`docs/ops/FINAL-GO-LIVE-EVIDENCE-REPORT.md`](ops/FINAL-GO-LIVE-EVIDENCE-REPORT.md)  
+**Operator steps → GLOBAL GO:** [`docs/ops/GLOBAL-GO-OPERATOR-RUNBOOK.md`](ops/GLOBAL-GO-OPERATOR-RUNBOOK.md)  
 Ops packs: [KMS smoke](ops/KMS-STAGING-SMOKE.md) · [KMS IAM](ops/KMS-IAM-HARDENING.md) · [Paging](ops/PAGING-ONCALL.md)
 
 ## 0) Scope & Legality (Critical)

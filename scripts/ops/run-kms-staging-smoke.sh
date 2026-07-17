@@ -90,10 +90,11 @@ if [[ "${LIVE}" == "1" ]]; then
   fi
 fi
 
-# Summary
+# Summary (schema aligned with GLOBAL-GO-OPERATOR-RUNBOOK §4c)
 python3 - <<PY
 import json, pathlib
 out = pathlib.Path("${OUT}")
+provider = "${PROVIDER}" or "aws"
 cases = []
 p = out / "cases.jsonl"
 if p.exists():
@@ -101,19 +102,45 @@ if p.exists():
         if line.strip():
             cases.append(json.loads(line))
 failed = [c for c in cases if c.get("ok") is False]
-skipped = [c for c in cases if c.get("result", "").startswith("SKIP")]
+skipped = [c for c in cases if str(c.get("result", "")).startswith("SKIP")]
 passed = [c for c in cases if c.get("ok") is True]
+fc_cases = [
+    c for c in cases
+    if c.get("case") in ("unit_failclosed_no_cloud_config", "local_key_forbidden_outside_lab")
+]
+fc_ok = bool(fc_cases) and all(c.get("ok") is True for c in fc_cases)
+live = next((c for c in cases if "live_" in c.get("case", "") and "sign" in c.get("case", "")), None)
+if live is None:
+    sign_test = "missing"
+elif live.get("result", "").startswith("SKIP"):
+    sign_test = "skip"
+elif live.get("ok") is True:
+    sign_test = "ok"
+else:
+    sign_test = "fail"
+if failed:
+    result = "FAIL"
+elif sign_test == "skip":
+    result = "PASS_WITH_OPERATOR_SKIP"
+elif sign_test == "ok" and fc_ok:
+    result = "PASS"
+else:
+    result = "FAIL"
 summary = {
+    "result": result,
+    "provider": provider,
+    "sign_test": sign_test,
+    "fail_closed_test": "ok" if fc_ok else "fail",
     "artifact_dir": str(out),
     "passed": len(passed),
     "failed": len(failed),
     "skipped_operator": len(skipped),
     "cases": cases,
-    "verdict": "FAIL" if failed else ("PASS_WITH_OPERATOR_SKIP" if skipped else "PASS"),
+    "verdict": result,
 }
 (out / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
 print(json.dumps(summary, indent=2))
-if failed:
+if failed or result == "FAIL":
     raise SystemExit(1)
 PY
 
