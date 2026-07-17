@@ -7,6 +7,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"os"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -93,6 +94,9 @@ func (s *RemoteSigner) SignTx(ctx context.Context, tx *types.Transaction, chainI
 }
 
 // NewFromEnv selects signer backend. Raw keys forbidden outside PhaseLab.
+// For BackendKMS with remote==nil, wires a real cloud KMS SDK client:
+//   KMS_PROVIDER=aws (default) → AWS KMS (AWS_KMS_KEY_ID, AWS_REGION)
+//   KMS_PROVIDER=gcp → GCP Cloud KMS (GCP_KMS_KEY_NAME)
 func NewFromEnv(phase Phase, backend Backend, localKeyHex string, remote TxSigner) (TxSigner, error) {
 	switch backend {
 	case BackendLocal, "":
@@ -103,16 +107,33 @@ func NewFromEnv(phase Phase, backend Backend, localKeyHex string, remote TxSigne
 			return nil, fmt.Errorf("signer: BOT_PRIVATE_KEY required for lab local_key")
 		}
 		return NewLocalKeySigner(localKeyHex)
-	case BackendKMS, BackendRemote:
-		if remote == nil {
-			return nil, fmt.Errorf("signer: %s backend configured but remote signer not wired", backend)
+	case BackendKMS:
+		if remote != nil {
+			if remote.Backend() != BackendKMS && remote.Backend() != BackendRemote {
+				return nil, fmt.Errorf("signer: remote backend mismatch for kms")
+			}
+			return remote, nil
 		}
-		if remote.Backend() != backend && remote.Backend() != BackendKMS && remote.Backend() != BackendRemote {
-			return nil, fmt.Errorf("signer: remote backend mismatch")
+		return newCloudKMSFromEnv(context.Background())
+	case BackendRemote:
+		if remote == nil {
+			return nil, fmt.Errorf("signer: remote backend requires wired remote signer")
 		}
 		return remote, nil
 	default:
 		return nil, fmt.Errorf("signer: unknown backend %q", backend)
+	}
+}
+
+func newCloudKMSFromEnv(ctx context.Context) (TxSigner, error) {
+	provider := strings.ToLower(strings.TrimSpace(os.Getenv("KMS_PROVIDER")))
+	switch provider {
+	case "", "aws":
+		return NewAWSKMSSignerFromEnv(ctx)
+	case "gcp", "google":
+		return NewGCPKMSSignerFromEnv(ctx)
+	default:
+		return nil, fmt.Errorf("signer: unknown KMS_PROVIDER %q (want aws|gcp)", provider)
 	}
 }
 

@@ -31,10 +31,12 @@ func TestLocalKeyAllowedInLab(t *testing.T) {
 	}
 }
 
-func TestKMSRequiresRemoteWiring(t *testing.T) {
+func TestKMSRequiresCloudConfigOrInjected(t *testing.T) {
+	t.Setenv("AWS_KMS_KEY_ID", "")
+	t.Setenv("KMS_PROVIDER", "aws")
 	_, err := NewFromEnv(PhaseLimited, BackendKMS, "", nil)
 	if err == nil {
-		t.Fatal("kms without remote must fail")
+		t.Fatal("kms without cloud config must fail closed")
 	}
 }
 

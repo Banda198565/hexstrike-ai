@@ -71,7 +71,7 @@ This document describes the **three-layer defense-in-depth** path from a vulnera
 │ OUT OF BAND / SEPARATE TRUST DOMAIN                          │
 │  • Host OS, shell, filesystem                                │
 │  • CI runner + GitHub Actions secrets                        │
-│  • Signer (HSM/KMS) — required for production, not Step 3    │
+│  • Signer: AWS/GCP KMS SDK (SIGNER_BACKEND=kms) or remote   │
 └──────────────────────────────────────────────────────────────┘
 ```
 

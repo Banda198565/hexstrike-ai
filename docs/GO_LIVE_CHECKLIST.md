@@ -41,6 +41,13 @@ CI: `.github/workflows/policy-gate.yml` + `.github/workflows/go-live-merge-gate.
 - [ ] Signing uses KMS/HSM/remote signer only.
 - [ ] Signer access is policy-scoped + auditable.
 
+**Code wiring (real cloud SDKs — not interface-only):**
+- `SIGNER_BACKEND=kms` → `signer.NewFromEnv` → AWS SDK v2 (`AWS_KMS_KEY_ID`, `AWS_REGION`) or GCP Cloud KMS (`KMS_PROVIDER=gcp`, `GCP_KMS_KEY_NAME`).
+- Implementations: `cmd/agent/internal/signer/kms_aws.go`, `kms_gcp.go`, `eth_sig.go` (DER→eth `[R||S||V]`).
+- Fail-closed without cloud config; `local_key` rejected outside `GO_LIVE_PHASE=lab`.
+- Optional bind check: `SIGNER_ADDRESS` must match address derived from KMS public key.
+- Live cloud credentials are operator-owned; unit tests mock SDK clients (`kms_*_test.go`).
+
 ## 5) RPC Trust Model (Critical)
 
 - [ ] Multi-RPC configured (>=3 providers recommended).
