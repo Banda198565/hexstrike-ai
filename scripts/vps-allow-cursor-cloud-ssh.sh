@@ -6,9 +6,11 @@
 set -euo pipefail
 [[ $(id -u) -eq 0 ]] || { echo "run as root"; exit 1; }
 
+# Refresh these if cloud agent still cannot SSH (curl -4 ifconfig.me from agent).
 IPS=(
-  "54.201.20.43"
+  "44.236.205.197"
   "52.13.17.46"
+  "54.201.20.43"
 )
 
 for ip in "${IPS[@]}"; do
