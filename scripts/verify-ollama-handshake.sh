@@ -79,10 +79,10 @@ fi
 TAGS_RESP="$(curl -sf --max-time 5 "${OLLAMA_HOST}/api/tags" 2>&1)" && TAGS_OK=1 || TAGS_OK=0
 if [[ "$TAGS_OK" == "1" ]]; then
   check "api_tags" 1 "GET /api/tags OK"
-  if echo "$TAGS_RESP" | grep -qi "deepseek-r1"; then
-    check "model_deepseek_r1" 1 "deepseek-r1 present in model list"
+  if echo "$TAGS_RESP" | grep -qi "qwen2.5-coder"; then
+    check "model_qwen_coder" 1 "qwen2.5-coder present in model list"
   else
-    check "model_deepseek_r1" 0 "deepseek-r1 NOT found — run: ollama pull deepseek-r1"
+    check "model_qwen_coder" 0 "qwen2.5-coder NOT found — run: ollama pull qwen2.5-coder:7b"
     echo "       Available models:"
     echo "$TAGS_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print('       ', [m.get('name') for m in d.get('models',[])])" 2>/dev/null || true
   fi
@@ -99,15 +99,21 @@ else
 fi
 
 # 4. Minimal chat completion (chain-of-thought probe)
-CHAT_MODEL="${OLLAMA_MODEL:-${LLM_MODEL:-deepseek-r1:1.5b}}"
+CHAT_MODEL="${OLLAMA_MODEL:-${LLM_MODEL:-qwen2.5-coder:7b}}"
 # Prefer installed tag when full model name absent
 if [[ "$TAGS_OK" == "1" ]] && ! echo "$TAGS_RESP" | grep -q "\"name\":\"${CHAT_MODEL}\""; then
-  CHAT_MODEL="$(echo "$TAGS_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); names=[m.get('name','') for m in d.get('models',[])]; print(next((n for n in names if 'deepseek-r1' in n), names[0] if names else 'deepseek-r1'))" 2>/dev/null || echo "deepseek-r1:1.5b")"
+  CHAT_MODEL="$(echo "$TAGS_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); names=[m.get('name','') for m in d.get('models',[])]; print(next((n for n in names if 'qwen2.5-coder' in n), names[0] if names else 'qwen2.5-coder:7b'))" 2>/dev/null || echo "qwen2.5-coder:7b")"
+fi
+
+AUTH_HEADER=()
+if [[ -n "${OLLAMA_API_KEY:-}" ]]; then
+  AUTH_HEADER=(-H "Authorization: Bearer ${OLLAMA_API_KEY}")
 fi
 
 CHAT_RESP="$(curl -sf --max-time 120 "${OLLAMA_HOST}/v1/chat/completions" \
+  "${AUTH_HEADER[@]}" \
   -H "Content-Type: application/json" \
-  -d "{\"model\":\"${CHAT_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with exactly: pong\"}],\"stream\":false,\"options\":{\"num_thread\":${OLLAMA_NUM_THREAD:-16},\"num_predict\":${OLLAMA_NUM_PREDICT:-16}}}" 2>&1)" && CHAT_OK=1 || CHAT_OK=0
+  -d "{\"model\":\"${CHAT_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"Reply with exactly: pong\"}],\"stream\":false,\"options\":{\"num_thread\":${OLLAMA_NUM_THREAD:-16},\"num_predict\":${OLLAMA_NUM_PREDICT:-512},\"num_ctx\":${OLLAMA_NUM_CTX:-32768}}}" 2>&1)" && CHAT_OK=1 || CHAT_OK=0
 if [[ "$CHAT_OK" == "1" ]]; then
   check "chat_completion" 1 "POST /v1/chat/completions OK (model=${CHAT_MODEL})"
   if echo "$CHAT_RESP" | grep -qi "think\|pong"; then
@@ -160,7 +166,7 @@ fi
 
 # 8. Latency self-diagnostic
 MODELS_MS="$(measure_ms "${OLLAMA_HOST}/v1/models")"
-CHAT_MS="$(measure_ms "${OLLAMA_HOST}/v1/chat/completions" POST "{\"model\":\"${CHAT_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],\"stream\":false,\"options\":{\"num_thread\":${OLLAMA_NUM_THREAD:-16},\"num_predict\":${OLLAMA_NUM_PREDICT:-16}}}")"
+CHAT_MS="$(measure_ms "${OLLAMA_HOST}/v1/chat/completions" POST "{\"model\":\"${CHAT_MODEL}\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],\"stream\":false,\"options\":{\"num_thread\":${OLLAMA_NUM_THREAD:-16},\"num_predict\":${OLLAMA_NUM_PREDICT:-512},\"num_ctx\":${OLLAMA_NUM_CTX:-32768}}}")"
 echo ""
 echo "=== Latency (model-to-hook round-trip) ==="
 if [[ "$MODELS_MS" != "nan" ]]; then

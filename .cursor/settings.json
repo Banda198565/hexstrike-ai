@@ -1,31 +1,36 @@
 {
   "$schema": "https://cursor.com/schemas/settings.json",
-  "_comment": "System Integration Mode — localhost-first, OFFLINE_PRIMARY, fast 1.5b",
+  "_comment": "Ollama + Qwen2.5-Coder \u2014 localhost OpenAI-compatible models",
   "systemIntegrationMode": "OFFLINE_PRIMARY",
   "AUTHORIZED_OPERATOR_MODE": false,
   "ollama": {
     "host": "http://127.0.0.1:11434",
-    "model": "deepseek-r1:1.5b",
+    "model": "qwen2.5-coder:7b",
     "openai_compatible_base": "http://127.0.0.1:11434/v1",
     "api_key_placeholder": "ollama",
+    "pull_commands": [
+      "ollama pull qwen2.5-coder:7b",
+      "ollama pull qwen2.5-coder:14b"
+    ],
     "options": {
       "num_thread": 16,
-      "num_predict": 256
+      "num_predict": 512,
+      "num_ctx": 32768
     }
   },
   "cursor": {
     "chat": {
-      "defaultModel": "deepseek-r1:1.5b",
+      "defaultModel": "qwen2.5-coder:7b",
       "useLocalLlm": true,
       "model_type": "openai_compatible"
     },
     "composer": {
-      "defaultModel": "deepseek-r1:1.5b",
+      "defaultModel": "qwen2.5-coder:7b",
       "useLocalLlm": true,
       "model_type": "openai_compatible"
     },
     "maxMode": {
-      "defaultModel": "deepseek-r1:1.5b",
+      "defaultModel": "qwen2.5-coder:14b",
       "preferHighReasoning": true,
       "routeToLocal": true,
       "model_type": "openai_compatible"
@@ -33,16 +38,56 @@
     "models": {
       "custom": [
         {
-          "id": "deepseek-r1:1.5b",
-          "name": "deepseek-r1:1.5b",
+          "id": "qwen2.5-coder:7b",
+          "name": "Qwen2.5 Coder 7B (Ollama)",
           "provider": "openai-compatible",
           "model_type": "openai_compatible",
           "baseUrl": "http://127.0.0.1:11434/v1",
-          "supportsChainOfThought": true,
+          "apiKey": "ollama",
+          "supportsChainOfThought": false,
           "options": {
             "num_thread": 16,
-            "num_predict": 256
+            "num_predict": 512,
+            "num_ctx": 32768
           }
+        },
+        {
+          "id": "qwen2.5-coder:14b",
+          "name": "Qwen2.5 Coder 14B (Ollama)",
+          "provider": "openai-compatible",
+          "model_type": "openai_compatible",
+          "baseUrl": "http://127.0.0.1:11434/v1",
+          "apiKey": "ollama",
+          "supportsChainOfThought": false,
+          "options": {
+            "num_thread": 16,
+            "num_predict": 512,
+            "num_ctx": 32768
+          }
+        },
+        {
+          "id": "qwen2.5-coder:32b",
+          "name": "Qwen2.5 Coder 32B (Ollama)",
+          "provider": "openai-compatible",
+          "model_type": "openai_compatible",
+          "baseUrl": "http://127.0.0.1:11434/v1",
+          "apiKey": "ollama",
+          "supportsChainOfThought": false,
+          "options": {
+            "num_thread": 16,
+            "num_predict": 512,
+            "num_ctx": 32768
+          }
+        },
+        {
+          "id": "qwen3-coder:480b-cloud",
+          "name": "Qwen3 Coder 480B Cloud (Ollama)",
+          "provider": "openai-compatible",
+          "model_type": "openai_compatible",
+          "baseUrl": "http://127.0.0.1:11434/v1",
+          "apiKey": "ollama",
+          "supportsChainOfThought": false,
+          "cloud": true
         }
       ],
       "disabled": []
@@ -67,9 +112,10 @@
     "OLLAMA_BYPASS_TUNNEL": "true",
     "LLM_PROVIDER": "ollama-local",
     "LLM_BASE_URL": "http://127.0.0.1:11434/v1",
-    "LLM_MODEL": "deepseek-r1:1.5b",
+    "LLM_MODEL": "qwen2.5-coder:7b",
     "OLLAMA_NUM_THREAD": "16",
-    "OLLAMA_NUM_PREDICT": "256",
+    "OLLAMA_NUM_PREDICT": "512",
+    "OLLAMA_NUM_CTX": "32768",
     "CURSOR_INTEGRATION_MODE": "OFFLINE_PRIMARY"
   }
 }
