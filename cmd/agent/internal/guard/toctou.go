@@ -65,9 +65,9 @@ func NewIntentDedup() *IntentDedup {
 	return &IntentDedup{seen: make(map[string]struct{})}
 }
 
-// Claim returns false if intent+nonce already in flight.
-func (d *IntentDedup) Claim(intentHash string, nonce uint64) bool {
-	key := fmt.Sprintf("%s:%d", intentHash, nonce)
+// Claim returns false if (intent_hash, nonce, chainId) already in flight.
+func (d *IntentDedup) Claim(intentHash string, nonce uint64, chainID int64) bool {
+	key := fmt.Sprintf("%s:%d:%d", intentHash, nonce, chainID)
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if _, ok := d.seen[key]; ok {
@@ -78,8 +78,8 @@ func (d *IntentDedup) Claim(intentHash string, nonce uint64) bool {
 }
 
 // Release clears a dedup slot after revert or dropped broadcast.
-func (d *IntentDedup) Release(intentHash string, nonce uint64) {
-	key := fmt.Sprintf("%s:%d", intentHash, nonce)
+func (d *IntentDedup) Release(intentHash string, nonce uint64, chainID int64) {
+	key := fmt.Sprintf("%s:%d:%d", intentHash, nonce, chainID)
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	delete(d.seen, key)

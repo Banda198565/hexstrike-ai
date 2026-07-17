@@ -315,21 +315,29 @@ def quorum_values(
     return quorum_val, detail
 
 
+def _quorum_needed(cfg: ProductionGateConfig) -> int:
+    """Fail-closed: outside lab never degrade below 2; insufficient URLs → unreachable quorum."""
+    if cfg.phase == OperationalPhase.LAB:
+        return min(cfg.quorum_min_agree, max(1, len(cfg.quorum_urls)))
+    needed = max(2, cfg.quorum_min_agree)
+    if len(cfg.quorum_urls) < needed:
+        return needed  # quorum_values will fail (not enough agreeing readings)
+    return needed
+
+
 def quorum_balance(cfg: ProductionGateConfig, address: str) -> tuple[int | None, dict[str, Any]]:
-    needed = min(cfg.quorum_min_agree, len(cfg.quorum_urls))
     return quorum_values(
         cfg.quorum_urls,
-        min_agree=needed,
+        min_agree=_quorum_needed(cfg),
         fetcher=lambda url: fetch_balance(url, address, timeout=cfg.rpc_timeout_sec),
         timeout=cfg.rpc_timeout_sec,
     )
 
 
 def quorum_nonce(cfg: ProductionGateConfig, address: str) -> tuple[int | None, dict[str, Any]]:
-    needed = min(cfg.quorum_min_agree, len(cfg.quorum_urls))
     return quorum_values(
         cfg.quorum_urls,
-        min_agree=needed,
+        min_agree=_quorum_needed(cfg),
         fetcher=lambda url: fetch_nonce(url, address, timeout=cfg.rpc_timeout_sec),
         timeout=cfg.rpc_timeout_sec,
     )

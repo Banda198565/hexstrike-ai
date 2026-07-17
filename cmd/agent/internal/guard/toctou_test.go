@@ -24,14 +24,17 @@ func TestIntentHashCanonical(t *testing.T) {
 func TestIntentDedup(t *testing.T) {
 	d := NewIntentDedup()
 	ih := IntentHash("0xabc", big.NewInt(1), "0x", 31337, 1)
-	if !d.Claim(ih, 1) {
+	if !d.Claim(ih, 1, 31337) {
 		t.Fatal("first claim")
 	}
-	if d.Claim(ih, 1) {
+	if d.Claim(ih, 1, 31337) {
 		t.Fatal("duplicate must fail")
 	}
-	d.Release(ih, 1)
-	if !d.Claim(ih, 1) {
+	if !d.Claim(ih, 1, 56) {
+		t.Fatal("different chainId must be independent")
+	}
+	d.Release(ih, 1, 31337)
+	if !d.Claim(ih, 1, 31337) {
 		t.Fatal("after release")
 	}
 }

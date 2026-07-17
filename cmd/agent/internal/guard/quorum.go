@@ -10,6 +10,12 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
+// QuorumSource is the fail-closed truth interface for balance/nonce reads.
+type QuorumSource interface {
+	BalanceQuorum(ctx context.Context, addr common.Address) (*big.Int, error)
+	NonceQuorum(ctx context.Context, addr common.Address) (uint64, error)
+}
+
 // QuorumReader fetches balance/nonce from multiple RPC endpoints.
 type QuorumReader struct {
 	URLs     []string

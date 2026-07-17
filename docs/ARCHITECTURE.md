@@ -134,7 +134,7 @@ Proxy :8546 remains untrusted read path for polling only.
 | 03 Front-run Drain | VULN | VULN | DEFENDED* | G3 | Reduced; verify→sign→broadcast window remains |
 | 04 Replay Rescue TX | VULN | VULN | DEFENDED* | G2 | Anomaly / nonce signals; not cryptographic replay protection |
 | 05 TOCTOU Nonce | VULN | VULN | **PARTIAL** | G2 | Detects some races; full mitigation in § TOCTOU |
-| 06 Compromised Funder | VULN | VULN | **DEFENDED*** | Allowlist + `GO_LIVE_GATES` | Hardened path blocks `FUNDER` ∉ allowlist; legacy bot w/o gates remains VULN |
+| 06 Compromised Funder | VULN | VULN | **DEFENDED*** | Allowlist + `GO_LIVE_GATES` / Go `destAllow[destination]` | Hardened path blocks funder/destination ∉ allowlist; legacy bot w/o gates remains VULN (battle baseline) |
 | 07 Hardening Blocks | N/A | N/A | TEST | G1–G3 | Meta-test that guards fire |
 
 \* “DEFENDED” here means **risk-reduced under the lab threat model**, not production-complete.
@@ -268,7 +268,7 @@ Exit code policy for Go agent (target):
 
 | Gap | Impact | Direction |
 | --- | --- | --- |
-| No funder/destination allowlist | Attack `06` remains open | Implement allowlist + battle coverage → then mark DEFENDED |
+| Allowlist bypass if gates disabled | Attack `06` still VULN on legacy/ungated bot | Keep `GO_LIVE_GATES` / `RequireAllowlist` mandatory outside lab |
 | TOCTOU window after G3 | Race/front-run residual | Intent hash, nonce lock, post-sign recheck |
 | Single direct RPC | Truth-source SPOF / eclipse | Multi-RPC quorum 2/3 |
 | Proxy is pass-through only | No active response mutation defense beyond compare | Keep untrusted; never sign on proxy alone |
@@ -288,7 +288,7 @@ These must remain true in hardened mode:
 2. **Fail-closed on direct RPC errors** — no rescue broadcast.  
 3. **Any guard failure blocks** — no override flag in production builds.  
 4. **Lab keys only in Anvil battle path** — mainnet keys forbidden.  
-5. **Destination policy** — until allowlist ships, treat `06` as open risk (NO-GO for prod).  
+5. **Destination policy** — `ALLOWED_DESTINATIONS` / `destAllow[destination]` required outside lab; ungated legacy path remains VULN.  
 6. **Auditability** — every block/sign writes structured events (`dummy-bot-events.jsonl`, `anomaly-alerts.jsonl`).  
 7. **Trust boundary** — proxy traffic never becomes sole truth source.
 
@@ -362,7 +362,7 @@ Required before any non-lab value path:
 | G-Lab | Steps 1–3 runnable; artifacts written | Harness broken |
 | G-Score | Score ≥ 70 under v2 | Score < 70 |
 | G-Critical | No critical blockers | Any `BLOCK_*` |
-| G-Allowlist | `06` DEFENDED with test | `06` NOT DEFENDED (prod candidate) |
+| G-Allowlist | `06` DEFENDED* with destination/funder tests | Ungated legacy path or empty allowlist outside lab |
 | G-TOCTOU | Post-sign recheck + nonce lock implemented | Sign/broadcast without recheck |
 | G-RPC | Quorum 2/3 in staging/prod design | Single RPC as sole truth in prod |
 | G-Ops | Runbooks + alert sinks wired | Alerts only to local jsonl |
@@ -428,10 +428,10 @@ Do **not** label Step 3 as production-complete. Production requires § Productio
 | 03 Front-run | VULN | VULN | DEFENDED* | G3 |
 | 04 Replay | VULN | VULN | DEFENDED* | G2 |
 | 05 TOCTOU nonce | VULN | VULN | **PARTIAL** | G2 + TOCTOU backlog |
-| 06 Compromised funder | VULN | VULN | **NOT DEFENDED YET** | Allowlist backlog |
+| 06 Compromised funder | VULN | VULN | **DEFENDED*** | Allowlist + destination key check |
 | 07 Hardening blocks | N/A | N/A | TEST PASS | G1–G3 |
 
-Illustrative scores: Step 1 ~20 · Step 2 ~20 · Step 3 ~60–75 **but NO-GO for prod while `06` open**.
+Illustrative scores: Step 1 ~20 · Step 2 ~20 · Step 3 ~60–75. **Prod still NO-GO** until TOCTOU+KMS+quorum+phase gates (see `docs/GO_LIVE_CHECKLIST.md`), even though `#06` hardened path is `DEFENDED*`.
 
 ---
 
@@ -440,4 +440,5 @@ Illustrative scores: Step 1 ~20 · Step 2 ~20 · Step 3 ~60–75 **but NO-GO for
 | Version | Change |
 | --- | --- |
 | 1.x | ASCII evolution narrative; overstated “FULL PROTECTION”; `06` marked defended inconsistently |
-| 2.0 | Defense-in-depth wording; trust boundaries; G1–G3 contracts; TOCTOU; scoring v2; Known Gaps; runbooks/SLO; readiness gates; `06` = NOT DEFENDED YET |
+| 2.0 | Defense-in-depth wording; trust boundaries; G1–G3 contracts; TOCTOU; scoring v2; Known Gaps; runbooks/SLO; readiness gates |
+| 2.1 | Attack `#06` hardened path = `DEFENDED*`; comparison table synced; Known Gaps updated; prod NO-GO tied to remaining Critical gates |
