@@ -37,3 +37,7 @@ config/samson/scope.bulk-overlay.yaml
 # Samson runtime recon / guardrail artifacts (generated during audits)
 samson/rag/docs/emulation/*.md
 samson/redteam/guardrail/configs/*.json
+
+# local VPS bootstrap secrets (never commit)
+.vps-bootstrap-*
+*.vps-password
