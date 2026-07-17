@@ -71,7 +71,7 @@ This document describes the **three-layer defense-in-depth** path from a vulnera
 │ OUT OF BAND / SEPARATE TRUST DOMAIN                          │
 │  • Host OS, shell, filesystem                                │
 │  • CI runner + GitHub Actions secrets                        │
-│  • Signer (HSM/KMS) — required for production, not Step 3    │
+│  • Signer: AWS/GCP KMS SDK (SIGNER_BACKEND=kms) or remote   │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -134,12 +134,12 @@ Proxy :8546 remains untrusted read path for polling only.
 | 03 Front-run Drain | VULN | VULN | DEFENDED* | G3 | Reduced; verify→sign→broadcast window remains |
 | 04 Replay Rescue TX | VULN | VULN | DEFENDED* | G2 | Anomaly / nonce signals; not cryptographic replay protection |
 | 05 TOCTOU Nonce | VULN | VULN | **PARTIAL** | G2 | Detects some races; full mitigation in § TOCTOU |
-| 06 Compromised Funder | VULN | VULN | **DEFENDED*** | Allowlist + `GO_LIVE_GATES` | Hardened path blocks `FUNDER` ∉ allowlist; legacy bot w/o gates remains VULN |
+| 06 Compromised Funder | VULN | VULN | **DEFENDED*** | Allowlist + `GO_LIVE_GATES` / Go `destAllow[destination]` | **DEFENDED*** (risk-reduced under lab model): hardened path blocks funder/destination ∉ allowlist; legacy bot w/o gates remains VULN (battle baseline) |
 | 07 Hardening Blocks | N/A | N/A | TEST | G1–G3 | Meta-test that guards fire |
 
-\* “DEFENDED” here means **risk-reduced under the lab threat model**, not production-complete.
+\* **DEFENDED*** means **risk-reduced under the lab threat model**, not production-complete. Step 3 / DEFENDED* never alone authorize a production value path.
 
-**Attack #06 — Compromised funder:** hardened path is **`DEFENDED*`** when `ALLOWED_FUNDERS` / `ALLOWED_DESTINATIONS` + `GO_LIVE_GATES=true`. Legacy dummy bot without gates remains VULN by design (battle baseline).
+**Attack #06 — Compromised funder:** status is **`DEFENDED*` (risk-reduced under lab model)** on the hardened path (`ALLOWED_FUNDERS` / `ALLOWED_DESTINATIONS` + `GO_LIVE_GATES=true` / Go `RequireAllowlist` + `destAllow[destination]`). Do not mark `#06` as open/missing allowlist. Legacy dummy bot without gates remains VULN by design (battle baseline).
 
 ---
 
@@ -219,7 +219,7 @@ Problem: even with G1–G3, time passes between **verify** and **broadcast**. At
 6. Broadcast or drop.  
 7. Release mutex.
 
-Status today: **PARTIAL** — G2 helps detection; full intent-hash + post-sign recheck is a Known Gap until implemented in the hardened bot.
+Status today: **PARTIAL → improving** — Go hot path wires `SecureSignRescue` (intent claim, nonce lock, TxSigner, post-sign recheck). Residual verify→broadcast race and ops soak remain; not production-complete.
 
 ---
 
@@ -242,7 +242,7 @@ Any of the following forces **`deployability = NO-GO`** regardless of numeric sc
 
 | Blocker ID | Condition |
 | --- | --- |
-| `BLOCK_COMPROMISED_FUNDER` | `06-compromised-funder` is `VULN_CONFIRMED` **or** still `NOT DEFENDED YET` in production candidate |
+| `BLOCK_COMPROMISED_FUNDER` | Production candidate runs ungated/legacy path, empty allowlist outside lab, or `#06` regression (`VULN_CONFIRMED` on hardened path). Hardened `#06` is **DEFENDED*** — not “NOT DEFENDED YET”. |
 | `BLOCK_DIRECT_RPC_DOWN` | `direct_rpc_unavailable` during validation window |
 | `BLOCK_GUARD_BYPASS` | Any path signs without G1–G3 in hardened mode |
 | `BLOCK_MAINNET_KEYS` | Non-lab keys detected in env/CI for battle suite |
@@ -268,13 +268,13 @@ Exit code policy for Go agent (target):
 
 | Gap | Impact | Direction |
 | --- | --- | --- |
-| No funder/destination allowlist | Attack `06` remains open | Implement allowlist + battle coverage → then mark DEFENDED |
-| TOCTOU window after G3 | Race/front-run residual | Intent hash, nonce lock, post-sign recheck |
+| Allowlist ops / gate discipline | `#06` is **DEFENDED*** on hardened path; risk returns if gates off, allowlist empty, or destination key check regresses | Keep `GO_LIVE_GATES` / `RequireAllowlist` mandatory outside lab; CI + review for allowlist drift |
+| TOCTOU residual after `SecureSignRescue` | Race/front-run window shrinks but not zero | Enforce SecureSign on all value paths; soak + phase gates |
 | Single direct RPC | Truth-source SPOF / eclipse | Multi-RPC quorum 2/3 |
 | Proxy is pass-through only | No active response mutation defense beyond compare | Keep untrusted; never sign on proxy alone |
-| Host / CI key exposure | Guards irrelevant if key stolen | HSM/KMS, short-lived keys, no mainnet in CI |
-| No cryptographic replay binding | Replay variants may slip | Intent hash + nonce accounting |
-| Alerting without paging SLO | Detection ≠ response | Runbooks + severity matrix below |
+| Host / CI key exposure | Guards irrelevant if raw key stolen | Code: AWS/GCP KMS wired (`SIGNER_BACKEND=kms`); ops: IAM/policy, staging smoke, no mainnet keys in CI |
+| Replay residual | Replay variants may slip if intent claim bypassed | Keep intent hash + `(intent, nonce, chainId)` claim on all sign paths |
+| Alerting without paging SLO | Detection ≠ response | Webhook sink wired (`ALERT_*` / `alerting.PageCritical`); operator must configure URL + pass `paging_drill.py` — see `docs/ops/PAGING-ONCALL.md` |
 | Samson vs HexStrike sandbox docs | Two stacks | Cross-link core spec; do not conflate ports/roles |
 | SMS OTP as auth factor | Breaks at network / carrier / device / radio | See `docs/intel/SMS-2FA-THREAT-MODEL.md` — prefer WebAuthn/passkeys |
 
@@ -287,10 +287,11 @@ These must remain true in hardened mode:
 1. **No sign on proxy-only data** — G3 direct-RPC required.  
 2. **Fail-closed on direct RPC errors** — no rescue broadcast.  
 3. **Any guard failure blocks** — no override flag in production builds.  
-4. **Lab keys only in Anvil battle path** — mainnet keys forbidden.  
-5. **Destination policy** — until allowlist ships, treat `06` as open risk (NO-GO for prod).  
-6. **Auditability** — every block/sign writes structured events (`dummy-bot-events.jsonl`, `anomaly-alerts.jsonl`).  
-7. **Trust boundary** — proxy traffic never becomes sole truth source.
+4. **Lab keys only in Anvil / `GO_LIVE_PHASE=lab`** — `local_key` forbidden outside lab; canary/limited require KMS/remote.  
+5. **Destination policy (`#06` DEFENDED*)** — `ALLOWED_DESTINATIONS` / `destAllow[destination]` + non-empty allowlist required outside lab; ungated legacy path remains VULN by design.  
+6. **Signer backend** — production value path uses `SIGNER_BACKEND=kms` (AWS/GCP SDK) or remote; fail-closed without cloud config.  
+7. **Auditability** — every block/sign writes structured events (`dummy-bot-events.jsonl`, `anomaly-alerts.jsonl`).  
+8. **Trust boundary** — proxy traffic never becomes sole truth source.
 
 ---
 
@@ -341,17 +342,25 @@ These must remain true in hardened mode:
 
 ## Production Controls (beyond Step 3)
 
-Required before any non-lab value path:
+Required before any non-lab value path. Step 3 / **DEFENDED*** do **not** mean production-complete.
 
 | Control | Spec |
 | --- | --- |
-| Signer isolation | HSM/KMS or remote signer; bot never holds raw mainnet key on disk |
+| Signer isolation | See **Key management (§4)** below |
 | Key rotation | Scheduled + emergency rotate; revoke old material |
 | Rate limits | Max rescue attempts / window; cooldown after block |
 | Budget caps | Max value per TX and per rolling window |
 | Multi-RPC quorum | ≥3 endpoints; proceed only on **2/3** agreement for balance/nonce |
-| Destination allowlist | Close gap `06`; unsigned if `to` not allowlisted |
+| Destination allowlist | `#06` **DEFENDED*** — enforce/maintain `ALLOWED_*` + `RequireAllowlist`; unsigned if `to` not allowlisted |
 | CI separation | Battle CI uses Anvil only; no production secrets |
+
+### Key management (§4)
+
+| Item | Status |
+| --- | --- |
+| Code-gap (AWS/GCP KMS SDK) | **Closed** — `SIGNER_BACKEND=kms` → `signer.NewFromEnv` wires AWS SDK v2 (`AWS_KMS_KEY_ID`, `AWS_REGION`) or GCP Cloud KMS (`KMS_PROVIDER=gcp`, `GCP_KMS_KEY_NAME`); DER→eth in `eth_sig.go` |
+| Fail-closed | Missing cloud config → error; `local_key` only in `GO_LIVE_PHASE=lab` |
+| Operator-owned (remaining) | KMS IAM/policy audit, staging smoke with real credentials, paging for signer denials |
 
 ---
 
@@ -362,13 +371,14 @@ Required before any non-lab value path:
 | G-Lab | Steps 1–3 runnable; artifacts written | Harness broken |
 | G-Score | Score ≥ 70 under v2 | Score < 70 |
 | G-Critical | No critical blockers | Any `BLOCK_*` |
-| G-Allowlist | `06` DEFENDED with test | `06` NOT DEFENDED (prod candidate) |
-| G-TOCTOU | Post-sign recheck + nonce lock implemented | Sign/broadcast without recheck |
+| G-Allowlist | `#06` **DEFENDED*** (risk-reduced under lab model) + destination/funder regression tests | Ungated legacy path, empty allowlist outside lab, or `#06` regression |
+| G-TOCTOU | `SecureSignRescue` (intent claim + post-sign recheck) on value path | Sign/broadcast without recheck |
+| G-KMS | `SIGNER_BACKEND=kms` (or remote) outside lab; no raw key in prod env | `local_key` / raw `BOT_PRIVATE_KEY` outside lab |
 | G-RPC | Quorum 2/3 in staging/prod design | Single RPC as sole truth in prod |
-| G-Ops | Runbooks + alert sinks wired | Alerts only to local jsonl |
+| G-Ops | Runbooks + alert sinks / paging wired | Alerts only to local jsonl |
 
-**Staging GO:** G-Lab + G-Score + G-Critical + G-Ops.  
-**Production GO:** all gates, including G-Allowlist, G-TOCTOU, G-RPC, production controls.
+**Staging GO:** G-Lab + G-Score + G-Critical + G-Ops (+ G-KMS config smoke).  
+**Production GO:** all gates, including G-Allowlist, G-TOCTOU, G-KMS, G-RPC, production controls + operator-owned §4 leftovers.
 
 ---
 
@@ -427,11 +437,11 @@ Do **not** label Step 3 as production-complete. Production requires § Productio
 | 02 Race duplicate | VULN | VULN | DEFENDED* | G1 |
 | 03 Front-run | VULN | VULN | DEFENDED* | G3 |
 | 04 Replay | VULN | VULN | DEFENDED* | G2 |
-| 05 TOCTOU nonce | VULN | VULN | **PARTIAL** | G2 + TOCTOU backlog |
-| 06 Compromised funder | VULN | VULN | **NOT DEFENDED YET** | Allowlist backlog |
+| 05 TOCTOU nonce | VULN | VULN | **PARTIAL** | G2 + `SecureSignRescue` (residual window) |
+| 06 Compromised funder | VULN | VULN | **DEFENDED*** | Allowlist + destination key check — **DEFENDED*** (risk-reduced under lab model) |
 | 07 Hardening blocks | N/A | N/A | TEST PASS | G1–G3 |
 
-Illustrative scores: Step 1 ~20 · Step 2 ~20 · Step 3 ~60–75 **but NO-GO for prod while `06` open**.
+Illustrative scores: Step 1 ~20 · Step 2 ~20 · Step 3 ~60–75. **`#06` = DEFENDED*** on hardened path. **Prod still NO-GO** until remaining Critical/operator gates in `docs/GO_LIVE_CHECKLIST.md` (quorum soak, phase canary, paging, §4 IAM/staging smoke). Step 3 / DEFENDED* ≠ production-complete. KMS **code-gap closed** (AWS/GCP SDK); operator-owned leftovers remain.
 
 ---
 
@@ -440,4 +450,6 @@ Illustrative scores: Step 1 ~20 · Step 2 ~20 · Step 3 ~60–75 **but NO-GO for
 | Version | Change |
 | --- | --- |
 | 1.x | ASCII evolution narrative; overstated “FULL PROTECTION”; `06` marked defended inconsistently |
-| 2.0 | Defense-in-depth wording; trust boundaries; G1–G3 contracts; TOCTOU; scoring v2; Known Gaps; runbooks/SLO; readiness gates; `06` = NOT DEFENDED YET |
+| 2.0 | Defense-in-depth wording; trust boundaries; G1–G3 contracts; TOCTOU; scoring v2; Known Gaps; runbooks/SLO; readiness gates |
+| 2.1 | Attack `#06` hardened path = `DEFENDED*`; comparison table synced; Known Gaps updated; prod NO-GO tied to remaining Critical gates |
+| 2.2 | Post PR #49: `#06` unified **DEFENDED***; Known Gaps = allowlist ops (not “missing”); §4 KMS code-gap closed + operator-owned leftovers; G-KMS + invariants synced |
