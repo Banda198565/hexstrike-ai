@@ -56,13 +56,17 @@ if [[ -f "$ROOT/hexstrike-env/bin/activate" ]]; then
   # shellcheck disable=SC1091
   source "$ROOT/hexstrike-env/bin/activate"
 fi
-python3 - <<PY || check "pyserial" "import failed"
+if python3 - <<PY
 from serial.tools import list_ports
 for p in list_ports.comports():
     if "bluetooth" not in (p.description or "").lower():
         print(f"  {p.device} vid={p.vid} pid={p.pid}")
 PY
-check "pyserial" "pass"
+then
+  check "pyserial" "pass"
+else
+  check "pyserial" "import failed"
+fi
 echo ""
 
 # 3. AT diagnostic

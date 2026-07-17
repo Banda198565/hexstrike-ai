@@ -42,7 +42,8 @@ system_profiler SPUSBDataType 2>/dev/null | \
   grep -B1 -A5 -iE 'CH340|CP210|FTDI|USB Serial|UART|wch.cn|Silicon Labs' || \
   warn "USB-UART адаптер не найден в system_profiler"
 
-if ! ls /dev/cu.usb* /dev/cu.SLAB* /dev/cu.wch* /dev/cu.usbserial* /dev/cu.usbmodem* 2>/dev/null; then
+USB_CU_PORTS=$(ls /dev/cu.usb* /dev/cu.SLAB* /dev/cu.wch* /dev/cu.usbserial* /dev/cu.usbmodem* 2>/dev/null || true)
+if [[ -z "$USB_CU_PORTS" ]]; then
   warn "Serial-порты USB не найдены."
   log "Запуск глубокой USB-диагностики..."
   bash "$ROOT/scripts/gsm/mac-usb-deep-scan.sh" || true
