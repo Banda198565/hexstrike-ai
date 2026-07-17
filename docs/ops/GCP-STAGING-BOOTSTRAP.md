@@ -21,8 +21,9 @@ If you later want real prod: **new project**, billing alerts, stricter org polic
 ## Step 0 — Bootstrap
 
 ```bash
-export GCP_PROJECT_ID=gen-lang-client-0574318762   # or your staging project
-export GCP_LOCATION=global                         # or region you prefer
+export GCP_PROJECT_ID=gen-lang-client-0574318762   # staging only
+# secp256k1 = Cloud HSM only → must be REGIONAL (not global)
+export GCP_LOCATION=europe-west1                   # or us-east1 / us-central1
 export CONFIRM_STAGING=YES
 # Optional local SA JSON for smoke (do not commit):
 export CREATE_SA_KEY=YES
@@ -30,9 +31,12 @@ export CREATE_SA_KEY=YES
 ./scripts/ops/gcp-staging-bootstrap.sh
 ```
 
+**If you already hit** `ALGORITHM_NOT_SUPPORTED_FOR_PROTECTION_LEVEL` / used `GCP_LOCATION=global`:  
+pull latest branch and re-run with a **regional** location (script defaults to HSM). The empty keyring in `global` can be ignored.
+
 Creates:
 
-- KMS keyring `hexstrike-staging` + key `rescue-signer` (`EC_SIGN_SECP256K1_SHA256`)
+- KMS keyring `hexstrike-staging` + key `rescue-signer` (`EC_SIGN_SECP256K1_SHA256` @ **HSM**)
 - SA `hexstrike-signer@...`
 - Custom role least-privilege + key IAM binding
 - `artifacts/ops/iam-policy-sample.json`

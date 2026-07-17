@@ -15,7 +15,7 @@ Canonical evidence matrix: [`FINAL-GO-LIVE-EVIDENCE-REPORT.md`](FINAL-GO-LIVE-EV
 
 ```bash
 export GCP_PROJECT_ID=<staging-project>   # e.g. gen-lang-client-0574318762 as STAGING only
-export GCP_LOCATION=global
+export GCP_LOCATION=europe-west1          # regional — secp256k1 needs Cloud HSM (not global)
 export CONFIRM_STAGING=YES
 export CREATE_SA_KEY=YES                  # optional local SA JSON — never commit
 ./scripts/ops/gcp-staging-bootstrap.sh

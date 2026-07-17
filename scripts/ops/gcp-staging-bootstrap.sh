@@ -23,11 +23,14 @@ mkdir -p "${OUT_DIR}"
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 
 PROJECT="${GCP_PROJECT_ID:-}"
-LOCATION="${GCP_LOCATION:-global}"
+# secp256k1 requires Cloud HSM → regional location (not "global")
+LOCATION="${GCP_LOCATION:-europe-west1}"
 KEYRING="${GCP_KMS_KEYRING:-hexstrike-staging}"
 KEY="${GCP_KMS_KEY:-rescue-signer}"
 SA_NAME="${GCP_SIGNER_SA:-hexstrike-signer}"
 ROLE_ID="${GCP_CUSTOM_ROLE_ID:-hexstrike.kms.signer}"
+# GCP: EC_SIGN_SECP256K1_SHA256 is HSM-only (SOFTWARE rejected)
+PROTECTION_LEVEL="${GCP_KMS_PROTECTION_LEVEL:-hsm}"
 
 die() { echo "[gcp-staging] ERROR: $*" >&2; exit 1; }
 log() { echo "[gcp-staging] $*"; }
@@ -36,7 +39,14 @@ command -v gcloud >/dev/null || die "gcloud not installed — run this on your m
 [[ -n "${PROJECT}" ]] || die "set GCP_PROJECT_ID"
 [[ "${CONFIRM_STAGING:-}" == "YES" ]] || die "refusing to mutate GCP without CONFIRM_STAGING=YES (staging-only bootstrap)"
 
-log "project=${PROJECT} location=${LOCATION} keyring=${KEYRING} key=${KEY}"
+if [[ "${LOCATION}" == "global" ]]; then
+  die "LOCATION=global cannot host Cloud HSM secp256k1 keys. Re-run with e.g. export GCP_LOCATION=europe-west1 (or us-east1). Keyring created earlier in global can be left unused."
+fi
+if [[ "${PROTECTION_LEVEL}" != "hsm" && "${PROTECTION_LEVEL}" != "hsm-single-tenant" ]]; then
+  die "secp256k1 requires HSM protection (got PROTECTION_LEVEL=${PROTECTION_LEVEL}). Use GCP_KMS_PROTECTION_LEVEL=hsm"
+fi
+
+log "project=${PROJECT} location=${LOCATION} keyring=${KEYRING} key=${KEY} protection=${PROTECTION_LEVEL}"
 gcloud config set project "${PROJECT}" >/dev/null
 
 # Enable APIs
@@ -51,17 +61,18 @@ else
   gcloud kms keyrings create "${KEYRING}" --location="${LOCATION}" --project="${PROJECT}"
 fi
 
-# Crypto key — secp256k1 for Ethereum path (EC_SIGN_SECP256K1_SHA256)
+# Crypto key — secp256k1 for Ethereum (HSM only per GCP)
 if gcloud kms keys describe "${KEY}" --keyring="${KEYRING}" --location="${LOCATION}" --project="${PROJECT}" >/dev/null 2>&1; then
   log "key exists: ${KEY}"
 else
-  log "creating asymmetric sign key ${KEY} (EC_SIGN_SECP256K1_SHA256)..."
+  log "creating asymmetric sign key ${KEY} (EC_SIGN_SECP256K1_SHA256 @ ${PROTECTION_LEVEL})..."
+  log "note: Cloud HSM may incur staging cost — expected for ethereum secp256k1"
   gcloud kms keys create "${KEY}" \
     --keyring="${KEYRING}" \
     --location="${LOCATION}" \
     --purpose=asymmetric-signing \
     --default-algorithm=ec-sign-secp256k1-sha256 \
-    --protection-level=software \
+    --protection-level="${PROTECTION_LEVEL}" \
     --project="${PROJECT}"
 fi
 
