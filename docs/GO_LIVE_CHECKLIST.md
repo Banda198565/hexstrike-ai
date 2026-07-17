@@ -4,7 +4,9 @@
 > If any Critical gate is not PASS → **NO-GO**.
 
 Technical implementation map: [`docs/GO-LIVE-MERGE-GATE-CHECKLIST.md`](GO-LIVE-MERGE-GATE-CHECKLIST.md)  
-CI: `.github/workflows/policy-gate.yml` + `.github/workflows/go-live-merge-gate.yml`
+CI: `.github/workflows/policy-gate.yml` + `.github/workflows/go-live-merge-gate.yml`  
+**Final evidence report:** [`docs/ops/FINAL-GO-LIVE-EVIDENCE-REPORT.md`](ops/FINAL-GO-LIVE-EVIDENCE-REPORT.md)  
+Ops packs: [KMS smoke](ops/KMS-STAGING-SMOKE.md) · [KMS IAM](ops/KMS-IAM-HARDENING.md) · [Paging](ops/PAGING-ONCALL.md)
 
 ## 0) Scope & Legality (Critical)
 
@@ -47,6 +49,8 @@ CI: `.github/workflows/policy-gate.yml` + `.github/workflows/go-live-merge-gate.
 - Fail-closed without cloud config; `local_key` rejected outside `GO_LIVE_PHASE=lab`.
 - Optional bind check: `SIGNER_ADDRESS` must match address derived from KMS public key.
 - Live cloud credentials are operator-owned; unit tests mock SDK clients (`kms_*_test.go`).
+- Staging smoke: `scripts/ops/run-kms-staging-smoke.sh` → `artifacts/ops/kms-smoke-*/summary.json` ([runbook](ops/KMS-STAGING-SMOKE.md)).
+- IAM templates: `docs/ops/iam/` + [KMS-IAM-HARDENING.md](ops/KMS-IAM-HARDENING.md).
 
 ## 5) RPC Trust Model (Critical)
 
@@ -66,6 +70,9 @@ CI: `.github/workflows/policy-gate.yml` + `.github/workflows/go-live-merge-gate.
 - [ ] Critical alerts route to paging/on-call (not jsonl-only).
 - [ ] Runbook exists for block/rollback/recovery.
 - [ ] At least one incident drill executed successfully.
+
+Wiring: `ALERT_PAGING_ENABLED` + `ALERT_WEBHOOK_URL` → Python `alert_paging.py` / Go `alerting.PageCritical`.  
+Drill: `python3 scripts/ops/paging_drill.py` → [PAGING-ONCALL.md](ops/PAGING-ONCALL.md).
 
 ## 8) Rollout Phases (Critical)
 

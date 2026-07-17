@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/hexstrike-ai/hexstrike/cmd/agent/internal/alerting"
 	"github.com/hexstrike-ai/hexstrike/cmd/agent/internal/entity"
 	"github.com/hexstrike-ai/hexstrike/cmd/agent/internal/guard"
 	"github.com/hexstrike-ai/hexstrike/cmd/agent/internal/signer"
@@ -200,6 +201,12 @@ func (e *Engine) OnCritical(kind, detail string) {
 	e.mu.Lock()
 	e.blockedUntil = time.Now().Add(time.Duration(e.cooldownAfterBlock * float64(time.Second)))
 	e.mu.Unlock()
+	// Best-effort paging (Slack/PagerDuty webhook); never blocks kill-switch path.
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_ = alerting.PageCritical(ctx, kind, detail)
+	}()
 }
 
 // PrepareRescue runs limits → kill switch → phase → allowlist → rate → fees.

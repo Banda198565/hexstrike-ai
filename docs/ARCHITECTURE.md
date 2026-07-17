@@ -274,7 +274,7 @@ Exit code policy for Go agent (target):
 | Proxy is pass-through only | No active response mutation defense beyond compare | Keep untrusted; never sign on proxy alone |
 | Host / CI key exposure | Guards irrelevant if raw key stolen | Code: AWS/GCP KMS wired (`SIGNER_BACKEND=kms`); ops: IAM/policy, staging smoke, no mainnet keys in CI |
 | Replay residual | Replay variants may slip if intent claim bypassed | Keep intent hash + `(intent, nonce, chainId)` claim on all sign paths |
-| Alerting without paging SLO | Detection ≠ response | Runbooks + severity matrix below; wire paging (operator-owned) |
+| Alerting without paging SLO | Detection ≠ response | Webhook sink wired (`ALERT_*` / `alerting.PageCritical`); operator must configure URL + pass `paging_drill.py` — see `docs/ops/PAGING-ONCALL.md` |
 | Samson vs HexStrike sandbox docs | Two stacks | Cross-link core spec; do not conflate ports/roles |
 | SMS OTP as auth factor | Breaks at network / carrier / device / radio | See `docs/intel/SMS-2FA-THREAT-MODEL.md` — prefer WebAuthn/passkeys |
 
