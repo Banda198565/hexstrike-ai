@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/hexstrike-ai/hexstrike/cmd/agent/internal/monitor"
 	"github.com/hexstrike-ai/hexstrike/cmd/agent/internal/relay"
+	"github.com/hexstrike-ai/hexstrike/cmd/agent/internal/signer"
 	txpkg "github.com/hexstrike-ai/hexstrike/cmd/agent/internal/tx"
 )
 
@@ -44,11 +44,11 @@ func TestLiveRescueLoopAnvilE2E(t *testing.T) {
 	rescueValue := parseWeiEnv("RESCUE_VALUE_WEI", 1_000_000_000_000_000)
 	balanceWei := parseWeiEnv("BOT_BALANCE_WEI", 300_000_000_000_000_000)
 
-	botKey, err := crypto.HexToECDSA(keyHex)
+	labSigner, err := signer.NewFromEnv(signer.PhaseLab, signer.BackendLocal, keyHex, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := crypto.PubkeyToAddress(botKey.PublicKey).Hex(); !strings.EqualFold(got, bot) {
+	if got := labSigner.Address().Hex(); !strings.EqualFold(got, bot) {
 		t.Fatalf("BOT_PRIVATE_KEY mismatch: %s vs %s", got, bot)
 	}
 
@@ -71,10 +71,17 @@ func TestLiveRescueLoopAnvilE2E(t *testing.T) {
 		allowed = strings.Split(v, ",")
 	}
 	fc := txpkg.NewFeeCalculator(client, 120)
+	// Lab E2E: three identical Anvil endpoints satisfy 2/3 quorum without fail-open skip.
 	eng, err := NewEngine(Config{
-		AllowedFunders: allowed,
-		FeeCalculator:  fc,
-		FailClosed:     false,
+		AllowedFunders:      allowed,
+		FeeCalculator:       fc,
+		FailClosed:          false,
+		Phase:               signer.PhaseLab,
+		RequireQuorum:       true,
+		RequireRemoteSigner: false,
+		QuorumRPCURLs:       []string{rpc, rpc, rpc},
+		QuorumMinAgree:      2,
+		MaxRescueValueWei:   rescueValue,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -102,10 +109,12 @@ func TestLiveRescueLoopAnvilE2E(t *testing.T) {
 		t.Fatal("expected EIP-1559 fee suggestion")
 	}
 
-	rawTx, txHashLocal, rescueNonce, err := SignRescueTx(ctx, client, botKey, chainID, common.HexToAddress(bot), funderAddr, rescueValue, plan.Fees)
+	signed, err := eng.SecureSignRescue(ctx, client, labSigner, chainID, funderAddr, rescueValue, plan.Fees)
 	if err != nil {
-		t.Fatalf("sign rescue tx: %v", err)
+		t.Fatalf("SecureSignRescue: %v", err)
 	}
+	rawTx, txHashLocal, rescueNonce := signed.Raw, signed.Hash, signed.Nonce
+	intentHash := signed.IntentHash
 
 	pubURL := envOr("RELAY_PUBLIC_RPC", rpc)
 	relayClient := relay.DefaultPuissantRelay()
@@ -120,13 +129,12 @@ func TestLiveRescueLoopAnvilE2E(t *testing.T) {
 		}
 		return txpkg.BumpFeeSuggestionStrict(lastFees, bumpPct), nil
 	}
-	from := common.HexToAddress(bot)
 
 	submitRes, err := relayClient.Submit(ctx, relay.SubmitRequest{
 		RawTx:   rawTx,
 		ChainID: chainID.Int64(),
 		Resign: func(ctx context.Context, bumpPct int, fees *txpkg.FeeSuggestion) ([]byte, error) {
-			raw, outFees, err := ResignRescueTx(ctx, client, botKey, chainID, from, funderAddr, rescueValue, rescueNonce, lastFees, bumpPct, fees)
+			raw, outFees, err := eng.SecureResignRescue(ctx, labSigner, chainID, funderAddr, rescueValue, rescueNonce, intentHash, lastFees, bumpPct, fees)
 			if err != nil {
 				return nil, err
 			}

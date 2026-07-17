@@ -75,9 +75,14 @@ class BotConfig:
     poll_interval_sec: float
     dry_run: bool
     hardening: bool
+    go_live_gates: bool
 
     @classmethod
     def from_env(cls) -> BotConfig:
+        hardening = os.environ.get("HARDENING_ENABLED", "").lower() in ("1", "true", "yes")
+        go_live = os.environ.get("GO_LIVE_GATES", "").lower() in ("1", "true", "yes")
+        if not go_live and hardening:
+            go_live = True
         return cls(
             rpc_url=os.environ.get("RPC_URL", "http://127.0.0.1:8545"),
             direct_rpc_url=os.environ.get(
@@ -92,7 +97,8 @@ class BotConfig:
             rescue_value_wei=int(os.environ.get("RESCUE_VALUE_WEI", "1000000000000000")),
             poll_interval_sec=float(os.environ.get("POLL_INTERVAL_SEC", "10")),
             dry_run=os.environ.get("DRY_RUN", "").lower() in ("1", "true", "yes"),
-            hardening=os.environ.get("HARDENING_ENABLED", "").lower() in ("1", "true", "yes"),
+            hardening=hardening,
+            go_live_gates=go_live,
         )
 
 
@@ -160,7 +166,7 @@ def sign_rescue_tx_cast(cfg: BotConfig) -> str:
     return payload.get("transactionHash") or payload.get("hash") or proc.stdout.strip()
 
 
-def sign_rescue_tx_eth_account(cfg: BotConfig) -> str:
+def sign_rescue_tx_eth_account(cfg: BotConfig) -> tuple[str, str, int, str]:
     from eth_account import Account  # type: ignore[import-untyped]
 
     sign_rpc = cfg.direct_rpc_url if cfg.hardening else cfg.rpc_url
@@ -183,22 +189,114 @@ def sign_rescue_tx_eth_account(cfg: BotConfig) -> str:
     raw = signed.raw_transaction.hex()
     if not raw.startswith("0x"):
         raw = "0x" + raw
-    return rpc_call(sign_rpc, "eth_sendRawTransaction", [raw])
+    tx_hash = signed.hash.hex() if hasattr(signed, "hash") else ""
+    if tx_hash and not tx_hash.startswith("0x"):
+        tx_hash = "0x" + tx_hash
+    return raw, tx_hash, nonce, sign_rpc
 
 
-def sign_rescue_tx(cfg: BotConfig) -> tuple[str, str]:
+def sign_rescue_tx(cfg: BotConfig) -> tuple[str, str, int | None, str | None]:
+    """Sign rescue tx without broadcast when go-live gates enabled."""
     if cfg.dry_run:
-        return "dry-run", "skipped — DRY_RUN=1"
+        return "dry-run", "skipped — DRY_RUN=1", None, None
+
+    if cfg.go_live_gates:
+        return sign_rescue_tx_gated(cfg)
 
     if shutil_which("cast"):
-        return "cast", sign_rescue_tx_cast(cfg)
+        return "cast", sign_rescue_tx_cast(cfg), None, None
 
     try:
-        return "eth_account", sign_rescue_tx_eth_account(cfg)
+        raw, tx_hash, nonce, rpc = sign_rescue_tx_eth_account(cfg)
+        from production_gates import broadcast_raw_tx
+
+        sent = broadcast_raw_tx(rpc, raw)
+        return "eth_account", sent or tx_hash, nonce, rpc
     except ImportError:
         raise RuntimeError(
             "No signer available. Install Foundry (cast) or: pip install eth-account"
         ) from None
+
+
+def sign_rescue_tx_gated(cfg: BotConfig) -> tuple[str, str, int | None, str | None]:
+    from production_gates import (
+        NonceLock,
+        ProductionGateConfig,
+        IntentRegistry,
+        TxRateLimiter,
+        broadcast_raw_tx,
+        check_allowlist,
+        check_signer_policy,
+        compute_intent_hash,
+        max_value_for_phase,
+        post_sign_recheck,
+        quorum_balance,
+    )
+
+    gate_cfg = ProductionGateConfig.from_env()
+    rate_limiter = getattr(sign_rescue_tx_gated, "_rate_limiter", None)
+    if rate_limiter is None or not isinstance(rate_limiter, TxRateLimiter):
+        rate_limiter = TxRateLimiter(gate_cfg)
+        sign_rescue_tx_gated._rate_limiter = rate_limiter  # type: ignore[attr-defined]
+
+    intent_registry = getattr(sign_rescue_tx_gated, "_intent_registry", None)
+    if intent_registry is None or not isinstance(intent_registry, IntentRegistry):
+        intent_registry = IntentRegistry()
+        sign_rescue_tx_gated._intent_registry = intent_registry  # type: ignore[attr-defined]
+
+    ok, reason = check_signer_policy(gate_cfg)
+    if not ok:
+        raise RuntimeError(f"signer policy blocked: {reason}")
+
+    ok, reason = check_allowlist(gate_cfg, cfg.funder_address, cfg.funder_address)
+    if not ok:
+        raise RuntimeError(f"allowlist blocked (#06): {reason}")
+
+    ok, reason = rate_limiter.check()
+    if not ok:
+        raise RuntimeError(f"rate limit: {reason}")
+
+    cap = max_value_for_phase(gate_cfg)
+    if cap is not None and cfg.rescue_value_wei > cap:
+        raise RuntimeError(f"phase value cap exceeded: {cfg.rescue_value_wei} > {cap}")
+
+    sign_rpc = cfg.direct_rpc_url
+    lock = NonceLock.for_address(cfg.bot_address)
+    with lock:
+        bal_before, _ = quorum_balance(gate_cfg, cfg.bot_address)
+        if bal_before is None:
+            raise RuntimeError("quorum balance unavailable before sign")
+
+        try:
+            raw, tx_hash, nonce, _ = sign_rescue_tx_eth_account(cfg)
+        except ImportError as exc:
+            raise RuntimeError("go-live gates require eth-account signer") from exc
+
+        chain_id = int(rpc_call(sign_rpc, "eth_chainId", []), 16)
+        intent_hash = compute_intent_hash(
+            to=cfg.funder_address,
+            value_wei=cfg.rescue_value_wei,
+            chain_id=chain_id,
+            nonce=nonce,
+        )
+        if not intent_registry.claim(intent_hash, nonce):
+            raise RuntimeError("duplicate intent_hash+nonce")
+
+        allowed, recheck = post_sign_recheck(
+            gate_cfg,
+            address=cfg.bot_address,
+            expected_nonce=nonce,
+            balance_before_wei=bal_before,
+            intent_hash=intent_hash,
+        )
+        if not allowed:
+            intent_registry.release(intent_hash, nonce)
+            rate_limiter.record_block()
+            raise RuntimeError(f"post-sign recheck failed: {recheck.get('outcome')}")
+
+        sent = broadcast_raw_tx(sign_rpc, raw)
+        rate_limiter.record_attempt()
+        return "gated_eth_account", sent or tx_hash, nonce, sign_rpc
 
 
 def shutil_which(name: str) -> str | None:
@@ -286,11 +384,31 @@ def run_once(cfg: BotConfig, guard_state: Any | None = None) -> None:
             append_event(event)
             return
 
+    if cfg.go_live_gates:
+        from production_gates import ProductionGateConfig, check_allowlist, check_signer_policy
+
+        gate_cfg = ProductionGateConfig.from_env()
+        ok, reason = check_signer_policy(gate_cfg)
+        if not ok:
+            event["result"] = f"blocked_{reason}"
+            log.error("BLOCKED go-live policy: %s", reason)
+            append_event(event)
+            return
+        ok, reason = check_allowlist(gate_cfg, cfg.funder_address, cfg.funder_address)
+        if not ok:
+            event["result"] = reason or "BLOCK_COMPROMISED_FUNDER"
+            event["guard_event"] = "BLOCK_COMPROMISED_FUNDER"
+            log.error("BLOCKED allowlist (#06): %s", reason)
+            append_event(event)
+            return
+
     try:
-        signer, tx_hash = sign_rescue_tx(cfg)
+        signer, tx_hash, nonce, _ = sign_rescue_tx(cfg)
         event["result"] = "signed"
         event["signer"] = signer
         event["tx_hash"] = tx_hash
+        if nonce is not None:
+            event["nonce"] = nonce
         log.info("Rescue tx sent via %s — hash=%s", signer, tx_hash)
     except Exception as exc:  # noqa: BLE001
         event["result"] = "error"
@@ -328,13 +446,14 @@ def main() -> int:
     log.info("[CORE] Engine started (%s) watch=%s signer=%s funder=%s", mode, cfg.watch_address, cfg.bot_address, cfg.funder_address)
 
     log.info(
-        "Watching %s (signer=%s) every %ss (threshold=%s ETH, dry_run=%s, hardening=%s, once=%s)",
+        "Watching %s (signer=%s) every %ss (threshold=%s ETH, dry_run=%s, hardening=%s, go_live=%s, once=%s)",
         cfg.watch_address,
         cfg.bot_address,
         cfg.poll_interval_sec,
         wei_to_eth(cfg.threshold_wei),
         cfg.dry_run,
         cfg.hardening,
+        cfg.go_live_gates,
         args.once,
     )
     if cfg.hardening:

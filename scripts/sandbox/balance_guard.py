@@ -34,6 +34,12 @@ def append_alert(entry: dict[str, Any]) -> None:
     from log_utils import append_jsonl
 
     append_jsonl(ALERTS, entry)
+    try:
+        from alert_paging import maybe_page
+
+        maybe_page(entry)
+    except Exception:  # noqa: BLE001 — paging must never break detection path
+        pass
 
 
 def rpc_call(url: str, method: str, params: list[Any], timeout: float = 10.0) -> Any:
