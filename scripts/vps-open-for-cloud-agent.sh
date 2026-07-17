@@ -16,7 +16,7 @@ LOCAL_ENV="${LOCAL_ENV:-$ROOT/.env}"
 REMOTE_DIR="${REMOTE_DIR:-/root/hexstrike-ai}"
 
 # Current Cursor cloud egress (update if agent IP changes)
-CLOUD_IPS=("52.40.48.127" "44.236.205.197" "52.13.17.46" "54.201.20.43")
+CLOUD_IPS=("52.40.48.127" "44.236.205.197" "52.13.17.46" "54.201.20.43" "35.167.27.154" "50.112.242.221")
 # Pubkey from cloud agent session (hexstrike_vps generated 2026-07-17)
 CLOUD_PUB='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG3ASf+3bbpvVwpI2zdjpRz2HmayHivj8++CbV7eGIYg hexstrike-cloud-agent-20260717'
 
