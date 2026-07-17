@@ -1,0 +1,58 @@
+name: GO-LIVE Merge Gate
+
+on:
+  pull_request:
+    paths:
+      - 'cmd/agent/**'
+      - 'scripts/sandbox/**'
+      - 'docs/GO-LIVE-MERGE-GATE-CHECKLIST.md'
+      - '.github/workflows/go-live-merge-gate.yml'
+  push:
+    branches: [master, main]
+    paths:
+      - 'cmd/agent/**'
+      - 'scripts/sandbox/**'
+      - '.github/workflows/go-live-merge-gate.yml'
+
+jobs:
+  phase0-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Go Phase 0 unit tests
+        working-directory: cmd/agent
+        run: go test ./...
+
+      - name: Python production gate tests
+        run: python3 scripts/sandbox/test_production_gates.py
+
+      - name: Hardening tamper simulation
+        run: python3 scripts/sandbox/test_attack_blocked.py
+
+      - name: Verify merge gate checklist exists
+        run: test -f docs/GO-LIVE-MERGE-GATE-CHECKLIST.md
+
+      - name: Block raw prod keys in tracked env
+        run: |
+          ! grep -qE '^BOT_PRIVATE_KEY=0x[0-9a-fA-F]{64}' scripts/sandbox/mainnet.env.example
+          ! grep -qE '^AGENT_PRIVATE_KEY=0x' scripts/sandbox/mainnet.env.example || true
+
+      - name: GO-LIVE gate summary
+        if: always()
+        run: |
+          echo "## GO-LIVE Phase 0 gate results" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Go tests: cmd/agent" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Python: test_production_gates.py" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Checklist: docs/GO-LIVE-MERGE-GATE-CHECKLIST.md" >> "$GITHUB_STEP_SUMMARY"

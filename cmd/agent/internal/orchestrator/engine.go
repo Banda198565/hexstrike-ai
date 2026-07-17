@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/hexstrike-ai/hexstrike/cmd/agent/internal/entity"
 	"github.com/hexstrike-ai/hexstrike/cmd/agent/internal/guard"
 	"github.com/hexstrike-ai/hexstrike/cmd/agent/internal/tx"
@@ -35,21 +36,29 @@ type RescuePlan struct {
 
 // Engine coordinates P0–P2 checks immediately before signing.
 type Engine struct {
-	limits   *guard.RouteGuard
-	gate     *entity.EntityGate
-	fees     *tx.FeeCalculator
-	allow    map[string]struct{}
-	dedup    sync.Map
-	failGate bool
+	limits      *guard.RouteGuard
+	gate        *entity.EntityGate
+	fees        *tx.FeeCalculator
+	allow       map[string]struct{}
+	destAllow   map[string]struct{}
+	dedup       sync.Map
+	intentDedup *guard.IntentDedup
+	killSwitch  *guard.KillSwitch
+	quorum      *guard.QuorumReader
+	failGate    bool
 }
 
 // Config for battle engine.
 type Config struct {
-	BootstrapPath string
-	APIKey        string
-	FailClosed    bool
-	AllowedFunders []string
-	FeeCalculator  *tx.FeeCalculator
+	BootstrapPath       string
+	APIKey              string
+	FailClosed          bool
+	AllowedFunders      []string
+	AllowedDestinations []string
+	QuorumRPCURLs       []string
+	QuorumMinAgree      int
+	FeeCalculator       *tx.FeeCalculator
+	KillSwitch          *guard.KillSwitch
 }
 
 // NewEngine builds an engine from repo-relative defaults.
@@ -77,12 +86,39 @@ func NewEngine(cfg Config) (*Engine, error) {
 			eg.AllowAddress(a, "configured_funder", "ALLOWLIST")
 		}
 	}
+	destAllow := make(map[string]struct{})
+	destList := cfg.AllowedDestinations
+	if len(destList) == 0 {
+		destList = cfg.AllowedFunders
+	}
+	for _, a := range destList {
+		key := strings.ToLower(strings.TrimSpace(a))
+		if key != "" {
+			destAllow[key] = struct{}{}
+		}
+	}
+	ks := cfg.KillSwitch
+	if ks == nil {
+		ks = guard.NewKillSwitch()
+	}
+	var quorum *guard.QuorumReader
+	if len(cfg.QuorumRPCURLs) > 0 {
+		minAgree := cfg.QuorumMinAgree
+		if minAgree < 1 {
+			minAgree = 2
+		}
+		quorum = &guard.QuorumReader{URLs: cfg.QuorumRPCURLs, MinAgree: minAgree}
+	}
 	return &Engine{
-		limits:   guard.NewRouteGuard(),
-		gate:     eg,
-		fees:     cfg.FeeCalculator,
-		allow:    allow,
-		failGate: cfg.FailClosed,
+		limits:      guard.NewRouteGuard(),
+		gate:        eg,
+		fees:        cfg.FeeCalculator,
+		allow:       allow,
+		destAllow:   destAllow,
+		intentDedup: guard.NewIntentDedup(),
+		killSwitch:  ks,
+		quorum:      quorum,
+		failGate:    cfg.FailClosed,
 	}, nil
 }
 
@@ -98,13 +134,17 @@ func defaultBootstrapPath() string {
 	return "cmd/agent/internal/entity/testdata/entity-gate-bootstrap.json"
 }
 
-// PrepareRescue runs limits → entity gate → funder allowlist → dedup → fees.
+// PrepareRescue runs limits → kill switch → entity gate → allowlist → intent dedup → fees.
 func (e *Engine) PrepareRescue(ctx context.Context, req RescueRequest) (*RescuePlan, error) {
 	if req.BalanceWei == nil {
 		req.BalanceWei = big.NewInt(0)
 	}
 	if req.RescueValue == nil {
 		req.RescueValue = big.NewInt(0)
+	}
+
+	if engaged, reason := e.killSwitch.Engaged(); engaged {
+		return nil, fmt.Errorf("ENGINE: kill switch engaged — %s", reason)
 	}
 
 	strategy := e.limits.EvaluateCombined(req.BalanceWei, req.RescueValue)
@@ -124,6 +164,11 @@ func (e *Engine) PrepareRescue(ctx context.Context, req RescueRequest) (*RescueP
 	if len(e.allow) > 0 {
 		if _, ok := e.allow[funder]; !ok {
 			return nil, fmt.Errorf("ENGINE: funder %s not in allowlist (attack #06)", req.FunderAddress)
+		}
+	}
+	if len(e.destAllow) > 0 {
+		if _, ok := e.destAllow[funder]; !ok {
+			return nil, fmt.Errorf("ENGINE: destination %s not in allowlist (attack #06)", req.FunderAddress)
 		}
 	}
 
@@ -154,6 +199,57 @@ func (e *Engine) PrepareRescue(ctx context.Context, req RescueRequest) (*RescueP
 		DedupKey:  dedupKey,
 		AllowedAt: time.Now().UTC(),
 	}, nil
+}
+
+// ClaimSignIntent binds intent_hash+nonce before sign (TOCTOU + dedup).
+func (e *Engine) ClaimSignIntent(to string, value *big.Int, chainID int64, nonce uint64) (string, error) {
+	if e.intentDedup == nil {
+		return guard.IntentHash(to, value, "0x", chainID, nonce), nil
+	}
+	ih := guard.IntentHash(to, value, "0x", chainID, nonce)
+	if !e.intentDedup.Claim(ih, nonce) {
+		return ih, fmt.Errorf("ENGINE: duplicate intent suppressed (intent_hash+nonce)")
+	}
+	return ih, nil
+}
+
+// VerifyPostSign rechecks balance+nonce via quorum before broadcast (TOCTOU).
+func (e *Engine) VerifyPostSign(
+	ctx context.Context,
+	botAddress string,
+	expectedNonce uint64,
+	balanceBefore *big.Int,
+	intentHash string,
+) error {
+	if e.quorum == nil {
+		return nil
+	}
+	addr := common.HexToAddress(botAddress)
+	bal, err := e.quorum.BalanceQuorum(ctx, addr)
+	if err != nil {
+		if e.intentDedup != nil {
+			e.intentDedup.Release(intentHash, expectedNonce)
+		}
+		return fmt.Errorf("ENGINE: post-sign quorum balance failed: %w", err)
+	}
+	nonce, err := e.quorum.NonceQuorum(ctx, addr)
+	if err != nil {
+		if e.intentDedup != nil {
+			e.intentDedup.Release(intentHash, expectedNonce)
+		}
+		return fmt.Errorf("ENGINE: post-sign quorum nonce failed: %w", err)
+	}
+	drift, reasons := guard.PostSignDrift(expectedNonce, balanceBefore, guard.PostSignSnapshot{
+		BalanceWei: bal,
+		Nonce:      nonce,
+	})
+	if drift {
+		if e.intentDedup != nil {
+			e.intentDedup.Release(intentHash, expectedNonce)
+		}
+		return fmt.Errorf("ENGINE: post-sign drift %v — drop tx (TOCTOU)", reasons)
+	}
+	return nil
 }
 
 // ReleaseDedup clears a dedup key after on-chain revert (monitor.HandleReceipt).

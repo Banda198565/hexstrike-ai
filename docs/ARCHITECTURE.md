@@ -134,7 +134,7 @@ Proxy :8546 remains untrusted read path for polling only.
 | 03 Front-run Drain | VULN | VULN | DEFENDED* | G3 | Reduced; verify→sign→broadcast window remains |
 | 04 Replay Rescue TX | VULN | VULN | DEFENDED* | G2 | Anomaly / nonce signals; not cryptographic replay protection |
 | 05 TOCTOU Nonce | VULN | VULN | **PARTIAL** | G2 | Detects some races; full mitigation in § TOCTOU |
-| 06 Compromised Funder | VULN | VULN | **NOT DEFENDED YET** | — | Needs destination/funder allowlist |
+| 06 Compromised Funder | VULN | VULN | **DEFENDED*** | Allowlist + `GO_LIVE_GATES` | Hardened path blocks `FUNDER` ∉ allowlist; legacy bot w/o gates remains VULN |
 | 07 Hardening Blocks | N/A | N/A | TEST | G1–G3 | Meta-test that guards fire |
 
 \* “DEFENDED” here means **risk-reduced under the lab threat model**, not production-complete.
