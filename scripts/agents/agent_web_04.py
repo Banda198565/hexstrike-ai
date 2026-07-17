@@ -36,13 +36,18 @@ def main() -> int:
     out_path = os.environ.get("OUTPUT", DEFAULT_OUT)
 
     targets: list[str] = []
+    port_map: dict[str, list[int]] = {}
     if os.path.isfile(in_path):
         with open(in_path) as f:
             data = json.load(f)
         for item in data.get("infra_targets", []):
             ip = item.get("ip")
             if ip:
-                targets.extend([f"http://{ip}:8080/", f"http://{ip}/"])
+                port_map[ip] = item.get("ports") or [8080]
+                for port in port_map[ip]:
+                    scheme = "https" if port == 443 else "http"
+                    p = "" if port in (80, 443) else f":{port}"
+                    targets.append(f"{scheme}://{ip}{p}/")
     else:
         targets = ["http://51.250.97.223:8080/"]
 

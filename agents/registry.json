@@ -60,6 +60,24 @@
           "output": "artifacts/multichain-cluster.json",
           "methods": ["blockscan_multichain", "basescan_portfolio", "bsc_outflow_sample"],
           "constraints": ["read-only", "passive"]
+        },
+        "shodan-kz-scan": {
+          "script": "scripts/agents/agent_osint_03_shodan_kz.py",
+          "output": "artifacts/shodan-kz-report.json",
+          "methods": ["shodan_search", "ripestat_kz", "crtsh_kz", "internetdb", "geth_rpc_probe"],
+          "constraints": ["read-only", "passive", "defensive-ir", "no-nmap"]
+        },
+        "shodan-ru-scan": {
+          "script": "scripts/agents/agent_osint_03_shodan_ru.py",
+          "output": "artifacts/shodan-ru-report.json",
+          "methods": ["shodan_search", "ripestat_ru", "crtsh_ru", "internetdb", "geth_rpc_probe"],
+          "constraints": ["read-only", "passive", "defensive-ir", "no-nmap"]
+        },
+        "found-targets-recon": {
+          "script": "scripts/agents/agent_osint_03_found_recon.py",
+          "output": "artifacts/found-targets-recon.json",
+          "methods": ["ipinfo", "internetdb", "whois", "jenkins_fingerprint", "geth_rpc_probe", "wallet_correlation"],
+          "constraints": ["read-only", "passive", "defensive-ir", "no-nmap"]
         }
       },
       "mcp_tools": [],
@@ -87,6 +105,7 @@
         "bind-mcp-tools": {
           "script": "scripts/mcp-smoke-test.sh",
           "config": "mcp/agent-bindings.json",
+          "output": "artifacts/mcp-smoke-report.json",
           "target": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA"
         },
         "onchain-graph": {

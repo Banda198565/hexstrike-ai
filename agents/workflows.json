@@ -214,6 +214,46 @@
         {"agent": "Agent-Battle-07", "task": "generate-target-conclusion", "depends_on": "multi-wallet-recon"}
       ],
       "note": "Run: bash scripts/run-hot-wallet-ops.sh — includes dossier + mempool sample"
+    },
+    "kz-shodan-recon": {
+      "description": "Kazakhstan Shodan/OSINT: exposed Geth :8545, Jenkins, crypto infra (read-only)",
+      "mode": "forensics",
+      "steps": [
+        {"agent": "Agent-OSINT-03", "task": "shodan-kz-scan"},
+        {"agent": "Agent-Vuln-05", "task": "passive-cve-check", "optional": true},
+        {"agent": "Agent-Report-06", "task": "generate-defensive-checklist", "optional": true}
+      ],
+      "note": "Requires SHODAN_API_KEY for full search; fallback uses RIPEstat + crt.sh + InternetDB"
+    },
+    "ru-shodan-recon": {
+      "description": "Russia Shodan/OSINT: exposed Geth :8545, Jenkins, Yandex/Selectel infra (read-only)",
+      "mode": "forensics",
+      "env": {
+        "COUNTRY": "RU"
+      },
+      "steps": [
+        {"agent": "Agent-OSINT-03", "task": "shodan-ru-scan"},
+        {"agent": "Agent-Vuln-05", "task": "passive-cve-check", "optional": true},
+        {"agent": "Agent-Report-06", "task": "generate-defensive-checklist", "optional": true}
+      ],
+      "note": "15 Shodan queries + known case IP 51.250.97.223 (Yandex Jenkins). Needs SHODAN_API_KEY for live search."
+    },
+    "found-targets-recon": {
+      "description": "Recon on Shodan-found + case infra: Jenkins, Geth :8545, WHOIS, wallet correlation",
+      "mode": "forensics",
+      "env": {
+        "INPUT": "artifacts/found-targets-infra.json",
+        "TARGET_WALLET": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA"
+      },
+      "steps": [
+        {"agent": "Agent-OSINT-03", "task": "found-targets-recon"},
+        {"agent": "Agent-Web-04", "task": "stealth-recon", "depends_on": "found-targets-recon"},
+        {"agent": "Agent-Vuln-05", "task": "passive-cve-check", "depends_on": "stealth-recon"},
+        {"agent": "Agent-OSINT-03", "task": "entity-resolution", "optional": true},
+        {"agent": "Agent-Report-06", "task": "generate-defensive-checklist", "depends_on": "passive-cve-check"},
+        {"agent": "Agent-Report-06", "task": "generate-session-report", "optional": true, "depends_on": "generate-defensive-checklist"}
+      ],
+      "note": "Reads high_risk from shodan-ru/kz reports + case IPs 51.250.97.223, 51.222.42.220"
     }
   }
 }
