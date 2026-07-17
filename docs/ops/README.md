@@ -3,6 +3,7 @@
 | Pack | Doc | Script |
 | --- | --- | --- |
 | **Step-by-step → GLOBAL GO** | [GLOBAL-GO-OPERATOR-RUNBOOK.md](GLOBAL-GO-OPERATOR-RUNBOOK.md) | steps 1–5 |
+| **Collect + validate evidence** | [evidence/](evidence/) | `collect_artifacts.sh` + `validate_schemas.py` |
 | Staging KMS smoke | [KMS-STAGING-SMOKE.md](KMS-STAGING-SMOKE.md) | `scripts/ops/run-kms-staging-smoke.sh` |
 | IAM least privilege | [KMS-IAM-HARDENING.md](KMS-IAM-HARDENING.md) | `docs/ops/iam/*` |
 | Paging / on-call | [PAGING-ONCALL.md](PAGING-ONCALL.md) | `scripts/ops/paging_drill.py` |

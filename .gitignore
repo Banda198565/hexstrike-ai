@@ -8,6 +8,9 @@ scripts/sandbox/anvil.env
 *.exe
 /osint-agent
 artifacts/
+# Generated GLOBAL GO evidence (may contain env-specific IDs)
+docs/ops/evidence/*.json
+!docs/ops/evidence/README.md
 tmp/
 __pycache__/
 scripts/__pycache__/

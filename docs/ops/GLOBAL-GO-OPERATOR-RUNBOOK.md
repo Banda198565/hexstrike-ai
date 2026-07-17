@@ -138,16 +138,21 @@ export CANARY_MAX_VALUE_WEI=100000000000000000
 
 ---
 
-## Шаг 5 — Fill Evidence Report
+## Шаг 5 — Collect + validate (strict contracts) + Evidence Report
 
-Update [`FINAL-GO-LIVE-EVIDENCE-REPORT.md`](FINAL-GO-LIVE-EVIDENCE-REPORT.md):
+After raw `artifacts/ops/*` exist:
 
-| Критерий | Артефакт | Статус |
-|----------|----------|--------|
-| §4c Live KMS smoke | `artifacts/ops/kms-smoke-*/summary.json` | PASS |
-| §4d IAM/audit | `artifacts/ops/iam-policy-sample.json` | PASS |
-| §7 Paging drill | `artifacts/ops/paging-drill-*.json` + ack | PASS |
-| §8 Shadow soak | `artifacts/ops/shadow-soak-report.json` | PASS |
-| §8 Canary | logs + no critical alerts | PASS |
+```bash
+pip install -r scripts/ops/requirements-ops.txt
+# LIVE (required for GLOBAL GO eligibility):
+./scripts/ops/collect_artifacts.sh
+# Demo/schema-only (CI dry-run; NEVER GLOBAL GO):
+# COLLECT_MODE=demo ./scripts/ops/collect_artifacts.sh
+```
 
-Then send artifact paths here for **GLOBAL GO / NO-GO**.
+Produces `docs/ops/evidence/{kms_smoke,iam_audit,paging_drill,shadow_canary,verdict}.json`.  
+Pydantic rejects `drift_detected: true`, `sla_met: false`, failed sign, etc.
+
+Also update [`FINAL-GO-LIVE-EVIDENCE-REPORT.md`](FINAL-GO-LIVE-EVIDENCE-REPORT.md), then request human **GLOBAL GO / NO-GO**.
+
+**Do not** treat `COLLECT_MODE=demo` or schema-only PASS as GLOBAL GO.
