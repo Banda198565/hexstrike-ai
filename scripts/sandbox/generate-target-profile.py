@@ -39,6 +39,7 @@ def main() -> int:
         "rpc_endpoints": {
             "bsc_public": "https://bsc-dataseed.binance.org",
             "bsc_fallback": "https://bsc-dataseed1.binance.org",
+            "base_public": "https://mainnet.base.org",
             "local_fork": "http://127.0.0.1:8545",
         },
         "constraints": [

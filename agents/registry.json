@@ -79,6 +79,11 @@
           "output": "artifacts/found-targets-recon.json",
           "methods": ["ipinfo", "internetdb", "whois", "jenkins_fingerprint", "geth_rpc_probe", "wallet_correlation"],
           "constraints": ["read-only", "passive", "defensive-ir", "no-nmap"]
+        },
+        "arkham-label-propagate": {
+          "script": "scripts/agents/agent_osint_03_labels.py",
+          "output": "docs/recon/LABEL-PROPAGATION-PHASE4-20260713.json",
+          "constraints": ["read-only", "passive"]
         }
       },
       "mcp_tools": [],
@@ -189,6 +194,26 @@
           "script": "scripts/sandbox/setup-real-target-fork.sh",
           "output": "artifacts/sandbox/target-fork-status.json",
           "constraints": ["local-fork-only"]
+        },
+        "sweep-phase2-audit": {
+          "script": "scripts/sandbox/sweep-phase2-audit.py",
+          "output": "docs/recon/SWEEP-PHASE2-AUDIT-20260713.json",
+          "constraints": ["read-only", "no-remote-exploit"]
+        },
+        "multichain-target-recon": {
+          "script": "scripts/sandbox/run-multichain-target-recon.py",
+          "output": "artifacts/sandbox/multichain-recon-bundle.json",
+          "constraints": ["read-only", "no-remote-exploit"]
+        },
+        "crosschain-rhino-correlate": {
+          "script": "scripts/sandbox/crosschain-rhino-correlate.py",
+          "output": "docs/recon/CROSSCHAIN-PHASE3-20260713.json",
+          "constraints": ["read-only", "no-remote-exploit"]
+        },
+        "extended-outflow-trace": {
+          "script": "scripts/sandbox/extended-outflow-trace.py",
+          "output": "docs/recon/EXTENDED-OUTFLOW-PHASE4-20260713.json",
+          "constraints": ["read-only", "no-remote-exploit"]
         }
       },
       "cli": "./bin/hexstrike-agent",

@@ -58,6 +58,61 @@
       ],
       "note": "Read-only. hot_wallet, authority, hub, puissant, infra_correlated_wallet from desktop reports."
     },
+    "field-targets-6": {
+      "description": "Sweep contracts cluster: bytecode forensics → fork → recon → conclusion",
+      "env": {
+        "WALLETS_FILE": "scripts/sandbox/field-targets-6.json",
+        "WALLETS_ONLY": "1"
+      },
+      "steps": [
+        {"agent": "Agent-Battle-07", "task": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "target-fork-setup", "depends_on": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "multi-wallet-recon", "depends_on": "target-fork-setup"},
+        {"agent": "Agent-Battle-07", "task": "generate-target-conclusion", "depends_on": "multi-wallet-recon"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "generate-target-conclusion"}
+      ],
+      "note": "Read-only. sweep routers + EIP-7702 impl + Rhino.fi hub from recon Phase A outflow analysis."
+    },
+    "sweep-phase-2": {
+      "description": "Phase-2: EIP-7702 impl bytecode audit + Rhino.fi hub trace + exchange forensics",
+      "steps": [
+        {"agent": "Agent-Battle-07", "task": "sweep-phase2-audit"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "sweep-phase2-audit"}
+      ],
+      "note": "Read-only. Signature policy audit on impl 0x314C01e7... + hub USDT state + LEA pack."
+    },
+    "field-targets-7": {
+      "description": "Cross-chain Phase-3: multichain targets BSC+Base via agent pipeline",
+      "env": {
+        "WALLETS_FILE": "scripts/sandbox/field-targets-7.json",
+        "WALLETS_ONLY": "1"
+      },
+      "steps": [
+        {"agent": "Agent-Battle-07", "task": "generate-target-profile"},
+        {"agent": "Agent-OSINT-03", "task": "blockscan-cluster", "depends_on": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "multichain-target-recon", "depends_on": "blockscan-cluster"},
+        {"agent": "Agent-Battle-07", "task": "crosschain-rhino-correlate", "depends_on": "multichain-target-recon"},
+        {"agent": "Agent-Battle-07", "task": "generate-target-conclusion", "depends_on": "crosschain-rhino-correlate"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "generate-target-conclusion"}
+      ],
+      "note": "Read-only. hot_wallet BSC+Base, Rhino hub, sweep delegate, EIP-7702 impl."
+    },
+    "field-targets-8": {
+      "description": "Phase-4: Arkham label propagation + extended outflow trace on 8 targets",
+      "env": {
+        "WALLETS_FILE": "scripts/sandbox/field-targets-8.json",
+        "WALLETS_ONLY": "1"
+      },
+      "steps": [
+        {"agent": "Agent-Battle-07", "task": "generate-target-profile"},
+        {"agent": "Agent-OSINT-03", "task": "arkham-label-propagate", "depends_on": "generate-target-profile"},
+        {"agent": "Agent-Battle-07", "task": "extended-outflow-trace", "depends_on": "arkham-label-propagate"},
+        {"agent": "Agent-OSINT-03", "task": "entity-resolution", "depends_on": "extended-outflow-trace"},
+        {"agent": "Agent-Battle-07", "task": "generate-target-conclusion", "depends_on": "entity-resolution"},
+        {"agent": "Agent-Report-06", "task": "generate-vps-master-report", "depends_on": "generate-target-conclusion"}
+      ],
+      "note": "Read-only. Label propagation + BSC/Base extended outflows. Arkham UI URLs per target."
+    },
     "multi-wallet-conclusions": {
       "description": "All seed wallets: profile → fork → multi recon → conclusion report",
       "steps": [
