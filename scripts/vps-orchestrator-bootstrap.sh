@@ -7,7 +7,10 @@ set -euo pipefail
 INSTALL_DIR="${HEXSTRIKE_DIR:-/opt/hexstrike-ai}"
 BRANCH="cursor/hexstrike-agents-a1cf"
 REPO="https://github.com/Banda198565/hexstrike-ai.git"
-CLOUD_AGENT_PUBKEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIByufH4aDtJgrm/Udc3Vai4heLmGhT2N4xKdZ5bjZ0DH cursor-cloud-hexstrike"
+CLOUD_AGENT_PUBKEYS=(
+  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOc4+341bbWPywULPF8MTDq9VpaDMT4+TqKLpK4Uo2Gs hexstrike-01@cursor-20260714"
+  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIByufH4aDtJgrm/Udc3Vai4heLmGhT2N4xKdZ5bjZ0DH cursor-cloud-hexstrike"
+)
 
 log() { echo "[hexstrike] $*"; }
 die() { echo "[hexstrike] ERROR: $*" >&2; exit 1; }
@@ -19,11 +22,13 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq git tmux python3 curl
 
-log "SSH: allow cursor-cloud agent key (optional future access)"
+log "SSH: allow cursor-cloud agent keys (optional future access)"
 mkdir -p /root/.ssh
 chmod 700 /root/.ssh
-grep -qF 'cursor-cloud-hexstrike' /root/.ssh/authorized_keys 2>/dev/null || \
-  echo "$CLOUD_AGENT_PUBKEY" >> /root/.ssh/authorized_keys
+touch /root/.ssh/authorized_keys
+for key in "${CLOUD_AGENT_PUBKEYS[@]}"; do
+  grep -qF "$key" /root/.ssh/authorized_keys 2>/dev/null || echo "$key" >> /root/.ssh/authorized_keys
+done
 chmod 600 /root/.ssh/authorized_keys
 
 if [[ -d "$INSTALL_DIR/.git" ]]; then
