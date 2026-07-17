@@ -14,10 +14,11 @@ CI: `.github/workflows/policy-gate.yml` + `.github/workflows/go-live-merge-gate.
 
 ## 1) Compromised Funder/Destination Defense (Critical)
 
-- [ ] `destination_allowlist` enforced in execution path.
-- [ ] `funder_allowlist` enforced in execution path.
-- [ ] Negative tests prove non-allowlisted destination/funder is blocked.
-- [ ] Guard event emits `BLOCK_COMPROMISED_FUNDER` (or equivalent) on deny.
+- [x] `destination_allowlist` enforced in execution path. (`ALLOWED_DESTINATIONS` / `check_allowlist`)
+- [x] `funder_allowlist` enforced in execution path. (`ALLOWED_FUNDERS` / Go `Engine.allow`)
+- [x] Negative tests prove non-allowlisted destination/funder is blocked. (`test_production_gates.py` + `engine_test.go`)
+- [x] Guard event emits `BLOCK_COMPROMISED_FUNDER` (or equivalent) on deny.
+- [x] Empty allowlist fail-closed outside lab (`REQUIRE_ALLOWLIST` / `RequireAllowlist`).
 
 ## 2) TOCTOU Controls (Critical)
 

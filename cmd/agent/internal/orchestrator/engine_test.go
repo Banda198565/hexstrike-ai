@@ -35,6 +35,43 @@ func TestPrepareRescueCompromisedFunderBlocked(t *testing.T) {
 	}
 }
 
+func TestPrepareRescueEmptyAllowlistFailClosed(t *testing.T) {
+	eng, err := NewEngine(Config{RequireAllowlist: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = eng.PrepareRescue(context.Background(), RescueRequest{
+		BotAddress:    "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+		FunderAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+		BalanceWei:    big.NewInt(300_000_000_000_000_000),
+		RescueValue:   big.NewInt(1_000_000_000_000_000),
+		DryRun:        true,
+	})
+	if err == nil {
+		t.Fatal("empty allowlist must fail closed when RequireAllowlist")
+	}
+}
+
+func TestPrepareRescueCaseNormalizedAllowlist(t *testing.T) {
+	safe := "0x730ea0231808f42a20f8921ba7fbc788226768f5"
+	eng, err := NewEngine(Config{AllowedFunders: []string{safe}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Uppercase variant of attacker — still not on allowlist
+	attacker := "0x70997970C51812DC3A010C7D01B50E0D17DC79C8"
+	_, err = eng.PrepareRescue(context.Background(), RescueRequest{
+		BotAddress:    "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+		FunderAddress: attacker,
+		BalanceWei:    big.NewInt(300_000_000_000_000_000),
+		RescueValue:   big.NewInt(1_000_000_000_000_000),
+		DryRun:        true,
+	})
+	if err == nil {
+		t.Fatal("case-normalized attacker must still be blocked")
+	}
+}
+
 func TestPrepareRescueDedup(t *testing.T) {
 	eng, err := NewEngine(Config{
 		AllowedFunders: []string{"0x730ea0231808f42a20f8921ba7fbc788226768f5"},

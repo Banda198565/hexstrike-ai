@@ -27,6 +27,31 @@ from production_gates import (  # noqa: E402
     quorum_balance,
 )
 
+SAFE = "0x730ea0231808f42a20f8921ba7fbc788226768f5"
+ATTACKER = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
+
+
+def _cfg(**overrides: object) -> ProductionGateConfig:
+    base: dict[str, object] = dict(
+        phase=OperationalPhase.LAB,
+        allowed_funders=frozenset(),
+        allowed_destinations=frozenset(),
+        quorum_urls=("http://127.0.0.1:8545",),
+        quorum_min_agree=1,
+        kill_switch=False,
+        max_rescues_per_window=10,
+        rescue_window_sec=3600.0,
+        cooldown_after_block_sec=1.0,
+        canary_max_value_wei=10**15,
+        limited_max_value_wei=10**16,
+        signer_backend=SignerBackend.LOCAL_KEY,
+        require_kms_outside_lab=False,
+        require_allowlist=False,
+        rpc_timeout_sec=5.0,
+    )
+    base.update(overrides)
+    return ProductionGateConfig(**base)  # type: ignore[arg-type]
+
 
 def test_intent_hash_stable() -> None:
     h1 = compute_intent_hash(to="0xABC", value_wei=1000, chain_id=56, nonce=3)
@@ -42,30 +67,63 @@ def test_intent_hash_stable() -> None:
 
 
 def test_attack_06_allowlist_blocks_compromised_funder() -> None:
-    cfg = ProductionGateConfig(
-        phase=OperationalPhase.LAB,
-        allowed_funders=frozenset({"0x730ea0231808f42a20f8921ba7fbc788226768f5"}),
-        allowed_destinations=frozenset({"0x730ea0231808f42a20f8921ba7fbc788226768f5"}),
-        quorum_urls=("http://127.0.0.1:8545",),
-        quorum_min_agree=1,
-        kill_switch=False,
-        max_rescues_per_window=10,
-        rescue_window_sec=3600,
-        cooldown_after_block_sec=1,
-        canary_max_value_wei=10**15,
-        limited_max_value_wei=10**16,
-        signer_backend=SignerBackend.LOCAL_KEY,
-        require_kms_outside_lab=False,
-        rpc_timeout_sec=5,
+    cfg = _cfg(
+        allowed_funders=frozenset({SAFE}),
+        allowed_destinations=frozenset({SAFE}),
     )
+    ok, reason = check_allowlist(cfg, funder=SAFE, destination=ATTACKER)
+    assert not ok
+    assert reason == "BLOCK_COMPROMISED_FUNDER"
+    print("PASS attack_06_allowlist")
+
+
+def test_attack_06_bypass_empty_allowlist_fail_closed() -> None:
+    """Empty allowlist must not open the path when require_allowlist=True."""
+    cfg = _cfg(phase=OperationalPhase.CANARY, require_allowlist=True)
+    ok, reason = check_allowlist(cfg, funder=ATTACKER, destination=ATTACKER)
+    assert not ok
+    assert reason == "BLOCK_COMPROMISED_FUNDER"
+    print("PASS attack_06_empty_bypass")
+
+
+def test_attack_06_bypass_case_normalized() -> None:
+    cfg = _cfg(
+        allowed_funders=frozenset({SAFE}),
+        allowed_destinations=frozenset({SAFE}),
+    )
+    # Mixed-case attacker still blocked
     ok, reason = check_allowlist(
         cfg,
-        funder="0x730ea0231808f42a20f8921ba7fbc788226768f5",
+        funder=SAFE,
         destination="0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
     )
     assert not ok
     assert reason == "BLOCK_COMPROMISED_FUNDER"
-    print("PASS attack_06_allowlist")
+    print("PASS attack_06_case_bypass")
+
+
+def test_attack_06_bypass_funder_only_mismatch() -> None:
+    """Allowlisted destination but non-allowlisted funder must block."""
+    cfg = _cfg(
+        allowed_funders=frozenset({SAFE}),
+        allowed_destinations=frozenset({SAFE, ATTACKER}),
+    )
+    ok, reason = check_allowlist(cfg, funder=ATTACKER, destination=ATTACKER)
+    assert not ok
+    assert reason == "BLOCK_COMPROMISED_FUNDER"
+    print("PASS attack_06_funder_mismatch")
+
+
+def test_attack_06_allowlisted_pair_passes() -> None:
+    cfg = _cfg(
+        allowed_funders=frozenset({SAFE}),
+        allowed_destinations=frozenset({SAFE}),
+        require_allowlist=True,
+    )
+    ok, reason = check_allowlist(cfg, funder=SAFE, destination=SAFE)
+    assert ok
+    assert reason is None
+    print("PASS attack_06_allow_pass")
 
 
 def test_dedup_intent_nonce() -> None:
@@ -97,29 +155,13 @@ def test_nonce_lock_single_flight() -> None:
 
 
 def test_post_sign_recheck_blocks_nonce_drift() -> None:
-    cfg = ProductionGateConfig(
-        phase=OperationalPhase.LAB,
-        allowed_funders=frozenset(),
-        allowed_destinations=frozenset(),
-        quorum_urls=("http://a", "http://b", "http://c"),
-        quorum_min_agree=2,
-        kill_switch=False,
-        max_rescues_per_window=10,
-        rescue_window_sec=3600,
-        cooldown_after_block_sec=1,
-        canary_max_value_wei=10**15,
-        limited_max_value_wei=10**16,
-        signer_backend=SignerBackend.LOCAL_KEY,
-        require_kms_outside_lab=False,
-        rpc_timeout_sec=5,
-    )
+    cfg = _cfg(quorum_urls=("http://a", "http://b", "http://c"), quorum_min_agree=2)
     addr = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
 
     def fake_balance(url: str, address: str, timeout: float = 10.0) -> int:
         return 300_000_000_000_000_000
 
     def fake_nonce(url: str, address: str, timeout: float = 10.0) -> int:
-        # two agree on bumped nonce, one stale
         return 5 if "c" in url else 6
 
     with patch("production_gates.fetch_balance", side_effect=fake_balance), patch(
@@ -139,22 +181,7 @@ def test_post_sign_recheck_blocks_nonce_drift() -> None:
 
 
 def test_quorum_balance_2_of_3() -> None:
-    cfg = ProductionGateConfig(
-        phase=OperationalPhase.LAB,
-        allowed_funders=frozenset(),
-        allowed_destinations=frozenset(),
-        quorum_urls=("http://a", "http://b", "http://c"),
-        quorum_min_agree=2,
-        kill_switch=False,
-        max_rescues_per_window=10,
-        rescue_window_sec=3600,
-        cooldown_after_block_sec=1,
-        canary_max_value_wei=10**15,
-        limited_max_value_wei=10**16,
-        signer_backend=SignerBackend.LOCAL_KEY,
-        require_kms_outside_lab=False,
-        rpc_timeout_sec=5,
-    )
+    cfg = _cfg(quorum_urls=("http://a", "http://b", "http://c"), quorum_min_agree=2)
 
     def fake_balance(url: str, address: str, timeout: float = 10.0) -> int:
         if url == "http://c":
@@ -169,21 +196,13 @@ def test_quorum_balance_2_of_3() -> None:
 
 
 def test_shadow_mode_blocks_sign() -> None:
-    cfg = ProductionGateConfig(
+    cfg = _cfg(
         phase=OperationalPhase.SHADOW,
         allowed_funders=frozenset({"0xabc"}),
         allowed_destinations=frozenset({"0xabc"}),
-        quorum_urls=("http://127.0.0.1:8545",),
-        quorum_min_agree=1,
-        kill_switch=False,
-        max_rescues_per_window=10,
-        rescue_window_sec=3600,
-        cooldown_after_block_sec=1,
-        canary_max_value_wei=10**15,
-        limited_max_value_wei=10**16,
         signer_backend=SignerBackend.KMS,
         require_kms_outside_lab=True,
-        rpc_timeout_sec=5,
+        require_allowlist=True,
     )
     ok, reason = check_signer_policy(cfg)
     assert not ok
@@ -192,22 +211,7 @@ def test_shadow_mode_blocks_sign() -> None:
 
 
 def test_rate_limiter() -> None:
-    cfg = ProductionGateConfig(
-        phase=OperationalPhase.LAB,
-        allowed_funders=frozenset(),
-        allowed_destinations=frozenset(),
-        quorum_urls=(),
-        quorum_min_agree=1,
-        kill_switch=False,
-        max_rescues_per_window=2,
-        rescue_window_sec=3600,
-        cooldown_after_block_sec=60,
-        canary_max_value_wei=10**15,
-        limited_max_value_wei=10**16,
-        signer_backend=SignerBackend.LOCAL_KEY,
-        require_kms_outside_lab=False,
-        rpc_timeout_sec=5,
-    )
+    cfg = _cfg(max_rescues_per_window=2, cooldown_after_block_sec=60.0, quorum_urls=())
     limiter = TxRateLimiter(cfg)
     assert limiter.check()[0]
     limiter.record_attempt()
@@ -223,6 +227,10 @@ def main() -> int:
     tests = [
         test_intent_hash_stable,
         test_attack_06_allowlist_blocks_compromised_funder,
+        test_attack_06_bypass_empty_allowlist_fail_closed,
+        test_attack_06_bypass_case_normalized,
+        test_attack_06_bypass_funder_only_mismatch,
+        test_attack_06_allowlisted_pair_passes,
         test_dedup_intent_nonce,
         test_nonce_lock_single_flight,
         test_post_sign_recheck_blocks_nonce_drift,

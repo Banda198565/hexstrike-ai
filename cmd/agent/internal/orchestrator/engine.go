@@ -36,16 +36,17 @@ type RescuePlan struct {
 
 // Engine coordinates P0–P2 checks immediately before signing.
 type Engine struct {
-	limits      *guard.RouteGuard
-	gate        *entity.EntityGate
-	fees        *tx.FeeCalculator
-	allow       map[string]struct{}
-	destAllow   map[string]struct{}
-	dedup       sync.Map
-	intentDedup *guard.IntentDedup
-	killSwitch  *guard.KillSwitch
-	quorum      *guard.QuorumReader
-	failGate    bool
+	limits           *guard.RouteGuard
+	gate             *entity.EntityGate
+	fees             *tx.FeeCalculator
+	allow            map[string]struct{}
+	destAllow        map[string]struct{}
+	dedup            sync.Map
+	intentDedup      *guard.IntentDedup
+	killSwitch       *guard.KillSwitch
+	quorum           *guard.QuorumReader
+	failGate         bool
+	requireAllowlist bool
 }
 
 // Config for battle engine.
@@ -53,6 +54,7 @@ type Config struct {
 	BootstrapPath       string
 	APIKey              string
 	FailClosed          bool
+	RequireAllowlist    bool // empty allowlist → reject (attack #06 bypass deny)
 	AllowedFunders      []string
 	AllowedDestinations []string
 	QuorumRPCURLs       []string
@@ -109,16 +111,18 @@ func NewEngine(cfg Config) (*Engine, error) {
 		}
 		quorum = &guard.QuorumReader{URLs: cfg.QuorumRPCURLs, MinAgree: minAgree}
 	}
+	requireAllow := cfg.RequireAllowlist || cfg.FailClosed
 	return &Engine{
-		limits:      guard.NewRouteGuard(),
-		gate:        eg,
-		fees:        cfg.FeeCalculator,
-		allow:       allow,
-		destAllow:   destAllow,
-		intentDedup: guard.NewIntentDedup(),
-		killSwitch:  ks,
-		quorum:      quorum,
-		failGate:    cfg.FailClosed,
+		limits:           guard.NewRouteGuard(),
+		gate:             eg,
+		fees:             cfg.FeeCalculator,
+		allow:            allow,
+		destAllow:        destAllow,
+		intentDedup:      guard.NewIntentDedup(),
+		killSwitch:       ks,
+		quorum:           quorum,
+		failGate:         cfg.FailClosed,
+		requireAllowlist: requireAllow,
 	}, nil
 }
 
@@ -161,14 +165,17 @@ func (e *Engine) PrepareRescue(ctx context.Context, req RescueRequest) (*RescueP
 	if funder == "" {
 		return nil, fmt.Errorf("ENGINE: empty funder address")
 	}
+	if e.requireAllowlist && len(e.allow) == 0 && len(e.destAllow) == 0 {
+		return nil, fmt.Errorf("ENGINE: allowlist required (attack #06) — empty ALLOWED_FUNDERS/DESTINATIONS")
+	}
 	if len(e.allow) > 0 {
 		if _, ok := e.allow[funder]; !ok {
-			return nil, fmt.Errorf("ENGINE: funder %s not in allowlist (attack #06)", req.FunderAddress)
+			return nil, fmt.Errorf("ENGINE: funder %s not in allowlist (attack #06) BLOCK_COMPROMISED_FUNDER", req.FunderAddress)
 		}
 	}
 	if len(e.destAllow) > 0 {
 		if _, ok := e.destAllow[funder]; !ok {
-			return nil, fmt.Errorf("ENGINE: destination %s not in allowlist (attack #06)", req.FunderAddress)
+			return nil, fmt.Errorf("ENGINE: destination %s not in allowlist (attack #06) BLOCK_COMPROMISED_FUNDER", req.FunderAddress)
 		}
 	}
 

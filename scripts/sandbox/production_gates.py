@@ -85,6 +85,7 @@ class ProductionGateConfig:
     limited_max_value_wei: int
     signer_backend: SignerBackend
     require_kms_outside_lab: bool
+    require_allowlist: bool
     rpc_timeout_sec: float
 
     @classmethod
@@ -113,6 +114,14 @@ class ProductionGateConfig:
         except ValueError:
             signer_backend = SignerBackend.LOCAL_KEY
 
+        # Outside lab: empty allowlist is a bypass — fail closed by default.
+        require_default = "false" if phase == OperationalPhase.LAB else "true"
+        require_allowlist = os.environ.get("REQUIRE_ALLOWLIST", require_default).lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+
         return cls(
             phase=phase,
             allowed_funders=funders,
@@ -128,6 +137,7 @@ class ProductionGateConfig:
             signer_backend=signer_backend,
             require_kms_outside_lab=os.environ.get("REQUIRE_KMS_OUTSIDE_LAB", "true").lower()
             in ("1", "true", "yes"),
+            require_allowlist=require_allowlist,
             rpc_timeout_sec=float(os.environ.get("GUARD_RPC_TIMEOUT_SEC", "10")),
         )
 
@@ -196,38 +206,51 @@ class IntentRegistry:
             self._seen.discard(key)
 
 
+def _block_compromised(reason: str, dest: str, fund: str, message: str) -> tuple[bool, str]:
+    alert = {
+        "ts": utc_now(),
+        "type": "BLOCK_COMPROMISED_FUNDER",
+        "severity": "critical",
+        "action": "block_signing",
+        "reason": reason,
+        "destination": dest,
+        "funder": fund,
+        "message": message,
+    }
+    append_alert(alert)
+    return False, "BLOCK_COMPROMISED_FUNDER"
+
+
 def check_allowlist(cfg: ProductionGateConfig, funder: str, destination: str) -> tuple[bool, str | None]:
-    """Attack #06 — destination/funder must be allowlisted when policy is configured."""
-    if not cfg.allowed_funders and not cfg.allowed_destinations:
-        return True, None
+    """Attack #06 — destination + funder allowlists; fail-closed when required."""
     dest = _norm_addr(destination)
     fund = _norm_addr(funder)
+
+    if not cfg.allowed_funders and not cfg.allowed_destinations:
+        if cfg.require_allowlist:
+            return _block_compromised(
+                "allowlist_empty",
+                dest,
+                fund,
+                "Empty allowlist — fail closed (attack #06 bypass denied)",
+            )
+        return True, None
+
+    # Both lists must pass when present; destination defaults to funder list in from_env.
     if cfg.allowed_destinations and dest not in cfg.allowed_destinations:
-        alert = {
-            "ts": utc_now(),
-            "type": "BLOCK_COMPROMISED_FUNDER",
-            "severity": "critical",
-            "action": "block_signing",
-            "reason": "destination_not_allowlisted",
-            "destination": dest,
-            "funder": fund,
-            "message": "Destination not in allowlist — possible compromised funder (#06)",
-        }
-        append_alert(alert)
-        return False, "BLOCK_COMPROMISED_FUNDER"
+        return _block_compromised(
+            "destination_not_allowlisted",
+            dest,
+            fund,
+            "Destination not in allowlist — possible compromised funder (#06)",
+        )
     if cfg.allowed_funders and fund not in cfg.allowed_funders:
-        alert = {
-            "ts": utc_now(),
-            "type": "BLOCK_COMPROMISED_FUNDER",
-            "severity": "critical",
-            "action": "block_signing",
-            "reason": "funder_not_allowlisted",
-            "destination": dest,
-            "funder": fund,
-            "message": "Funder not in allowlist — compromised funder (#06)",
-        }
-        append_alert(alert)
-        return False, "BLOCK_COMPROMISED_FUNDER"
+        return _block_compromised(
+            "funder_not_allowlisted",
+            dest,
+            fund,
+            "Funder not in allowlist — compromised funder (#06)",
+        )
     return True, None
 
 
