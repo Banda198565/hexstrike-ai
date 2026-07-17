@@ -72,6 +72,30 @@ func TestPrepareRescueCaseNormalizedAllowlist(t *testing.T) {
 	}
 }
 
+func TestPrepareRescueDestinationMismatchBlocked(t *testing.T) {
+	safe := "0x730ea0231808f42a20f8921ba7fbc788226768f5"
+	attacker := "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+	eng, err := NewEngine(Config{
+		AllowedFunders:      []string{safe},
+		AllowedDestinations: []string{safe},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Funder allowlisted, destination is attacker — must deny destination check
+	_, err = eng.PrepareRescue(context.Background(), RescueRequest{
+		BotAddress:         "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+		FunderAddress:      safe,
+		DestinationAddress: attacker,
+		BalanceWei:         big.NewInt(300_000_000_000_000_000),
+		RescueValue:        big.NewInt(1_000_000_000_000_000),
+		DryRun:             true,
+	})
+	if err == nil {
+		t.Fatal("non-allowlisted destination must be blocked even when funder is allowlisted")
+	}
+}
+
 func TestPrepareRescueDedup(t *testing.T) {
 	eng, err := NewEngine(Config{
 		AllowedFunders: []string{"0x730ea0231808f42a20f8921ba7fbc788226768f5"},

@@ -18,12 +18,13 @@ import (
 
 // RescueRequest is the pre-sign payload evaluated by the engine.
 type RescueRequest struct {
-	BotAddress    string
-	FunderAddress string
-	BalanceWei    *big.Int
-	RescueValue   *big.Int
-	ChainID       int64
-	DryRun        bool
+	BotAddress         string
+	FunderAddress      string
+	DestinationAddress string // tx `to`; defaults to FunderAddress when empty
+	BalanceWei         *big.Int
+	RescueValue        *big.Int
+	ChainID            int64
+	DryRun             bool
 }
 
 // RescuePlan is returned when the engine approves signing.
@@ -165,6 +166,15 @@ func (e *Engine) PrepareRescue(ctx context.Context, req RescueRequest) (*RescueP
 	if funder == "" {
 		return nil, fmt.Errorf("ENGINE: empty funder address")
 	}
+	destRaw := strings.TrimSpace(req.DestinationAddress)
+	if destRaw == "" {
+		destRaw = req.FunderAddress
+	}
+	destination := strings.ToLower(destRaw)
+	if destination == "" {
+		return nil, fmt.Errorf("ENGINE: empty destination address")
+	}
+
 	if e.requireAllowlist && len(e.allow) == 0 && len(e.destAllow) == 0 {
 		return nil, fmt.Errorf("ENGINE: allowlist required (attack #06) — empty ALLOWED_FUNDERS/DESTINATIONS")
 	}
@@ -174,8 +184,8 @@ func (e *Engine) PrepareRescue(ctx context.Context, req RescueRequest) (*RescueP
 		}
 	}
 	if len(e.destAllow) > 0 {
-		if _, ok := e.destAllow[funder]; !ok {
-			return nil, fmt.Errorf("ENGINE: destination %s not in allowlist (attack #06) BLOCK_COMPROMISED_FUNDER", req.FunderAddress)
+		if _, ok := e.destAllow[destination]; !ok {
+			return nil, fmt.Errorf("ENGINE: destination %s not in allowlist (attack #06) BLOCK_COMPROMISED_FUNDER", destRaw)
 		}
 	}
 
@@ -186,8 +196,17 @@ func (e *Engine) PrepareRescue(ctx context.Context, req RescueRequest) (*RescueP
 		}
 		return nil, fmt.Errorf("ENGINE: entity gate denied funder %s", req.FunderAddress)
 	}
+	if destination != funder {
+		okDest, errDest := e.gate.VerifyAddress(ctx, destRaw)
+		if errDest != nil || !okDest {
+			if errDest != nil {
+				return nil, errDest
+			}
+			return nil, fmt.Errorf("ENGINE: entity gate denied destination %s", destRaw)
+		}
+	}
 
-	dedupKey := fmt.Sprintf("%s:%s:%s", req.BotAddress, req.FunderAddress, req.RescueValue.String())
+	dedupKey := fmt.Sprintf("%s:%s:%s:%s", req.BotAddress, req.FunderAddress, destRaw, req.RescueValue.String())
 	if _, loaded := e.dedup.LoadOrStore(dedupKey, time.Now().UTC()); loaded {
 		return nil, fmt.Errorf("ENGINE: duplicate rescue suppressed (attack #02/#04)")
 	}
