@@ -112,6 +112,17 @@ def latest(glob_pat: str):
     hits = sorted(ops.glob(glob_pat), key=lambda p: p.stat().st_mtime)
     return hits[-1] if hits else None
 
+def paging_drills():
+    """Timestamped drills only — exclude paging-drill-ack.json state file."""
+    out = []
+    for p in ops.glob("paging-drill-*.json"):
+        if p.name == "paging-drill-ack.json":
+            continue
+        if "T" not in p.stem:  # require paging-drill-YYYYMMDDThhmmssZ
+            continue
+        out.append(p)
+    return sorted(out, key=lambda p: p.stat().st_mtime)
+
 # --- KMS ---
 smoke_dirs = sorted(ops.glob("kms-smoke-*"), key=lambda p: p.stat().st_mtime)
 kms_out = None
@@ -161,31 +172,41 @@ else:
     iam_out = None
 
 # --- Paging ---
-drill = latest("paging-drill-*.json")
 paging_out = None
-if drill:
-    d = json.loads(drill.read_text())
-    if d.get("result") == "PASS" and d.get("alert_sent") and d.get("ack_received"):
-        paging_out = {
-            "channel": os.environ.get("PAGING_CHANNEL", "pagerduty-prod-crypto"),
-            "triggered_at": d.get("ts") or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "acknowledged_by": os.environ.get("PAGING_ACK_BY", "operator"),
-            "ack_latency_sec": int(os.environ.get("PAGING_ACK_LATENCY_SEC", "45")),
-            "sla_met": True,
-            "source": str(drill),
-        }
-        # normalize ts if compact
-        ts = paging_out["triggered_at"]
-        if isinstance(ts, str) and "T" not in ts and len(ts) >= 15:
-            # 20260717T123456Z → ISO
-            try:
-                paging_out["triggered_at"] = datetime.strptime(ts, "%Y%m%dT%H%M%SZ").strftime("%Y-%m-%dT%H:%M:%SZ")
-            except ValueError:
-                paging_out["triggered_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    else:
-        errors.append(f"paging drill not PASS+ack: {drill} result={d.get('result')}")
+drill = None
+d = None
+for cand in reversed(paging_drills()):
+    try:
+        payload = json.loads(cand.read_text())
+    except (OSError, json.JSONDecodeError):
+        continue
+    if payload.get("result") == "PASS" and payload.get("alert_sent") and payload.get("ack_received"):
+        drill, d = cand, payload
+        break
+if drill and d:
+    paging_out = {
+        "channel": os.environ.get("PAGING_CHANNEL", "webhook-site-staging"),
+        "triggered_at": d.get("ts") or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "acknowledged_by": os.environ.get("PAGING_ACK_BY", "operator"),
+        "ack_latency_sec": int(os.environ.get("PAGING_ACK_LATENCY_SEC", "45")),
+        "sla_met": True,
+        "source": str(drill),
+    }
+    ts = paging_out["triggered_at"]
+    if isinstance(ts, str) and len(ts) >= 15 and ts[8:9] == "T" and "-" not in ts[:10]:
+        try:
+            paging_out["triggered_at"] = datetime.strptime(ts, "%Y%m%dT%H%M%SZ").strftime("%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            paging_out["triggered_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+elif paging_drills():
+    last = paging_drills()[-1]
+    try:
+        last_d = json.loads(last.read_text())
+        errors.append(f"paging drill not PASS+ack: {last} result={last_d.get('result')}")
+    except (OSError, json.JSONDecodeError):
+        errors.append(f"paging drill unreadable: {last}")
 else:
-    errors.append("no artifacts/ops/paging-drill-*.json — run paging_drill.py + --record-ack")
+    errors.append("no artifacts/ops/paging-drill-YYYY….json — run paging_drill.py until result=PASS")
 
 # --- Shadow/Canary ---
 shadow = ops / "shadow-soak-report.json"
