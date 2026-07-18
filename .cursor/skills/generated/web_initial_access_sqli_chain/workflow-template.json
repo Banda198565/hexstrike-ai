@@ -1,0 +1,169 @@
+{
+  "workflow_id": "web_initial_access_sqli_chain",
+  "name": "Web Initial Access Sqli Chain",
+  "version": "1.0.0",
+  "description": "Recon → HTTP vuln scan → SQLi exploit → admin session — parameterized web initial access chain",
+  "tags": [
+    "web",
+    "initial_access",
+    "sql_injection",
+    "chain"
+  ],
+  "source_trace_id": "atk-2026-07-18-001",
+  "parameters": [
+    {
+      "name": "target_url",
+      "type": "string",
+      "required": true,
+      "description": "Base URL of target web application, e.g. https://example.com"
+    },
+    {
+      "name": "target_ip",
+      "type": "string",
+      "required": false,
+      "description": "Target IP if known"
+    },
+    {
+      "name": "scan_profile",
+      "type": "string",
+      "required": false,
+      "description": "Port/service scan profile"
+    },
+    {
+      "name": "dbms_type",
+      "type": "string",
+      "required": false,
+      "description": "DBMS type (mysql, postgres, ...)"
+    }
+  ],
+  "steps": [
+    {
+      "step_id": 1,
+      "skill_id": "pentest_nmap_scan",
+      "phase": "recon",
+      "depends_on": [],
+      "input_template": {
+        "skill_input": [
+          "target_ip",
+          "scan_profile"
+        ]
+      },
+      "expected_output": {
+        "services": "HTTP/HTTPS services for next step"
+      },
+      "next_step_condition": "if HTTP/HTTPS found → step 2; else success=false",
+      "rationale": "Port and service scan"
+    },
+    {
+      "step_id": 2,
+      "skill_id": "pentest_http_vuln_scan",
+      "phase": "vuln_scan",
+      "depends_on": [
+        1
+      ],
+      "input_template": {
+        "skill_input": [
+          "target_url"
+        ],
+        "previous_step_output": [
+          "services"
+        ]
+      },
+      "expected_output": {
+        "findings": "confirmed SQL injection"
+      },
+      "next_step_condition": "if SQLi found → step 3",
+      "rationale": "HTTP vulnerability scan for SQLi"
+    },
+    {
+      "step_id": 3,
+      "skill_id": "pentest_sql_injection_exploit",
+      "phase": "exploit",
+      "depends_on": [
+        2
+      ],
+      "input_template": {
+        "skill_input": [
+          "dbms_type",
+          "target_url"
+        ],
+        "previous_step_output": [
+          "findings"
+        ]
+      },
+      "expected_output": {
+        "extracted_data": "users table preview"
+      },
+      "next_step_condition": "if users extracted → step 4",
+      "rationale": "Exploit SQLi to extract users table"
+    },
+    {
+      "step_id": 4,
+      "skill_id": "pentest_web_session_hijack",
+      "phase": "post_exploitation",
+      "depends_on": [
+        3
+      ],
+      "input_template": {
+        "previous_step_output": [
+          "extracted_data"
+        ]
+      },
+      "expected_output": {
+        "session_cookie": "valid session",
+        "privilege_level": "admin"
+      },
+      "next_step_condition": "finish success=true impact=initial_access_admin_web",
+      "rationale": "Obtain privileged web session from extracted creds"
+    }
+  ],
+  "mcp_tool": {
+    "name": "run_web_initial_access_sqli_chain",
+    "description": "Recon → HTTP vuln scan → SQLi exploit → admin session — parameterized web initial access chain",
+    "generate_stub": true
+  },
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "target_url"
+    ],
+    "properties": {
+      "target_url": {
+        "type": "string",
+        "description": "Base URL of target web application, e.g. https://example.com"
+      },
+      "target_ip": {
+        "type": "string",
+        "description": "Target IP if known",
+        "nullable": true
+      },
+      "scan_profile": {
+        "type": "string",
+        "description": "Port/service scan profile",
+        "default": "tcp_service_version"
+      },
+      "dbms_type": {
+        "type": "string",
+        "description": "DBMS type (mysql, postgres, ...)",
+        "default": "mysql"
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "success": {
+        "type": "boolean"
+      },
+      "impact": {
+        "type": "string",
+        "description": "Achieved access type"
+      },
+      "artifacts": {
+        "type": "object",
+        "description": "Paths to loot dumps, sessions in orchestrator store"
+      }
+    }
+  },
+  "format": "skill_output_v1"
+}

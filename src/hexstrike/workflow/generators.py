@@ -17,17 +17,40 @@ def _slug(s: str) -> str:
 
 
 def render_skill_md(template: dict[str, Any]) -> str:
-    wid = template["workflow_id"]
+    wid = template.get("workflow_id") or template.get("skill_name", "unnamed_skill")
     params = template.get("parameters") or []
     steps = template.get("steps") or []
+
+    if not params and template.get("input_schema"):
+        in_schema = template["input_schema"]
+        req = set(in_schema.get("required") or [])
+        params = [
+            {
+                "name": k,
+                "type": (v.get("type") if isinstance(v, dict) else "string"),
+                "required": k in req,
+                "description": (v.get("description") if isinstance(v, dict) else ""),
+            }
+            for k, v in (in_schema.get("properties") or {}).items()
+        ]
+
     param_lines = "\n".join(
         f"- `{p['name']}` ({p.get('type', 'string')}){' *required*' if p.get('required', True) else ''}: {p.get('description', '')}"
         for p in params
     )
-    step_lines = "\n".join(
-        f"{s['step_id']}. **{s['skill_id']}** — {s.get('rationale', '')}\n   ```json\n{json.dumps(s.get('input_template', {}), indent=2)}\n   ```"
-        for s in steps
-    )
+
+    step_lines_parts: list[str] = []
+    for s in steps:
+        tool = s.get("skill_id") or s.get("mcp_tool", "?")
+        phase = s.get("phase", "")
+        body = s.get("input_template") or s.get("inputs_from") or {}
+        cond = s.get("next_step_condition") or ""
+        step_lines_parts.append(
+            f"{s.get('step_id', s.get('id', '?'))}. **{tool}** ({phase}) — {s.get('rationale', s.get('description', ''))}\n"
+            f"   ```json\n{json.dumps(body, indent=2, ensure_ascii=False)}\n   ```"
+            + (f"\n   Condition: {cond}" if cond else "")
+        )
+    step_lines = "\n".join(step_lines_parts)
     checklist = template.get("checklist") or []
     pitfalls = template.get("pitfalls") or []
 
@@ -75,7 +98,8 @@ description: Auto-generated from campaign trace {template.get('source_trace_id',
 
 def render_mcp_stub(template: dict[str, Any]) -> str:
     mcp = template.get("mcp_tool") or {}
-    tool_name = mcp.get("name") or f"run_{template['workflow_id']}"
+    wid = template.get("workflow_id") or template.get("skill_name", "unnamed")
+    tool_name = mcp.get("name") or f"run_{wid}"
     desc = mcp.get("description") or template.get("description") or tool_name
     params = template.get("parameters") or []
     param_sig = ", ".join(f"{p['name']}: str" for p in params if p.get("required", True))
@@ -98,12 +122,12 @@ def {tool_name}({param_sig}) -> dict[str, Any]:
     """
     {desc}
 
-    Executes workflow `{template["workflow_id"]}` via orchestrator dispatch.
+    Executes workflow `{wid}` via orchestrator dispatch.
     """
     workflow_steps = {steps_literal}
     # TODO: wire to scatter_gather / hexstrike-orchestrator dispatch
     return {{
-        "workflow_id": "{template["workflow_id"]}",
+        "workflow_id": "{wid}",
         "status": "stub",
         "message": "Dispatch via orchestrator — implement runner hook",
         "steps": workflow_steps,
@@ -120,7 +144,7 @@ def write_artifacts(
     dry_run: bool = False,
 ) -> dict[str, str]:
     """Write SKILL.md and MCP stub; return paths written."""
-    wid = _slug(template["workflow_id"])
+    wid = _slug(template.get("workflow_id") or template.get("skill_name", "unnamed"))
     skills_root = skills_dir or GENERATED_SKILLS_DIR
     mcp_root = mcp_dir or GENERATED_MCP_DIR
 
@@ -149,5 +173,19 @@ def write_artifacts(
     meta_path = skills_root / wid / "workflow-template.json"
     meta_path.write_text(json.dumps(template, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     written["workflow_template"] = str(meta_path)
+
+    if template.get("input_schema"):
+        skill_json = skills_root / wid / "skill.json"
+        skill_payload = {
+            "skill_name": template.get("workflow_id"),
+            "description": template.get("description"),
+            "tags": template.get("tags"),
+            "input_schema": template.get("input_schema"),
+            "output_schema": template.get("output_schema"),
+            "steps": template.get("steps"),
+            "source_attack_id": template.get("source_trace_id"),
+        }
+        skill_json.write_text(json.dumps(skill_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        written["skill_json"] = str(skill_json)
 
     return written

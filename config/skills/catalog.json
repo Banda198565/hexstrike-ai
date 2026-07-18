@@ -207,6 +207,24 @@
         "jenkins"
       ],
       "workflow_steps": 2
+    },
+    "web_initial_access_sqli_chain": {
+      "version": "1.0.0",
+      "layer": "generated",
+      "description": "Recon → HTTP vuln scan → SQLi exploit → admin session — parameterized web initial access chain",
+      "input_schema": "config/skills/schemas/generated/web_initial_access_sqli_chain.input.json",
+      "output_schema": "config/skills/schemas/generated/web_initial_access_sqli_chain.output.json",
+      "mcp_tool": "run_web_initial_access_sqli_chain",
+      "source_trace_id": "atk-2026-07-18-001",
+      "auto_generated": true,
+      "parallelizable": false,
+      "constraints": [
+        "web",
+        "initial_access",
+        "sql_injection",
+        "chain"
+      ],
+      "workflow_steps": 4
     }
   }
 }

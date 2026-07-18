@@ -1,0 +1,29 @@
+{
+  "type": "object",
+  "required": [
+    "target_url"
+  ],
+  "properties": {
+    "target_url": {
+      "type": "string",
+      "description": "Base URL of target web application, e.g. https://example.com"
+    },
+    "target_ip": {
+      "type": "string",
+      "description": "Target IP if known",
+      "nullable": true
+    },
+    "scan_profile": {
+      "type": "string",
+      "description": "Port/service scan profile",
+      "default": "tcp_service_version"
+    },
+    "dbms_type": {
+      "type": "string",
+      "description": "DBMS type (mysql, postgres, ...)",
+      "default": "mysql"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "web_initial_access_sqli_chain.input"
+}

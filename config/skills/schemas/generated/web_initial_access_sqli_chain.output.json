@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean"
+    },
+    "impact": {
+      "type": "string",
+      "description": "Achieved access type"
+    },
+    "artifacts": {
+      "type": "object",
+      "description": "Paths to loot dumps, sessions in orchestrator store"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "web_initial_access_sqli_chain.output"
+}

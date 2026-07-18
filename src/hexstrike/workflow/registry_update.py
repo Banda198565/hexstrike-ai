@@ -19,7 +19,9 @@ def register_workflow_in_catalog(
     """Add or update skill entry derived from workflow template."""
     path = catalog_path or CATALOG_PATH
     catalog = json.loads(path.read_text(encoding="utf-8"))
-    wid = template["workflow_id"]
+    wid = template.get("workflow_id") or template.get("skill_name")
+    if not wid:
+        raise ValueError("template missing workflow_id or skill_name")
     mcp_name = (template.get("mcp_tool") or {}).get("name") or f"run_{wid}"
 
     rel_schema_in = f"config/skills/schemas/generated/{wid}.input.json"
@@ -49,29 +51,33 @@ def register_workflow_in_catalog(
     schema_dir = _REPO_ROOT / "config" / "skills" / "schemas" / "generated"
     schema_dir.mkdir(parents=True, exist_ok=True)
 
-    params = template.get("parameters") or []
-    input_schema = {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "title": f"{wid}.input",
-        "type": "object",
-        "required": [p["name"] for p in params if p.get("required", True)],
-        "properties": {
-            p["name"]: {"type": p.get("type", "string"), "description": p.get("description", "")}
-            for p in params
-        },
-    }
-    output_schema = {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "title": f"{wid}.output",
-        "type": "object",
-        "required": ["workflow_id", "status"],
-        "properties": {
-            "workflow_id": {"type": "string"},
-            "status": {"type": "string"},
-            "steps_completed": {"type": "integer"},
-            "artifacts": {"type": "array", "items": {"type": "string"}},
-        },
-    }
+    if template.get("input_schema") and template.get("output_schema"):
+        input_schema = {**template["input_schema"], "$schema": "https://json-schema.org/draft/2020-12/schema", "title": f"{wid}.input"}
+        output_schema = {**template["output_schema"], "$schema": "https://json-schema.org/draft/2020-12/schema", "title": f"{wid}.output"}
+    else:
+        params = template.get("parameters") or []
+        input_schema = {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "title": f"{wid}.input",
+            "type": "object",
+            "required": [p["name"] for p in params if p.get("required", True)],
+            "properties": {
+                p["name"]: {"type": p.get("type", "string"), "description": p.get("description", "")}
+                for p in params
+            },
+        }
+        output_schema = {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "title": f"{wid}.output",
+            "type": "object",
+            "required": ["workflow_id", "status"],
+            "properties": {
+                "workflow_id": {"type": "string"},
+                "status": {"type": "string"},
+                "steps_completed": {"type": "integer"},
+                "artifacts": {"type": "array", "items": {"type": "string"}},
+            },
+        }
     (schema_dir / f"{wid}.input.json").write_text(json.dumps(input_schema, indent=2) + "\n", encoding="utf-8")
     (schema_dir / f"{wid}.output.json").write_text(json.dumps(output_schema, indent=2) + "\n", encoding="utf-8")
 

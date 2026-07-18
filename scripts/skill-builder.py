@@ -42,6 +42,20 @@ def cmd_pending(args: argparse.Namespace) -> int:
     return 0 if all(r.get("ok") for r in results) else 1
 
 
+def cmd_demo_attack_log(args: argparse.Namespace) -> int:
+    example = ROOT / "config" / "workflow" / "attack-log.example.json"
+    if not example.is_file():
+        print(json.dumps({"ok": False, "error": f"Missing {example}"}))
+        return 1
+    data = json.loads(example.read_text(encoding="utf-8"))
+    out_dir = ROOT / "artifacts" / "workflow" / "attack_logs"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"{data['attack_id']}.json"
+    out_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps({"ok": True, "path": str(out_path)}))
+    return 0
+
+
 def cmd_demo_trace(args: argparse.Namespace) -> int:
     """Record a demo trace from example JSON (no live hooks)."""
     example = ROOT / "config" / "workflow" / "campaign-trace.example.json"
@@ -79,8 +93,11 @@ def main() -> int:
     p_pending.add_argument("--dry-run", action="store_true")
     p_pending.set_defaults(func=cmd_pending)
 
-    p_demo = sub.add_parser("demo-trace", help="Copy example trace to artifacts/")
+    p_demo = sub.add_parser("demo-trace", help="Copy example attack log to artifacts/")
     p_demo.set_defaults(func=cmd_demo_trace)
+
+    p_demo2 = sub.add_parser("demo-attack-log", help="Copy attack-log.example.json to artifacts/")
+    p_demo2.set_defaults(func=cmd_demo_attack_log)
 
     args = parser.parse_args()
     return args.func(args)
