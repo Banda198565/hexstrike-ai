@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "hexstrike-web3-rpc": {
+      "command": "python3",
+      "args": [
+        "/path/to/hexstrike-ai/scripts/web3_rpc_mcp_server.py"
+      ],
+      "env": {
+        "WEB3_RPC_URL": "https://mainnet.infura.io/v3",
+        "WEB3_RPC_KEY": "your-personal-rpc-key-here",
+        "WEB3_RPC_URL_POLYGON": "https://polygon-mainnet.infura.io/v3",
+        "WEB3_RPC_KEY_POLYGON": "your-polygon-key-here"
+      },
+      "description": "HexStrike Web3 RPC scanner — read-only contract/tx/wallet/event intel. Keys in env only.",
+      "timeout": 120
+    }
+  }
+}
