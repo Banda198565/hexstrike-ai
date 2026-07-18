@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "hexstrike-web3-audit": {
+      "command": "python3",
+      "args": ["/path/to/hexstrike-ai/scripts/web3_audit_mcp_server.py"],
+      "env": {
+        "WEB3_RPC_URL": "https://mainnet.infura.io/v3",
+        "WEB3_RPC_KEY": "your-rpc-key",
+        "FORTA_API_KEY": "",
+        "MYTHX_API_KEY": "",
+        "TENDERLY_ACCESS_KEY": "",
+        "TENDERLY_ACCOUNT": "",
+        "TENDERLY_PROJECT": "",
+        "ALCHEMY_API_KEY": "",
+        "SCAMSNIFFER_API_KEY": "",
+        "POCKET_UNIVERSE_API_KEY": "",
+        "KERBERUS_API_KEY": "",
+        "WEB3_ANTIVIRUS_API_KEY": "",
+        "CHAINSTACK_RPC_URL": "",
+        "CHAINSTACK_INDEXER_URL": ""
+      },
+      "description": "HexStrike unified Web3 audit MCP — Slither, Mythril, Forta, GoPlus, RPC, Tenderly. Keys in env only.",
+      "timeout": 900
+    }
+  }
+}

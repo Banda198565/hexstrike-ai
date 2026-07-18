@@ -15,6 +15,7 @@ Inherits global contract from `AGENTS.md` at repo root.
 | **Nuclei MCP** | Real `nuclei` binary → `findings[]` | Yes | Yes → `artifacts/nuclei/` |
 | **Solidity Audit MCP** | Slither/Mythril/SWC/OZ heuristics, read-only RPC | Yes | Yes → `artifacts/solidity-audit/` |
 | **Web3 RPC MCP** | Read-only EVM scanner (env-injected RPC keys) | Yes | Yes → `artifacts/web3-rpc/` |
+| **Web3 Audit MCP** | Unified 36-tool audit (static + risk APIs + RPC) | Yes | Yes → `artifacts/web3-audit/` |
 | **HexStrike Orchestrator** | Policy + dispatch (VPS/Kali/Docker) | Yes | Yes → `artifacts/orchestrator/` |
 
 DeepSeek R1 is **not** a chat replacement. Every R1 call must be a structured request:
@@ -44,6 +45,7 @@ Config files (set paths for your machine):
 | **Nuclei** | `config/mcp/nuclei-mcp.json` | `nuclei_scan`, `basic_scan`, `get_nuclei_tags` | Authorized vuln scans | Return fake findings when binary silent |
 | **Solidity Audit** | `config/mcp/solidity-audit-mcp.json` | `parse_contract`, `slither_run_detectors`, `onchain_metadata`, `full_audit` | Contract audit / SWC review | Fabricate Slither/Mythril output |
 | **Web3 RPC** | `config/mcp/web3-rpc-mcp.json` | `rpc_contract_audit`, `rpc_tx_trace`, `rpc_wallet_risk`, `rpc_event_intel` | On-chain read-only triage (keys in MCP env) | Put RPC keys in prompts; fabricate trace data |
+| **Web3 Audit (unified)** | `config/mcp/web3-audit-mcp.json` | 36 tools — Slither, Forta, GoPlus, Tenderly, full_web3_audit | Full contract + on-chain audit pipeline | Fabricate API/binary output |
 | **R1 (HTTP, not MCP)** | `.env` + `scripts/connect-cloud-r1-orchestrator.sh` | plan JSON, skill-builder prompts | Planning, log→skill, log analysis | Generate attack results or edit logs |
 
 ### R1 invocation paths
