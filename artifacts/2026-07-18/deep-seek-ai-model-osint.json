@@ -1,0 +1,118 @@
+{
+  "generated_at": "2026-07-18T15:21:10Z",
+  "agent": "Agent-OSINT-DeepSeek-Mirror",
+  "task": "model-attribution",
+  "mode": "read-only_no_exploit",
+  "target": {
+    "url": "https://deep-seek.ai/ru/",
+    "chat_url": "https://deep-seek.ai/chat",
+    "api": "POST https://deep-seek.ai/api/chat",
+    "official_deepseek": false,
+    "note": "Third-party freemium mirror / aggregator, not chat.deepseek.com"
+  },
+  "stack_fingerprint": {
+    "landing_http_status": 200,
+    "headers": {
+      "Server": "nginx/1.22.0",
+      "X-Powered-By": "PHP/8.2.27",
+      "Content-Type": "text/html; charset=utf-8",
+      "Date": "Sat, 18 Jul 2026 15:20:56 GMT"
+    },
+    "dns": [
+      "dns4.fastdns24.link.",
+      "dns2.fastdns24.org.",
+      "dns3.fastdns24.eu.",
+      "dns.fastdns24.com."
+    ],
+    "session_cookie_name": "deepseek_session",
+    "frontend": "React chat-app.js white-label (fallback MODELS openai/gpt-4o*)",
+    "ads": "Google AdSense ca-pub-1851068468056357",
+    "analytics": "GA G-C2YCJFV9N4"
+  },
+  "chat_site_name": "DeepSeek",
+  "ui_models": [
+    {
+      "id": "deepseek/deepseek-v4-flash",
+      "slug": "deepseek",
+      "name": "DeepSeek-V4",
+      "color": "#4D6BFE"
+    },
+    {
+      "id": "deepseek/deepseek-r1",
+      "slug": "deepseek-v3",
+      "name": "DeepSeek-R1",
+      "color": "#4D6BFE"
+    },
+    {
+      "id": "deepseek/deepseek-v3.2",
+      "slug": "deepseek-r1",
+      "name": "DeepSeek-V3",
+      "color": "#4D6BFE"
+    }
+  ],
+  "default_model_id": "deepseek/deepseek-v4-flash",
+  "sse_probe": {
+    "requested_model": "deepseek/deepseek-v4-flash",
+    "content_type": "text/event-stream; charset=utf-8",
+    "openrouter_processing_marker": true,
+    "model_field_values": [
+      "deepseek/deepseek-v4-flash"
+    ],
+    "provider_field_values": [
+      "Parasail"
+    ],
+    "assistant_visible_text_sample": "PING-OK",
+    "stream_prefix_sample": ": OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n",
+    "provider_note": "OpenRouter routes to multiple upstreams; earlier probe observed provider=Venice, this capture observed provider=Parasail. Model id remained deepseek/deepseek-v4-flash."
+  },
+  "verdict": {
+    "default_model": "deepseek/deepseek-v4-flash",
+    "model_family": "DeepSeek-V4-Flash (not V4-Pro)",
+    "proxy": "OpenRouter",
+    "upstream_provider_observed": "Parasail",
+    "confidence": "high",
+    "rationale": [
+      "window.__CHAT_MODELS__ maps UI DeepSeek-V4 to deepseek/deepseek-v4-flash",
+      "SSE comments contain OPENROUTER PROCESSING",
+      "SSE chunks include model and provider fields"
+    ]
+  },
+  "ui_model_map": [
+    {
+      "ui_name": "DeepSeek-V4",
+      "id": "deepseek/deepseek-v4-flash",
+      "slug": "deepseek"
+    },
+    {
+      "ui_name": "DeepSeek-R1",
+      "id": "deepseek/deepseek-r1",
+      "slug": "deepseek-v3"
+    },
+    {
+      "ui_name": "DeepSeek-V3",
+      "id": "deepseek/deepseek-v3.2",
+      "slug": "deepseek-r1"
+    }
+  ],
+  "affiliate_cross_promo": {
+    "maxgpt": "https://maxgpt.ru/subscribe?utm_source=chatgptorg",
+    "telegram_bot": "https://telegram.me/DeepGPT_Chatbot",
+    "note": "Same white-label family as chatgptorg / GPT Chat template"
+  },
+  "risks": [
+    "Brand mimicry of official DeepSeek",
+    "Prompts leave user browser to third-party backend + OpenRouter + Venice",
+    "Marketing claims unlimited free access; UI has daily limit / PRO upsell",
+    "UI slug mismatch (deepseek-r1 vs deepseek-v3) — trust SSE model field only"
+  ],
+  "remediation_for_users": [
+    "Prefer official chat.deepseek.com or api.deepseek.com",
+    "Official model ids: deepseek-v4-flash / deepseek-v4-pro",
+    "Do not send secrets or PII to mirror sites"
+  ],
+  "official_reference": {
+    "v4_release": "https://api-docs.deepseek.com/news/news260424",
+    "transparency": "https://www.deepseek.com/en/transparency/"
+  },
+  "prior_probe_provider": "Venice"
+}
