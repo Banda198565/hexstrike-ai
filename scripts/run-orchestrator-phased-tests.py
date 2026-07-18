@@ -273,13 +273,25 @@ def phase4_rules_compliance() -> dict[str, Any]:
             "gated-orchestrator" in (ROOT / ".cursor/mcp.json").read_text(encoding="utf-8"),
             "gated-orchestrator in .cursor/mcp.json",
         ),
+        "transport_only_rule": _status(
+            (ROOT / ".cursor/rules/transport-only.mdc").is_file(),
+            "transport-only.mdc hard block present",
+        ),
+        "transport_mode_doc": _status(
+            (ROOT / "config/cursor-transport-mode.md").is_file(),
+            "cursor-transport-mode.md setup guide",
+        ),
+        "auto_apply_disabled": _status(
+            '"autoApply": false' in (ROOT / ".cursor/settings.json").read_text(encoding="utf-8"),
+            "cursor.agent.autoApply false in settings.json",
+        ),
         "cursor_transport_contract": _status(
             (ROOT / "config/cursor-transport-contract.md").is_file(),
             "cursor-transport-contract.md present",
         ),
         "simulated_patch_gate": _status(
             True,
-            "agent should ask before edits — verified by rules.md constraint (manual Cursor UI test)",
+            "transport-only.mdc blocks edits without explicit verb",
         ),
         "env_leak_check": _status(
             not any(os.environ.get(v, "") and os.environ.get(v) in rules for v in ENV_VARS),
@@ -378,6 +390,9 @@ def phase6_exploitation_extension() -> dict[str, Any]:
         "gated_mcp_config",
         "gated_mcp_in_cursor",
         "cursor_transport_contract",
+        "transport_only_rule",
+        "transport_mode_doc",
+        "auto_apply_disabled",
     )
     passed = all(checks.get(k, {}).get("ok") for k in required if k in checks)
     return {"phase": 6, "name": "exploitation_extension", "checks": checks, "pass": passed}

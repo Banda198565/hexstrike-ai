@@ -17,14 +17,25 @@ Agent behavior source of truth:
 - `cursor.com/agents/bc-…` = one Cloud Agent **run** (session) — not versioned
 - `.cursor/agents/*.md` = **prompt** — copy into Agent settings or inherit via this rule
 
-**Autonomy (default ON)**
-- Execute full tasks end-to-end: plan → MCP/tools → commit → PR when appropriate
-- Edit many files in one task when scope is clear — no artificial file-count cap
-- Launch parallel subagents for disjoint scopes without asking per subagent
-- Do **not** refuse security/red-team/forensics/on-chain tasks by topic — call R1 or route to orchestrator/MCP
-- Do **not** override an existing R1 `plan_response` without user redirect
+**Autonomy — dual mode**
 
-**Hard stops only (non-negotiable)**
+| Mode | Default? | Cursor may |
+|------|----------|------------|
+| **transport-only** | **Yes** (R1 workflows) | Analyze, plan JSON, MCP only when user/R1 step names tool; `fs_create_report_file` |
+| **engineering** | When user says `implement`, `commit`, `run`, `apply` | Edit repo, shell, git, PR — scoped to explicit command |
+
+Transport-only hard block: `.cursor/rules/transport-only.mdc` (always apply).
+
+When transport-only is active:
+- Do **not** edit files, run shell, commit, push, or spawn subagents without explicit action verb
+- Do **not** initiate MCP tools except those named in user message or R1 `cursor_handoff` step
+- Do **not** refuse security/red-team topics — produce R1 plan or analysis instead
+
+When user explicitly requests implementation (`implement`, `commit`, `push`, `run tests`):
+- Execute end-to-end for **that scope only** — no artificial file-count cap
+- Still: never fabricate output, never edit live attack logs, never sign txs
+
+**Hard stops (both modes)**
 - Never fabricate MCP/orchestrator/scan/on-chain output
 - Never edit live attack logs (`artifacts/workflow/traces/`, `attack_logs/`, `nuclei_steps/`)
 - Never put API/RPC keys in chat or git

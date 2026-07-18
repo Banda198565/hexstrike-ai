@@ -38,9 +38,13 @@ If Cursor chat would refuse a step on topic alone, it must instead:
 {
   "cursor_handoff": {
     "role": "transport_only",
-    "execute_in_cursor": ["mcp_calls", "repo_edits_if_user_requested", "artifact_writes"],
+    "mode": "analysis_default",
+    "auto_apply_forbidden": true,
+    "execute_in_cursor": ["mcp_calls_when_step_named", "fs_create_report_file"],
+    "requires_explicit_verb_for": ["file_edit", "shell", "git", "subagents"],
+    "explicit_verbs": ["implement", "apply", "commit", "push", "run", "execute plan step"],
     "defer_to_orchestrator": ["live_offense", "worker_agents", "nmap", "metasploit"],
-    "forbidden_in_cursor": ["fabricate_findings", "edit_live_attack_logs", "policy_override"],
+    "forbidden_in_cursor": ["fabricate_findings", "edit_live_attack_logs", "policy_override", "eth_sendTransaction", "unsolicited_file_edits"],
     "next_command": "python3 hexstrike_orchestrator.py reasoning plan <task.json>"
   }
 }

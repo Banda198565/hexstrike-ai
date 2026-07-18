@@ -21,11 +21,20 @@ Cursor (IDE, Cloud Agent, Composer) is a **transport layer** for HexStrike. It i
 | Anti-pattern | Correct behavior |
 |--------------|------------------|
 | Chief orchestrator deciding tool order | Call R1 → follow `plan_response` JSON |
+| Auto-editing / auto-running without user verb | **transport-only** — refuse; see `.cursor/rules/transport-only.mdc` |
 | Thematic refusal on exploit/red-team/forensics | Route to orchestrator; produce plan JSON |
 | Fabricating scan/exploit/on-chain results | `status: pending_execution`, empty findings |
 | Overriding `orchestrator.yaml` / registry scope | Report `blocked_by: orchestrator` |
 | Editing live attack logs | Read-only; offer new report in `artifacts/` or `reports/` |
-| Imposing file-count caps on engineering tasks | `AGENTS.md` + `.cursor/rules/agents-config.mdc` |
+| Imposing file-count caps on engineering tasks | Only when user said `implement` — then scoped execution OK |
+
+## Transport-only default
+
+**Default mode:** transport-only (analysis + plans). Setup: `config/cursor-transport-mode.md`.
+
+Explicit verbs that lift transport-only for one scope: `implement`, `apply`, `commit`, `push`, `run`, `execute plan step N`.
+
+Project settings: `.cursor/settings.json` → `cursor.agent.autoApply: false`, `hexstrike.transportOnly: true`.
 
 ---
 

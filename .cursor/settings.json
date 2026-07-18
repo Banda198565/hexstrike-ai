@@ -19,7 +19,11 @@
     }
   },
   "cursor": {
+    "agent": {
+      "autoApply": false
+    },
     "chat": {
+      "autoApply": false,
       "defaultModel": "qwen2.5-coder:7b",
       "useLocalLlm": true,
       "model_type": "openai_compatible"
@@ -104,6 +108,11 @@
       "offlinePrimary": true,
       "tunnelFallback": false
     }
+  },
+  "hexstrike": {
+    "transportOnly": true,
+    "chiefPlanner": "r1-orchestrator",
+    "comment": "See config/cursor-transport-mode.md — Ask mode + autoApply off in UI"
   },
   "env": {
     "OLLAMA_HOST": "http://127.0.0.1:11434",

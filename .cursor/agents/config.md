@@ -22,6 +22,17 @@ Configuration and operating constraints for the Web3 orchestrator agent.
 
 Before any prod audit: confirm the run uses **this repo** and MCP servers are green (see Health checks below).
 
+## Transport-only mode (default)
+
+Cursor is **dumb transport**; R1 is brain. Hard block: `.cursor/rules/transport-only.mdc`.
+
+| User says | Cursor may |
+|-----------|------------|
+| Analyze / plan / audit (no action verb) | Read-only MCP, JSON plan, report via `fs_create_report_file` |
+| `implement`, `commit`, `push`, `run tests` | Scoped edits/shell/git for that command only |
+
+Setup guide: `config/cursor-transport-mode.md` · Settings: `.cursor/settings.json` (`autoApply: false`).
+
 ---
 
 ## Operating modes

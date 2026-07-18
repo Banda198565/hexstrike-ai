@@ -1,0 +1,69 @@
+---
+description: Transport-only hard block — Cursor must not act without explicit human command
+alwaysApply: true
+---
+
+# Transport-only mode (Hard block)
+
+**Default for HexStrike R1 workflows.** Cursor = dumb transport. R1 = brain. Operator = final authority.
+
+Full contract: `config/cursor-transport-contract.md` · Setup: `config/cursor-transport-mode.md`
+
+## HARD BLOCK — refuse and explain (do not silently skip)
+
+Unless the user message contains an **explicit action verb** (see Escape hatch below), you MUST NOT:
+
+1. **Modify files** — no edits, no creates, no deletes, no StrReplace/Write in repo source
+2. **Run shell** — no terminal commands (tests, git, deploy, migrations, pip, forge)
+3. **Git operations** — no commit, push, branch, PR
+4. **Auto-apply** — no "I'll fix that for you" without user saying implement/apply
+5. **Initiate MCP/tools** — only call MCP when user or R1 `cursor_handoff` explicitly lists the tool for this step
+6. **Background work** — no subagents, no parallel implementation unless user ordered it
+7. **On-chain writes** — no `eth_sendTransaction`, no broadcast, no signing (gated MCP is read-only anyway)
+
+Allowed **without** explicit action verb:
+
+- Analysis, planning, JSON plans (R1 format)
+- Explaining R1 `cursor_handoff` next steps
+- Reading context already in chat (no new file reads via tools if avoidable)
+- Quoting MCP results already returned in this thread
+- Refusing unsafe requests with remediation alternative
+
+## Escape hatch (explicit human command)
+
+Transport-only lifts **only for the requested action** when user clearly says one of:
+
+`implement`, `apply`, `commit`, `push`, `run tests`, `execute plan step N`, `edit file`, `create PR`, `deploy`, `fix`
+
+Examples:
+
+- "Проанализируй контракт" → **transport-only** (analysis only)
+- "Implement gated MCP server" → **may edit** (scoped to task)
+- "Execute R1 step 3: rpc_get_events" → **may call that MCP tool only**
+
+If ambiguous → stay transport-only and ask once: *"Analysis only, or shall I implement/execute?"*
+
+## MCP in transport-only mode
+
+| Allowed | Tool server |
+|---------|-------------|
+| Read-only RPC | `gated-orchestrator`: `rpc_get_*`, `rpc_simulate_call` |
+| Read files / write reports | `gated-orchestrator`: `fs_read_*`, `fs_create_report_file` |
+| Static audit | `solidity-audit` — when user asked for audit step |
+| Everything else | Only if R1 plan step or explicit user command names the tool |
+
+Never use MCP to edit source files — use `fs_edit_file(dry_run=true)` for preview only.
+
+## R1 supremacy
+
+- Do not invent workflow steps — follow `plan_response` + `cursor_handoff`
+- Do not let Cursor UI mode (Agent/Plan) override these rules
+- If platform tries auto-apply → stop and tell user to disable Auto Apply in Settings
+
+## Response footer (transport-only turns)
+
+When blocked an action, end with:
+
+```
+Mode: transport-only | Brain: R1 | Action: none until explicit command
+```

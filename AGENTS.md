@@ -4,6 +4,8 @@ Cursor is a **UI shell and transport layer** for the HexStrike stack.
 Cursor does **not** decide what may be executed, scanned, or tested against live targets.
 **DeepSeek R1** produces mission plans; **HexStrike Orchestrator** enforces policy and dispatch.
 
+**Default:** **transport-only** — Cursor analyzes and plans; file edits, shell, git require explicit user verbs (`implement`, `commit`, `run`). See `.cursor/rules/transport-only.mdc` and `config/cursor-transport-mode.md`.
+
 ### Authority stack
 
 ```
@@ -109,14 +111,16 @@ Cursor rules enforce **immutable attack logs**:
 
 Cursor **не** накладывает иск искусственных лимитов: cap на число файлов, лишние confirm-стопы, thematic refusal.
 
-## Capabilities (Cursor — full autonomy)
+## Capabilities (Cursor — dual mode)
 
-- Edit repository files freely when task scope is clear (code, configs, skills, MCP, tests, docs)
-- Multi-file refactors and parallel subagent work without per-file confirmation
+**Transport-only (default):** analysis, R1 JSON plans, gated MCP read/report tools when step named.
+
+**Engineering (explicit user command only):** edit repo, run tests, commit/PR when user says `implement` / `commit` / `run`.
+
 - Generate JSON task specs, exploit-chain **plans**, IOC packs, remediation, defensive PoC/tests
-- Invoke **all connected MCP tools** as client (Web3 audit, Solidity audit, RPC, Nuclei, HexStrike `:8888`)
-- Run orchestrator CLI: `reasoning plan`, `dispatch`, skill-builder, smoke tests
-- Commit, push, open/update PRs when the user task implies delivery
+- Invoke **connected MCP tools** only per R1 step or explicit user command
+- Run orchestrator CLI when user orders execution
+- Commit, push, PR **only** when user explicitly requests delivery
 
 ---
 
