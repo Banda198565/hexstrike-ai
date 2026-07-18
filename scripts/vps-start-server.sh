@@ -45,16 +45,34 @@ if [[ -d "$ROOT/.git" ]]; then
 fi
 
 # ── 2. Python venv + deps ──────────────────────────────────────
-if [[ ! -f "$ROOT/hexstrike_env/bin/python3" ]]; then
+# Prefer hexstrike_env; recreate if it is a broken stub (python → system, no pip pkgs)
+if [[ ! -x "$ROOT/hexstrike_env/bin/python3" ]]; then
   log "Creating venv hexstrike_env"
   python3 -m venv "$ROOT/hexstrike_env"
+fi
+PY="$ROOT/hexstrike_env/bin/python3"
+if ! "$PY" -c 'import flask, aiohttp' 2>/dev/null; then
+  log "venv missing core imports — ensuring pip + deps"
 fi
 # shellcheck source=/dev/null
 source "$ROOT/hexstrike_env/bin/activate"
 
-log "Installing Python deps (flask, requests, psutil)..."
-pip install -q --upgrade pip
-pip install -q 'flask>=2.3,<4' 'requests>=2.31' 'psutil>=5.9'
+log "Installing Python deps for hexstrike_server..."
+"$PY" -m pip install -q --upgrade pip
+if [[ -f "$ROOT/requirements.txt" ]]; then
+  # Core server imports first (fast path), then full requirements
+  "$PY" -m pip install -q \
+    'flask>=2.3,<4' 'requests>=2.31' 'psutil>=5.9' \
+    'aiohttp>=3.8,<4' 'beautifulsoup4>=4.12,<5' \
+    'selenium>=4.15,<5' 'webdriver-manager>=4.0,<5' \
+    'mitmproxy>=9.0,<11' || warn "core pip install partial"
+  "$PY" -m pip install -q -r "$ROOT/requirements.txt" || warn "requirements.txt partial — core may still boot"
+else
+  "$PY" -m pip install -q \
+    'flask>=2.3,<4' 'requests>=2.31' 'psutil>=5.9' \
+    'aiohttp>=3.8,<4' 'beautifulsoup4>=4.12,<5'
+fi
+"$PY" -c 'import flask, aiohttp, bs4; print("imports_ok")' || die "python imports still failing"
 
 # ── 3. VPS env ─────────────────────────────────────────────────
 if [[ -f "$ROOT/scripts/forensics-env-vps.sh" ]]; then
