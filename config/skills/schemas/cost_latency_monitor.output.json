@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cost_latency_monitor.output",
+  "type": "object",
+  "required": ["task_id", "totals"],
+  "properties": {
+    "task_id": { "type": "string" },
+    "totals": {
+      "type": "object",
+      "properties": {
+        "tokens_in": { "type": "integer" },
+        "tokens_out": { "type": "integer" },
+        "latency_ms_avg": { "type": "number" },
+        "call_count": { "type": "integer" }
+      }
+    },
+    "budget_remaining": { "type": "integer" },
+    "recommend_fallback": { "type": "boolean" },
+    "fallback_model": { "type": "string" }
+  }
+}

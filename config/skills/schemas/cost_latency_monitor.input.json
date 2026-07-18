@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cost_latency_monitor.input",
+  "type": "object",
+  "required": ["task_id"],
+  "properties": {
+    "task_id": { "type": "string" },
+    "record": {
+      "type": "object",
+      "properties": {
+        "model": { "type": "string" },
+        "tokens_in": { "type": "integer" },
+        "tokens_out": { "type": "integer" },
+        "latency_ms": { "type": "number" }
+      }
+    },
+    "budget_tokens_r1": { "type": "integer" },
+    "fallback_model": { "type": "string", "default": "deepseek-chat" }
+  }
+}

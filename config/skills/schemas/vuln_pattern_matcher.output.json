@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "vuln_pattern_matcher.output",
+  "type": "object",
+  "required": ["findings"],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pattern", "severity"],
+        "properties": {
+          "pattern": { "type": "string" },
+          "severity": { "type": "string" },
+          "location": { "type": "string" },
+          "description": { "type": "string" },
+          "attack_vectors": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "artifact_ref": { "type": "string" }
+  }
+}

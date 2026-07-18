@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "vuln_pattern_matcher.input",
+  "type": "object",
+  "required": ["target"],
+  "properties": {
+    "target": {
+      "type": "object",
+      "properties": {
+        "source_path": { "type": "string" },
+        "bytecode_hex": { "type": "string" },
+        "address": { "type": "string" }
+      }
+    },
+    "patterns": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["reentrancy", "access_control", "oracle_manipulation", "delegatecall", "integer_overflow", "tx_origin"] },
+      "default": ["reentrancy", "access_control", "delegatecall"]
+    },
+    "tools": { "type": "array", "items": { "type": "string", "enum": ["slither", "mythril", "bytecode_heuristic"] } }
+  }
+}

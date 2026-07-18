@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "task_planner.input",
+  "type": "object",
+  "required": ["mission_text"],
+  "properties": {
+    "mission_text": { "type": "string", "description": "Free-form operator goal" },
+    "mode_hint": { "type": "string", "enum": ["defense", "forensics", "recon", "validation", "offense", "research"] },
+    "catalog_ref": { "type": "string", "default": "config/skills/catalog.json" },
+    "authorization_ref": { "type": "string" }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "gsm_sim800c_control.output",
+  "type": "object",
+  "required": ["action", "status"],
+  "properties": {
+    "action": { "type": "string" },
+    "status": { "type": "string", "enum": ["ok", "error", "timeout"] },
+    "device_id": { "type": "string" },
+    "message_id": { "type": "string" },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": { "type": "string" },
+          "text": { "type": "string" },
+          "timestamp": { "type": "string" }
+        }
+      }
+    },
+    "ussd_response": { "type": "string" },
+    "signal_quality": { "type": "integer", "minimum": 0, "maximum": 31 },
+    "operator": { "type": "string" },
+    "log_entries": { "type": "array", "items": { "type": "object" } },
+    "error": { "type": "string" }
+  }
+}

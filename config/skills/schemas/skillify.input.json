@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "skillify.input",
+  "type": "object",
+  "required": ["session_ref"],
+  "properties": {
+    "session_ref": { "type": "string", "description": "Orchestrator run id or artifact path" },
+    "skill_name_hint": { "type": "string" },
+    "tags": { "type": "array", "items": { "type": "string" } }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "state_tracker.input",
+  "type": "object",
+  "required": ["campaign_id", "operation"],
+  "properties": {
+    "campaign_id": { "type": "string" },
+    "operation": { "type": "string", "enum": ["get", "patch", "init", "snapshot"] },
+    "patch": {
+      "type": "object",
+      "properties": {
+        "targets_explored": { "type": "array", "items": { "type": "string" } },
+        "nodes_compromised": { "type": "array", "items": { "type": "string" } },
+        "credentials": { "type": "array", "items": { "type": "string", "description": "credential_session ref ids" } },
+        "artifacts": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "state_tracker.output",
+  "type": "object",
+  "required": ["campaign_id", "state"],
+  "properties": {
+    "campaign_id": { "type": "string" },
+    "state": {
+      "type": "object",
+      "properties": {
+        "targets_explored": { "type": "array", "items": { "type": "string" } },
+        "nodes_compromised": { "type": "array", "items": { "type": "string" } },
+        "credentials": { "type": "array", "items": { "type": "string" } },
+        "artifacts": { "type": "object" },
+        "updated_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

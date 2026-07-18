@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "scatter_gather.input",
+  "type": "object",
+  "required": ["task_id", "groups"],
+  "properties": {
+    "task_id": { "type": "string" },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["group_id", "skill_calls"],
+        "properties": {
+          "group_id": { "type": "integer" },
+          "skill_calls": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["skill_id", "input"],
+              "properties": {
+                "skill_id": { "type": "string" },
+                "input": { "type": "object" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "merge_strategy": { "type": "string", "enum": ["union", "priority", "dedupe_by_target"], "default": "union" }
+  }
+}

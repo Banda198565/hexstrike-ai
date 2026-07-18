@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "skillify.output",
+  "type": "object",
+  "required": ["proposed_skill"],
+  "properties": {
+    "proposed_skill": {
+      "type": "object",
+      "properties": {
+        "skill_id": { "type": "string" },
+        "checklist": { "type": "array", "items": { "type": "string" } },
+        "default_params": { "type": "object" },
+        "pitfalls": { "type": "array", "items": { "type": "string" } },
+        "input_schema_draft": { "type": "object" }
+      }
+    },
+    "artifact_ref": { "type": "string" }
+  }
+}
