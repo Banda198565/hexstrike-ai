@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "editor": { "vimMode": false },
+  "_comment": "Copy to ~/.cursor/cli-config.json for global transport-only. Project .cursor/cli.json overrides when present.",
+  "permissions": {
+    "allow": [
+      "Read(**/*)",
+      "Write(reports/**)",
+      "Write(artifacts/web3-audit/**)",
+      "Mcp(gated-orchestrator:*)",
+      "Mcp(solidity-audit:*)"
+    ],
+    "deny": [
+      "Shell(*)"
+    ]
+  }
+}

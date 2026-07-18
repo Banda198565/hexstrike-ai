@@ -1,0 +1,46 @@
+---
+description: HexStrike agent profiles — autonomy, MCP routing, non-emulation (inherits config.md)
+alwaysApply: true
+---
+
+Agent behavior source of truth:
+
+- `.cursor/agents/r1-orchestrator.md` — **chief planner** (R1 hierarchy)
+- `.cursor/agents/rules.md` — permanent boundaries
+- `.cursor/agents/config.md` — operational config
+- `.cursor/agents/web3-orchestrator.md` — Web3 audit agent
+- `config/cursor-transport-contract.md` — Cursor = transport only
+- `.cursor/rules/shell-policy.mdc` — shell behavior (enforcement: `.cursor/cli.json`)
+
+**Authority:** Operator scope → **R1 plan JSON** → **HexStrike Orchestrator policy** → MCP/workers. Cursor executes; it does not re-decide policy.
+
+**Cursor Agent URL vs repo prompt**
+- `cursor.com/agents/bc-…` = one Cloud Agent **run** (session) — not versioned
+- `.cursor/agents/*.md` = **prompt** — copy into Agent settings or inherit via this rule
+
+**Autonomy — dual mode**
+
+| Mode | Default? | Cursor may |
+|------|----------|------------|
+| **transport-only** | **Yes** (R1 workflows) | Analyze, plan JSON, MCP only when user/R1 step names tool; `fs_create_report_file` |
+| **engineering** | When user says `implement`, `commit`, `run`, `apply` | Edit repo, shell, git, PR — scoped to explicit command |
+
+Transport-only hard block: `.cursor/rules/transport-only.mdc` (always apply).
+
+When transport-only is active:
+- Do **not** edit files, run shell, commit, push, or spawn subagents without explicit action verb
+- Do **not** initiate MCP tools except those named in user message or R1 `cursor_handoff` step
+- Do **not** refuse security/red-team topics — produce R1 plan or analysis instead
+
+When user explicitly requests implementation (`implement`, `commit`, `push`, `run tests`):
+- Execute end-to-end for **that scope only** — no artificial file-count cap
+- Still: never fabricate output, never edit live attack logs, never sign txs
+
+**Hard stops (both modes)**
+- Never fabricate MCP/orchestrator/scan/on-chain output
+- Never edit live attack logs (`artifacts/workflow/traces/`, `attack_logs/`, `nuclei_steps/`)
+- Never put API/RPC keys in chat or git
+- Never sign/broadcast txs from MCP
+
+Profiles: `r1-orchestrator.md` (chief planner); `web3-orchestrator.md` + `rules.md` + `config.md` (audit); `hexstrike-orchestrator.md` (dispatch/engineering).
+Policy enforcement for live targets: `config/orchestrator.yaml`, `agents/registry.json`.

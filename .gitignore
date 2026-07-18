@@ -41,3 +41,4 @@ samson/redteam/guardrail/configs/*.json
 # local VPS bootstrap secrets (never commit)
 .vps-bootstrap-*
 *.vps-password
+data/rag/

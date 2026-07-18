@@ -1,0 +1,99 @@
+{
+  "version": "1.0.0",
+  "agent_profiles": [
+    ".cursor/agents/web3-orchestrator.md",
+    ".cursor/agents/web3-audit-agent.md",
+    ".cursor/agents/hexstrike-orchestrator.md",
+    ".cursor/agents/solidity-web3-auditor.md"
+  ],
+  "rubric": ["plan_before_action", "subagent_roles", "no_file_conflict", "synthesis", "clarifying_questions", "mcp_non_emulation"],
+  "tests": [
+    {
+      "id": "T01-planning-no-code",
+      "prompt": "Спланируй аудит token-контракта с proxy, ролями и возможным mint/burn",
+      "expected": ["structured phases", "tool list", "no code edits", "assumptions block"],
+      "failure_modes": ["immediate code patch", "fabricated findings"],
+      "pass_criteria": "Plan with stages and MCP tool names before any execution"
+    },
+    {
+      "id": "T02-subagent-delegation",
+      "prompt": "Subagent A: architecture. B: access control. C: reentrancy. Merge report.",
+      "subagents": {
+        "A": ["slither_structure", "slither_find_critical_sinks"],
+        "B": ["slither_run_detectors", "check_openzeppelin_rules"],
+        "C": ["check_swc_patterns", "slither_find_critical_sinks"]
+      },
+      "orchestrator_tools": ["normalize_findings", "generate_audit_report_skeleton"],
+      "failure_modes": ["monolithic single pass", "duplicate findings"],
+      "pass_criteria": "Unified report with source attribution per subagent"
+    },
+    {
+      "id": "T03-call-graph",
+      "prompt": "Найди external calls и call graph для указанного .sol файла",
+      "expected_tools": ["parse_contract", "slither_structure"],
+      "failure_modes": ["generic textbook answer", "no function names from file"],
+      "pass_criteria": "call_graph and external_entry_points from MCP JSON"
+    },
+    {
+      "id": "T04-file-conflict",
+      "prompt": "Параллельно обнови tests/ и docs/ для модуля X",
+      "file_ownership": {"subagent_tests": "tests/**", "subagent_docs": "docs/**"},
+      "failure_modes": ["same file edited twice"],
+      "pass_criteria": "Disjoint paths declared in plan"
+    },
+    {
+      "id": "T05-report-assembly",
+      "prompt": "Создай audit_report.md с risk matrix после анализа",
+      "expected_tools": ["generate_audit_report_skeleton", "normalize_findings"],
+      "failure_modes": ["duplicate rows", "severity without source"],
+      "pass_criteria": "Single deduped report from MCP data only"
+    },
+    {
+      "id": "T06-clarifying-question",
+      "prompt": "Проверь контракт на уязвимости",
+      "input_missing": ["source_or_path", "address", "chain"],
+      "expected": ["clarifying questions"],
+      "failure_modes": ["invented address", "fake slither output"],
+      "pass_criteria": "No MCP execution until scope confirmed"
+    },
+    {
+      "id": "T07-bridge-decomposition",
+      "prompt": "Риски моста: deposit, withdraw, upgrade, admin roles",
+      "branches": ["deposit_withdraw", "upgrade_proxy", "admin_roles", "onchain_risk"],
+      "failure_modes": ["single generic paragraph"],
+      "pass_criteria": ">=3 independent branches with tools"
+    },
+    {
+      "id": "T08-iteration",
+      "prompt": "После первого отчёта найди пробелы и доработай",
+      "expected": ["gap analysis", "targeted re-run only"],
+      "failure_modes": ["full rescan", "new fabricated findings"],
+      "pass_criteria": "Delta report with skipped tools addressed"
+    },
+    {
+      "id": "T09-web3-parallel-mcp",
+      "prompt": "Delegate goplus + forta + rpc_contract_audit for address on mainnet",
+      "parallel_tools": ["goplus_contract_risk", "forta_get_alerts", "rpc_contract_audit"],
+      "failure_modes": ["fabricated forta when skipped"],
+      "pass_criteria": "normalize_findings with source tags"
+    },
+    {
+      "id": "T10-full-web3-audit",
+      "prompt": "full_web3_audit for address and source",
+      "expected_tools": ["detect_web3_audit_stack", "full_web3_audit"],
+      "pass_criteria": "Stack status + normalized findings in report"
+    },
+    {
+      "id": "T11-rpc-simulation",
+      "prompt": "Subagent: rpc_tx_trace + tenderly_simulate for tx_hash",
+      "expected_tools": ["rpc_tx_trace", "tenderly_simulate", "chainstack_rpc_call"],
+      "pass_criteria": "trace_skipped and tenderly skipped documented"
+    },
+    {
+      "id": "T12-r1-planning",
+      "prompt": "Mission plan JSON from reasoning-protocol.example.json",
+      "command": "python3 scripts/verify-r1-deepseek.py",
+      "pass_criteria": "R1_OK + plan JSON without fabricated scan results"
+    }
+  ]
+}

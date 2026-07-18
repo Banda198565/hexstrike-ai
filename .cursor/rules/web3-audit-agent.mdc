@@ -1,0 +1,21 @@
+---
+description: Web3 audit agent — workflow, MCP order, non-emulation (inherits config.md)
+globs:
+  - "**/*.sol"
+  - "**/web3-audit/**"
+  - "**/solidity-audit/**"
+  - "audit_report.md"
+alwaysApply: false
+---
+
+When auditing smart contracts or on-chain addresses in this repo:
+
+1. Read `.cursor/agents/config.md` — **autonomy ON**, hard stops only (non-emulation, secrets, live logs).
+2. Follow `.cursor/agents/web3-audit-agent.md` or `.cursor/skills/web3-audit-mcp/SKILL.md`.
+3. Use MCP server `hexstrike-web3-audit` — keys in `config/mcp/web3-audit-mcp.json` env only.
+4. Static analysis (Slither/SWC) before RPC/risk tools (GoPlus/Forta).
+5. Auto-resolve proxy → implementation; do not block for confirm.
+6. Findings only from MCP JSON — never fabricate when `skipped: true` or empty arrays.
+7. Infer scope from open files/repo when possible; one clarify question max, then proceed.
+
+Global: `AGENTS.md`. Attack logs: read-only (`.cursor/rules/attack-logs.mdc`).

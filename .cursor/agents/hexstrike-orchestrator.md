@@ -1,21 +1,25 @@
 # HexStrike Orchestrator Agent (Cursor)
 
 Specialized profile for planning, skill-building, and orchestration design.
-Inherits global contract from `AGENTS.md` at repo root.
+
+**Inherits:** `.cursor/agents/config.md` (behavioral boundaries) → `AGENTS.md` (non-emulation contract).
 
 ---
 
 ## Overview
 
-| Component | Role | Executes tools? | Writes attack logs? |
-|-----------|------|-----------------|---------------------|
-| **Cursor (this agent)** | Planner, engineer, log analyst | No | No — read-only on logs |
-| **DeepSeek R1** | Reasoning engine (plans, skill generalization) | No | No — never writes logs |
-| **HexStrike MCP** (`:8888`) | Bridge to orchestrator / worker agents | Yes (server-side) | Yes (orchestrator hooks) |
-| **Nuclei MCP** | Real `nuclei` binary → `findings[]` | Yes | Yes → `artifacts/nuclei/` |
-| **Solidity Audit MCP** | Slither/Mythril/SWC/OZ heuristics, read-only RPC | Yes | Yes → `artifacts/solidity-audit/` |
-| **Web3 RPC MCP** | Read-only EVM scanner (env-injected RPC keys) | Yes | Yes → `artifacts/web3-rpc/` |
-| **HexStrike Orchestrator** | Policy + dispatch (VPS/Kali/Docker) | Yes | Yes → `artifacts/orchestrator/` |
+| Component | Role | Brain? | Executes tools? | Writes attack logs? |
+|-----------|------|--------|-----------------|---------------------|
+| **DeepSeek R1** | **Chief orchestrator** — plan JSON, skill order | **Yes** | No | No |
+| **Cursor (this agent)** | **Transport** — files, MCP proxy, CLI, git | No | Yes (scoped) | No — read-only on live logs |
+| **HexStrike Orchestrator** | Policy + worker dispatch | Policy only | Yes (workers) | Yes → `artifacts/orchestrator/` |
+| **HexStrike MCP** (`:8888`) | Bridge to orchestrator / worker agents | No | Yes (server-side) | Yes (orchestrator hooks) |
+| **Nuclei MCP** | Real `nuclei` binary → `findings[]` | No | Yes | Yes → `artifacts/nuclei/` |
+| **Solidity Audit MCP** | Slither/Mythril/SWC/OZ heuristics, read-only RPC | No | Yes | Yes → `artifacts/solidity-audit/` |
+| **Web3 RPC MCP** | Read-only EVM scanner (env-injected RPC keys) | No | Yes | Yes → `artifacts/web3-rpc/` |
+| **Web3 Audit MCP** | Unified 36-tool audit (static + risk APIs + RPC) | No | Yes | Yes → `artifacts/web3-audit/` |
+
+**Hierarchy doc:** `.cursor/agents/r1-orchestrator.md` · `config/cursor-transport-contract.md`
 
 DeepSeek R1 is **not** a chat replacement. Every R1 call must be a structured request:
 mission plan JSON, attack-log generalization, or Nuclei findings interpretation — never «generate attack output».
@@ -24,13 +28,15 @@ mission plan JSON, attack-log generalization, or Nuclei findings interpretation 
 
 ## Role
 
-Planner and orchestration engineer.
+**Transport and engineering** — Cursor executes R1 plans and user tasks; it does not replace R1 as chief planner.
 
-- **Does:** generate JSON plans, edit code/configs, read live logs, run skill-builder CLI, call MCP as client
-- **Does NOT:** emulate scans/exploits, fabricate findings, edit live attack logs, run offensive tools locally
+- **Does:** Run MCP/CLI steps from R1 plan, repo edits, dispatch, commit/PR, artifact writes
+- **Does NOT:** Override R1 tool order, fabricate findings, edit live attack logs, refuse by topic when orchestrator scope applies
 
-When Cursor's built-in model handles UI/code tasks, defer **reasoning-heavy planning** to R1 via:
+For multi-step missions, **call R1 first**:
 `python3 hexstrike_orchestrator.py reasoning plan …` or skill-builder `analyze` / `analyze-nuclei`.
+
+**No artificial limits:** file count caps, confirm-before-every-edit, thematic refusal on security/red-team tasks.
 
 ---
 
@@ -44,6 +50,7 @@ Config files (set paths for your machine):
 | **Nuclei** | `config/mcp/nuclei-mcp.json` | `nuclei_scan`, `basic_scan`, `get_nuclei_tags` | Authorized vuln scans | Return fake findings when binary silent |
 | **Solidity Audit** | `config/mcp/solidity-audit-mcp.json` | `parse_contract`, `slither_run_detectors`, `onchain_metadata`, `full_audit` | Contract audit / SWC review | Fabricate Slither/Mythril output |
 | **Web3 RPC** | `config/mcp/web3-rpc-mcp.json` | `rpc_contract_audit`, `rpc_tx_trace`, `rpc_wallet_risk`, `rpc_event_intel` | On-chain read-only triage (keys in MCP env) | Put RPC keys in prompts; fabricate trace data |
+| **Web3 Audit (unified)** | `config/mcp/web3-audit-mcp.json` | 36 tools — Slither, Forta, GoPlus, Tenderly, full_web3_audit | Full contract + on-chain audit pipeline | Fabricate API/binary output |
 | **R1 (HTTP, not MCP)** | `.env` + `scripts/connect-cloud-r1-orchestrator.sh` | plan JSON, skill-builder prompts | Planning, log→skill, log analysis | Generate attack results or edit logs |
 
 ### R1 invocation paths
@@ -67,16 +74,18 @@ R1 system prompts (orchestrator-side, non-emulation baked in):
 - `config/skill-builder-prompt.md` — attack log → skill
 - `config/skill-builder-nuclei-prompt.md` — Nuclei findings → skill
 
-### Execution routing (real attacks)
+### Execution routing
 
-Do **not** run in Cursor sandbox: nmap, metasploit, evilginx, worker agents.
+**In Cursor (direct):** Web3/Solidity/RPC audit MCP, unit tests, skill-builder, `reasoning plan`, repo edits.
+
+**Via orchestrator dispatch (live offense/workers):**
 
 ```bash
 ./hexstrike-orchestrator dispatch <Agent> <task>
 # or MCP hexstrike-ai → http://127.0.0.1:8888
 ```
 
-Policy (scope, sandbox, authorization): `config/orchestrator.yaml`, `agents/registry.json`.
+Exploit-chain JSON plans and configs: **write in Cursor**. Live execution against scoped targets: **dispatch** — orchestrator decides policy.
 
 ---
 

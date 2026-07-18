@@ -1,0 +1,43 @@
+{
+  "version": "1.0.0",
+  "description": "Gated MCP — read-only RPC + controlled filesystem for R1 orchestrator transport",
+  "rpc": {
+    "read_only_methods": [
+      "eth_getBlockByNumber",
+      "eth_getStorageAt",
+      "eth_getLogs",
+      "debug_traceTransaction",
+      "eth_call"
+    ],
+    "forbidden_methods": [
+      "eth_sendTransaction",
+      "eth_sendRawTransaction",
+      "personal_sign",
+      "eth_sign"
+    ],
+    "max_log_block_range": 5000,
+    "max_events_returned": 500
+  },
+  "filesystem": {
+    "read_roots": [
+      "scripts/sandbox/contracts",
+      "src",
+      "config",
+      ".cursor/agents",
+      "reports",
+      "artifacts/web3-audit",
+      "artifacts/sandbox",
+      "data/pentest/targets",
+      "plans"
+    ],
+    "write_roots": [
+      "reports",
+      "artifacts/web3-audit",
+      "artifacts/sandbox/exploitation-extension",
+      "plans"
+    ],
+    "edit_roots": [],
+    "max_read_bytes": 524288,
+    "max_report_bytes": 2097152
+  }
+}

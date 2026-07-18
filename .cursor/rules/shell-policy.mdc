@@ -1,0 +1,40 @@
+---
+description: Shell policy — behavioral layer (enforcement is .cursor/cli.json permissions)
+alwaysApply: true
+---
+
+# Shell command policy (behavior)
+
+**Enforcement (hard):** `.cursor/cli.json` → `"deny": ["Shell(*)"]` — no Shell in `allow`.
+
+Rules describe intent; **permissions block execution** even if the model ignores rules.
+
+## Agent MUST
+
+- Never initiate shell commands automatically or proactively
+- Never chain shell with file edits in one turn unless user explicitly ordered both
+- Before suggesting a command, state: *"Shell blocked by cli.json — run manually or merge engineering cli config"*
+- If Shell permission is missing, **do not** attempt workarounds (curl scripts, MCP abuse, eval)
+- Prefer **gated-orchestrator MCP** for RPC reads and `fs_create_report_file` for reports
+
+## Agent MUST NOT
+
+- Auto-run tests, git, deploy, pip, forge, migrations without explicit user verb
+- Ask the platform to run "just one quick command" to save time
+- Bypass deny via subagents or background agents
+
+## Explicit user verbs (behavior only — still blocked until cli.json updated)
+
+`run tests`, `execute`, `implement`, `commit`, `push` → tell user:
+
+1. Merge `config/cursor-cli.engineering.example.json` into `.cursor/cli.json`, **or**
+2. Run the command manually in their terminal
+
+## Layer stack
+
+```
+.cursor/cli.json permissions     ← enforcement (Shell denied)
+.cursor/rules/shell-policy.mdc   ← this file (behavior)
+.cursor/rules/transport-only.mdc ← broader transport policy
+config/cursor-shell-patterns.json ← optional patterns for engineering cli
+```

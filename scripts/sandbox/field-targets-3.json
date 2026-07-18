@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-07-18T00:00:00Z",
+  "exclusive": true,
+  "purpose": "Test ЦЕЛИ — 3 Web3 audit targets (BSC) from desktop recon",
+  "source_pool": "data/pentest/targets",
+  "parent_set": "scripts/sandbox/field-targets-5.json",
+  "wallets": [
+    {
+      "role": "hot_wallet",
+      "address": "0x4943F5E7F4e450d48Ae82026163ecDe8A52C53dA",
+      "chain": "BSC",
+      "chain_id": 56,
+      "priority": 1,
+      "labels": {"report": "recon-master Phase A", "risk": "elevated", "multichain_net_usd": 2114305.07},
+      "context": {"bsc_usdt": 1650373.67, "base_usdc": 463931.4, "note": "Active multichain ops wallet; heavy USDT payroll rail"}
+    },
+    {
+      "role": "authority",
+      "address": "0x730ea0231808f42a20f8921ba7fbc788226768f5",
+      "chain": "BSC",
+      "chain_id": 56,
+      "priority": 2,
+      "labels": {"report": "authority-contract-analysis", "classification": "EIP-7702 delegated EOA"},
+      "context": {
+        "implementation": "0x314C01e758a7911e7339aa4F960C7749E8947775",
+        "primary_sink": "0xb80a582fa430645a043bb4f6135321ee01005fef"
+      }
+    },
+    {
+      "role": "primary_sink_hub",
+      "address": "0xb80a582fa430645a043bb4f6135321ee01005fef",
+      "chain": "BSC",
+      "chain_id": 56,
+      "priority": 3,
+      "labels": {"report": "infra-targets", "bscscan_label": "Rhino.fi: Bridge"},
+      "context": {"type": "contract", "role": "cross-chain exit hub, not key custody"}
+    }
+  ]
+}

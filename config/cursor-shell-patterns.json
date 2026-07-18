@@ -1,0 +1,38 @@
+{
+  "version": "1.0.0",
+  "description": "Optional command pattern layer for engineering cli.json — not built into Cursor; use for review/hooks",
+  "note": "When merging config/cursor-cli.engineering.example.json, validate suggested commands against these patterns before adding to allow",
+  "allow_patterns": [
+    "python3 scripts/*",
+    "python3 -m py_compile *",
+    "git status*",
+    "git diff*",
+    "git log*",
+    "git add *",
+    "git commit *",
+    "git push *",
+    "ls *",
+    "cat *",
+    "head *",
+    "tail *"
+  ],
+  "deny_patterns": [
+    "rm ",
+    "rm -",
+    "sudo ",
+    "curl ",
+    "wget ",
+    "ssh ",
+    "sshpass ",
+    "--force",
+    "--hard",
+    "&& rm",
+    "| rm",
+    "; rm",
+    "chmod 777",
+    "eval ",
+    "base64 -d",
+    "eth_sendTransaction"
+  ],
+  "deny_wins": true
+}
