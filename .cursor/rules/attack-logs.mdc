@@ -1,0 +1,81 @@
+---
+description: "Защита логов атак: модель может только читать файлы логов, но не изменять их."
+globs:
+  - "logs/**"
+  - "attack_logs/**"
+  - "**/atk-*.json"
+  - "artifacts/workflow/traces/**"
+  - "artifacts/workflow/attack_logs/**"
+  - "artifacts/workflow/nuclei_steps/**"
+  - "artifacts/nuclei/**"
+  - "artifacts/orchestrator/**"
+  - "artifacts/**/trace-*.json"
+  - "artifacts/**/campaign-*.json"
+  - "artifacts/**/*.jsonl"
+alwaysApply: true
+---
+
+# Attack Logs Integrity
+
+Ты работаешь в репозитории HexStrike, где есть файлы логов **реальных** атак и кампаний (JSON-трассы, шаги Nuclei/Metasploit, отчёты оркестратора).
+
+Эти правила обязательны для Cursor, Cloud R1 и любых агентов, работающих в этом репозитории.
+
+## Immutable artifacts (read-only для AI)
+
+Никогда не редактируй, не перезаписывай, не удаляй и не «исправляй» содержимое:
+
+| Каталог / паттерн | Содержимое |
+|-------------------|------------|
+| `logs/**` | runtime / prod логи |
+| `attack_logs/**` | агрегированные логи атак |
+| `**/atk-*.json` | атаки по id |
+| `artifacts/workflow/traces/**` | campaign traces (`CampaignTraceLogger`) |
+| `artifacts/workflow/attack_logs/**` | attack-log snapshots |
+| `artifacts/workflow/nuclei_steps/**` | vuln_scan step logs |
+| `artifacts/nuclei/**` | raw Nuclei JSONL |
+| `artifacts/orchestrator/**` | dispatch / orchestrator logs |
+| `artifacts/**/trace-*.json`, `campaign-*.json` | трассы кампаний |
+| `artifacts/**/*.jsonl` | line-delimited scan reports |
+
+## Разрешено
+
+- **Читать** перечисленные файлы для анализа, skill-builder, отчётности.
+- Извлекать структуру шагов, параметры инструментов и **фактические** результаты.
+- Генерировать **новые** артефакты в других каталогах:
+  - `.cursor/skills/generated/`
+  - `config/skills/`
+  - `artifacts/workflow/built/` (build reports skill-builder)
+  - `plans/`, `reports/` (если созданы)
+
+## Запрещено
+
+- Любые изменения в файлах логов — даже если кажется, что там «ошибка» или «неполные данные».
+- Симулировать результаты сканов/эксплойтов и **записывать** их в логи.
+- Добавлять «примерные» или «дополненные» события в лог как будто они реально произошли.
+- Использовать `demo-*` CLI для **подмены** live-логов уже записанных кампаний.
+
+## Не путать с примерами схем
+
+Следующие файлы — **редактируемые шаблоны/схемы**, не live-логи:
+
+- `config/workflow/*.example.json`
+- `config/workflow/*.schema.json`
+- `config/skills/schemas/**`
+
+Их можно менять при разработке пайплайнов. Live-логи создаются только оркестратором, MCP-tools и worker-агентами.
+
+## Если пользователь просит «подправить лог»
+
+1. Объясни, что логи — immutable artifacts из реальных инструментов.
+2. Предложи создать отдельный файл: `attack_plan`, `attack_template`, skill JSON или build report.
+3. **Не изменяй** оригинальные логи.
+
+## Skill-builder / R1
+
+При интерпретации логов (attack log → MCP skill):
+
+- вход: только **чтение** существующего JSON;
+- выход: новые skills/plans в `skills/`, `config/`, `.cursor/skills/generated/` — **не** в каталоги логов.
+
+Всегда относись к логам атак как к неизменяемым артефактам (immutable artifacts).

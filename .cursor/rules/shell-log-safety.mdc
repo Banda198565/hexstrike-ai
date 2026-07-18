@@ -1,0 +1,44 @@
+---
+description: "Shell и MCP-команды не должны изменять файлы логов атак."
+globs: []
+alwaysApply: true
+---
+
+# Shell & MCP Commands Log Safety
+
+При проектировании shell-команд, MCP-tools и их вызовов из Cursor:
+
+## Запрещено для AI-генерируемых команд
+
+- Писать, дописывать, перезаписывать или удалять файлы в каталогах логов:
+  - `logs/**`, `attack_logs/**`, `**/atk-*.json`
+  - `artifacts/workflow/traces/**`
+  - `artifacts/workflow/attack_logs/**`
+  - `artifacts/workflow/nuclei_steps/**`
+  - `artifacts/nuclei/**`
+  - `artifacts/orchestrator/**`
+- Использовать `echo`, `tee`, `cat >`, `sed -i`, `jq` с перенаправлением **в** live-логи атак.
+- Генерировать команды, которые «дополняют» findings Nuclei/Metasploit в JSON-логах.
+
+## Разрешённые источники записи логов
+
+Изменения логов допустимы **только** от реальных инструментов и зарегистрированных хуков:
+
+- `CampaignTraceLogger` / orchestrator dispatch hooks
+- `nuclei_mcp_server.py` → `artifacts/nuclei/`
+- Worker-агенты через `./hexstrike-orchestrator dispatch …`
+- CLI `skill-builder demo-*` — копирует **example** в artifacts для offline-тестов; AI не должен вызывать это для подмены live-логов
+
+## Куда писать AI-артефакты
+
+| Тип | Каталог |
+|-----|---------|
+| MCP skills | `.cursor/skills/generated/`, `config/skills/` |
+| Build reports | `artifacts/workflow/built/` |
+| Планы / шаблоны | `plans/`, `config/workflow/` (только `*.example.json`, не live traces) |
+| Код / конфиг | `src/`, `scripts/`, `config/` |
+
+## Non-emulation (см. также `AGENTS.md`)
+
+- Не подставляй вывод инструментов в логи «для демонстрации».
+- Если данных нет — явно укажи `no data / not executed`; не создавай фиктивный лог.

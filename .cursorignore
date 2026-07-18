@@ -1,0 +1,13 @@
+# Immutable attack / campaign logs — AI must not read or edit via indexing.
+# Paste explicit excerpts into prompts when analysis is needed.
+# Schema examples under config/workflow/*.example.json are NOT ignored.
+
+logs/**
+attack_logs/**
+**/atk-*.json
+
+artifacts/workflow/traces/**
+artifacts/workflow/attack_logs/**
+artifacts/workflow/nuclei_steps/**
+artifacts/nuclei/**
+artifacts/orchestrator/**

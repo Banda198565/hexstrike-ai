@@ -39,6 +39,22 @@ All authorization, scope, sandbox, and execution policy is enforced by:
 - Если для шагов нет реальных логов или артефактов — явно указывай, что данные **отсутствуют** и должны быть получены внешним запуском.
 - Всегда работай с тем, что есть в реальном репозитории, логах (`config/workflow/attack-log.example.json`), JSON-трассах и конфигурациях; **не добавляй фиктивные результаты**.
 
+### Attack logs — read-only fence
+
+Cursor rules enforce **immutable attack logs**:
+
+| Rule | Path |
+|------|------|
+| Attack log integrity | `.cursor/rules/attack-logs.mdc` |
+| Shell/MCP log safety | `.cursor/rules/shell-log-safety.mdc` |
+| Hard index block (optional) | `.cursorignore` → `artifacts/workflow/*`, `logs/**`, `**/atk-*.json` |
+
+- **Live logs** (`artifacts/workflow/traces/`, `attack_logs/`, `nuclei_steps/`, `artifacts/nuclei/`) — read-only for AI; written only by orchestrator, MCP, worker agents.
+- **Schema examples** (`config/workflow/*.example.json`) — editable templates, not live campaign data.
+- Skill-builder / R1 **reads** logs, **writes** skills to `.cursor/skills/generated/` and `config/skills/` — never back into log directories.
+
+Если пользователь просит «подправить лог» — откажись; предложи `attack_plan`, skill JSON или build report в отдельном каталоге.
+
 Если пользователь просит «показать результат выполнения» или «имитировать ответ инструмента»:
 
 - отвечай только **шаблоном формата** (структурой JSON / схемой отчёта), без фиктивных значений;
