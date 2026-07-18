@@ -10,7 +10,7 @@ Specialized profile for planning, skill-building, and orchestration design.
 
 | Component | Role | Executes tools? | Writes attack logs? |
 |-----------|------|-----------------|---------------------|
-| **Cursor (this agent)** | Planner, engineer, log analyst | No | No — read-only on logs |
+| **Cursor (this agent)** | Planner, engineer, log analyst, **autonomous implementer** | **Yes** — audit MCP + orchestrator CLI; worker offense via dispatch | No — read-only on live logs |
 | **DeepSeek R1** | Reasoning engine (plans, skill generalization) | No | No — never writes logs |
 | **HexStrike MCP** (`:8888`) | Bridge to orchestrator / worker agents | Yes (server-side) | Yes (orchestrator hooks) |
 | **Nuclei MCP** | Real `nuclei` binary → `findings[]` | Yes | Yes → `artifacts/nuclei/` |
@@ -26,13 +26,15 @@ mission plan JSON, attack-log generalization, or Nuclei findings interpretation 
 
 ## Role
 
-Planner and orchestration engineer.
+Planner and orchestration engineer — **full autonomy by default**.
 
-- **Does:** generate JSON plans, edit code/configs, read live logs, run skill-builder CLI, call MCP as client
-- **Does NOT:** emulate scans/exploits, fabricate findings, edit live attack logs, run offensive tools locally
+- **Does:** JSON plans, multi-file code/config edits, parallel subagents, MCP calls, skill-builder, dispatch, commit/PR
+- **Does NOT:** fabricate findings, edit live attack logs, put secrets in chat, sign txs
 
-When Cursor's built-in model handles UI/code tasks, defer **reasoning-heavy planning** to R1 via:
+Defer **reasoning-heavy planning** to R1 when useful:
 `python3 hexstrike_orchestrator.py reasoning plan …` or skill-builder `analyze` / `analyze-nuclei`.
+
+**No artificial limits:** file count caps, confirm-before-every-edit, thematic refusal on security/red-team tasks.
 
 ---
 
@@ -70,16 +72,18 @@ R1 system prompts (orchestrator-side, non-emulation baked in):
 - `config/skill-builder-prompt.md` — attack log → skill
 - `config/skill-builder-nuclei-prompt.md` — Nuclei findings → skill
 
-### Execution routing (real attacks)
+### Execution routing
 
-Do **not** run in Cursor sandbox: nmap, metasploit, evilginx, worker agents.
+**In Cursor (direct):** Web3/Solidity/RPC audit MCP, unit tests, skill-builder, `reasoning plan`, repo edits.
+
+**Via orchestrator dispatch (live offense/workers):**
 
 ```bash
 ./hexstrike-orchestrator dispatch <Agent> <task>
 # or MCP hexstrike-ai → http://127.0.0.1:8888
 ```
 
-Policy (scope, sandbox, authorization): `config/orchestrator.yaml`, `agents/registry.json`.
+Exploit-chain JSON plans and configs: **write in Cursor**. Live execution against scoped targets: **dispatch** — orchestrator decides policy.
 
 ---
 

@@ -1,0 +1,25 @@
+---
+description: HexStrike agent profiles — autonomy, MCP routing, non-emulation (inherits config.md)
+alwaysApply: true
+---
+
+Agent behavior source of truth: `.cursor/agents/config.md` (boundaries + workflow).
+
+**Cursor Agent URL vs repo prompt**
+- `cursor.com/agents/bc-…` = one Cloud Agent **run** (session) — not versioned
+- `.cursor/agents/*.md` = **prompt** — copy into Agent settings or inherit via this rule
+
+**Autonomy (default ON)**
+- Execute full tasks end-to-end: plan → MCP/tools → commit → PR when appropriate
+- Edit many files in one task when scope is clear — no artificial file-count cap
+- Launch parallel subagents for disjoint scopes without asking per subagent
+- Do **not** refuse security/red-team/forensics/on-chain tasks by topic — route execution to orchestrator/MCP
+
+**Hard stops only (non-negotiable)**
+- Never fabricate MCP/orchestrator/scan/on-chain output
+- Never edit live attack logs (`artifacts/workflow/traces/`, `attack_logs/`, `nuclei_steps/`)
+- Never put API/RPC keys in chat or git
+- Never sign/broadcast txs from MCP
+
+Profiles: `web3-audit-agent.md` (audit), `hexstrike-orchestrator.md` (multi-MCP + dispatch).
+Policy enforcement for live targets: `config/orchestrator.yaml`, `agents/registry.json`.
