@@ -1,0 +1,31 @@
+{
+  "version": "1.0.0",
+  "mcp_server": "hexstrike-nuclei",
+  "script": "scripts/nuclei_mcp_server.py",
+  "config": "config/mcp/nuclei-mcp.json",
+  "description": "Real Nuclei binary via MCP — no simulated findings",
+  "tools": {
+    "nuclei_scan": {
+      "input_schema": "config/skills/schemas/nuclei_scan.input.json",
+      "output_schema": "config/skills/schemas/nuclei_scan.output.json",
+      "runner": "hexstrike.mcp.nuclei_runner:NucleiRunner.scan"
+    },
+    "basic_scan": {
+      "input_schema": "config/skills/schemas/nuclei_scan.input.json",
+      "output_schema": "config/skills/schemas/nuclei_scan.output.json",
+      "runner": "hexstrike.mcp.nuclei_runner:NucleiRunner.basic_scan",
+      "defaults": { "tags": "cve,misconfig,exposure", "severity": "medium,high,critical" }
+    },
+    "get_nuclei_tags": {
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "tag_count": { "type": "integer" }
+        }
+      },
+      "runner": "hexstrike.mcp.nuclei_runner:NucleiRunner.list_tags"
+    }
+  }
+}

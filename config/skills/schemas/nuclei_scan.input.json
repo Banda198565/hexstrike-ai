@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "nuclei_scan.input",
+  "type": "object",
+  "required": ["target"],
+  "properties": {
+    "target": {
+      "type": "string",
+      "description": "URL or IP/host, e.g. https://example.com or 203.0.113.10"
+    },
+    "tags": {
+      "type": "string",
+      "description": "CSV template tags, e.g. cve,wordpress"
+    },
+    "severity": {
+      "type": "string",
+      "description": "Minimum severity filter: low, medium, high, critical"
+    },
+    "rate_limit": {
+      "type": "integer",
+      "default": 50,
+      "description": "Max requests per second"
+    },
+    "json_output_path": {
+      "type": "string",
+      "description": "Optional path for raw nuclei -jsonl report"
+    },
+    "timeout_sec": {
+      "type": "integer",
+      "default": 600
+    }
+  }
+}
