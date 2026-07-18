@@ -5,10 +5,10 @@ set -eo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
-# ВАЖНО: без ":" в имени — bash на Mac ломается на deepseek-v2.5:7b
-CHAT_MODEL="deepseek-v2.5"
+# Quoted model tags (contain ":") — never leave unquoted on Mac bash.
+CHAT_MODEL="${HEXSTRIKE_CHAT_MODEL:-qwen2.5-coder:7b}"
 WRAPPER_MODEL="hexstrike-orchestrator"
-OLLAMA_HOST="http://127.0.0.1:11434"
+OLLAMA_HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"
 FASTFILE="/tmp/hexstrike-fast.modelfile"
 
 echo "=== HexStrike go ==="
@@ -27,10 +27,10 @@ if ! curl -sf --max-time 5 "${OLLAMA_HOST}/api/tags" >/dev/null; then
 fi
 
 echo "[pull] ${CHAT_MODEL} ..."
-ollama list 2>/dev/null | grep -q "deepseek-v2.5" || ollama pull "${CHAT_MODEL}"
+ollama list 2>/dev/null | grep -q "qwen2.5-coder" || ollama pull "${CHAT_MODEL}"
 
-cat > "${FASTFILE}" << 'MODELEOF'
-FROM deepseek-v2.5
+cat > "${FASTFILE}" << MODELEOF
+FROM ${CHAT_MODEL}
 PARAMETER num_predict 128
 PARAMETER num_thread 8
 PARAMETER temperature 0.3

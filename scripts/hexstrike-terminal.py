@@ -19,8 +19,9 @@ WORKFLOWS = ROOT / "agents/workflows.json"
 ORCHESTRATOR = ROOT / "scripts/hexstrike-orchestrator.py"
 MODELFILE = ROOT / "config/hexstrike-orchestrator.modelfile"
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/")
-# Средняя DeepSeek БЕЗ R1-CoT (быстрый чат). R1 зависает на thinking 5+ мин.
-CHAT_MODEL = os.environ.get("HEXSTRIKE_CHAT_MODEL", "deepseek-v2.5")
+# Default: Qwen coder (fast local chat). Override with HEXSTRIKE_CHAT_MODEL.
+# Avoid deepseek-r1 for interactive chat — long thinking often hits timeout.
+CHAT_MODEL = os.environ.get("HEXSTRIKE_CHAT_MODEL", "qwen2.5-coder:7b")
 CHAT_TIMEOUT = int(os.environ.get("HEXSTRIKE_CHAT_TIMEOUT", "90"))
 
 
@@ -108,7 +109,7 @@ def ollama_chat(messages: list[dict], model: str) -> str:
         if elapsed >= CHAT_TIMEOUT:
             result["error"] = (
                 f"Таймаут {CHAT_TIMEOUT}с. Используй /run для агентов (без LLM). "
-                f"Или: HEXSTRIKE_CHAT_MODEL=deepseek-v2.5:7b ./hexstrike-go.sh"
+                f"Или: HEXSTRIKE_CHAT_MODEL=qwen2.5-coder:7b ./hexstrike-go.sh"
             )
             break
         time.sleep(1)
@@ -121,7 +122,7 @@ def ollama_chat(messages: list[dict], model: str) -> str:
     if not result["text"].strip():
         raise RuntimeError(
             "Пустой ответ. R1-модели зависают на thinking. "
-            "Запусти: export HEXSTRIKE_CHAT_MODEL=deepseek-v2.5:7b && ./hexstrike-go.sh"
+            "Запусти: export HEXSTRIKE_CHAT_MODEL=qwen2.5-coder:7b && ./hexstrike-go.sh"
         )
     return result["text"].strip()
 
@@ -215,6 +216,8 @@ def resolve_chat_model() -> str:
 
     for candidate in (
         CHAT_MODEL,
+        "qwen2.5-coder:7b",
+        "qwen2.5-coder",
         "deepseek-v2.5:7b",
         "deepseek-v2.5",
         "deepseek-r1:7b",
