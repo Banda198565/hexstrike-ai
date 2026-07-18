@@ -1,0 +1,47 @@
+{
+  "server": "solidity_audit_mcp",
+  "version": "1.0.0",
+  "non_emulation": true,
+  "tools": [
+    {
+      "name": "parse_contract",
+      "phase": "contract_audit",
+      "description": "Parse Solidity metadata (pragma, contracts, imports)"
+    },
+    {
+      "name": "run_static_analysis_slither",
+      "phase": "contract_audit",
+      "description": "Real Slither JSON — empty findings if clean"
+    },
+    {
+      "name": "run_bytecode_scan_mythril",
+      "phase": "contract_audit",
+      "description": "Real Mythril analyze — skipped if not installed"
+    },
+    {
+      "name": "check_swc_patterns",
+      "phase": "contract_audit",
+      "description": "SWC hints from Slither + source heuristics"
+    },
+    {
+      "name": "check_openzeppelin_rules",
+      "phase": "contract_audit",
+      "description": "OZ import/guard hygiene heuristics"
+    },
+    {
+      "name": "fetch_onchain_data",
+      "phase": "contract_audit",
+      "description": "Read-only eth_getCode"
+    },
+    {
+      "name": "detect_audit_tools",
+      "phase": "contract_audit",
+      "description": "Report installed audit binaries"
+    },
+    {
+      "name": "full_audit",
+      "phase": "contract_audit",
+      "description": "parse → slither → swc → oz pipeline"
+    }
+  ]
+}
