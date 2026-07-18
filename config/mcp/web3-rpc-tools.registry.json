@@ -1,0 +1,21 @@
+{
+  "server": "web3_rpc_mcp",
+  "version": "1.0.0",
+  "non_emulation": true,
+  "read_only": true,
+  "credential_policy": "WEB3_RPC_URL and WEB3_RPC_KEY must be set in MCP server env (mcp.json), never in agent prompts",
+  "recommended_order": [
+    "detect_rpc_config",
+    "rpc_contract_audit",
+    "rpc_wallet_risk",
+    "rpc_tx_trace",
+    "rpc_event_intel"
+  ],
+  "tools": [
+    {"name": "detect_rpc_config", "phase": "web3_rpc"},
+    {"name": "rpc_contract_audit", "phase": "web3_rpc"},
+    {"name": "rpc_tx_trace", "phase": "web3_rpc"},
+    {"name": "rpc_wallet_risk", "phase": "web3_rpc"},
+    {"name": "rpc_event_intel", "phase": "web3_rpc"}
+  ]
+}

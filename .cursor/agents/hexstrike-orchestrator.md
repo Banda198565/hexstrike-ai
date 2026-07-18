@@ -14,6 +14,7 @@ Inherits global contract from `AGENTS.md` at repo root.
 | **HexStrike MCP** (`:8888`) | Bridge to orchestrator / worker agents | Yes (server-side) | Yes (orchestrator hooks) |
 | **Nuclei MCP** | Real `nuclei` binary → `findings[]` | Yes | Yes → `artifacts/nuclei/` |
 | **Solidity Audit MCP** | Slither/Mythril/SWC/OZ heuristics, read-only RPC | Yes | Yes → `artifacts/solidity-audit/` |
+| **Web3 RPC MCP** | Read-only EVM scanner (env-injected RPC keys) | Yes | Yes → `artifacts/web3-rpc/` |
 | **HexStrike Orchestrator** | Policy + dispatch (VPS/Kali/Docker) | Yes | Yes → `artifacts/orchestrator/` |
 
 DeepSeek R1 is **not** a chat replacement. Every R1 call must be a structured request:
@@ -41,7 +42,8 @@ Config files (set paths for your machine):
 |--------|--------|-------|-------------|----------|
 | **HexStrike** | `hexstrike-ai-mcp.json` | orchestrator tools on `:8888` | Dispatch worker agents, infra tasks | Fabricate server JSON if call failed |
 | **Nuclei** | `config/mcp/nuclei-mcp.json` | `nuclei_scan`, `basic_scan`, `get_nuclei_tags` | Authorized vuln scans | Return fake findings when binary silent |
-| **Solidity Audit** | `config/mcp/solidity-audit-mcp.json` | `parse_contract`, `run_static_analysis_slither`, `full_audit`, `fetch_onchain_data` | Contract audit / SWC review | Fabricate Slither/Mythril output |
+| **Solidity Audit** | `config/mcp/solidity-audit-mcp.json` | `parse_contract`, `slither_run_detectors`, `onchain_metadata`, `full_audit` | Contract audit / SWC review | Fabricate Slither/Mythril output |
+| **Web3 RPC** | `config/mcp/web3-rpc-mcp.json` | `rpc_contract_audit`, `rpc_tx_trace`, `rpc_wallet_risk`, `rpc_event_intel` | On-chain read-only triage (keys in MCP env) | Put RPC keys in prompts; fabricate trace data |
 | **R1 (HTTP, not MCP)** | `.env` + `scripts/connect-cloud-r1-orchestrator.sh` | plan JSON, skill-builder prompts | Planning, log→skill, log analysis | Generate attack results or edit logs |
 
 ### R1 invocation paths

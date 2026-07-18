@@ -1,0 +1,36 @@
+{
+  "chains": {
+    "mainnet": {
+      "chain_id": "0x1",
+      "aliases": ["ethereum", "eth"]
+    },
+    "sepolia": {
+      "chain_id": "0xaa36a7",
+      "aliases": []
+    },
+    "polygon": {
+      "chain_id": "0x89",
+      "aliases": ["matic"]
+    },
+    "bsc": {
+      "chain_id": "0x38",
+      "aliases": ["binance", "bnb"]
+    },
+    "arbitrum": {
+      "chain_id": "0xa4b1",
+      "aliases": []
+    },
+    "base": {
+      "chain_id": "0x2105",
+      "aliases": []
+    }
+  },
+  "public_fallbacks": {
+    "mainnet": "https://ethereum.publicnode.com",
+    "sepolia": "https://ethereum-sepolia.publicnode.com",
+    "polygon": "https://polygon-bor.publicnode.com",
+    "bsc": "https://bsc-dataseed.binance.org",
+    "arbitrum": "https://arbitrum-one.publicnode.com",
+    "base": "https://base.publicnode.com"
+  }
+}
