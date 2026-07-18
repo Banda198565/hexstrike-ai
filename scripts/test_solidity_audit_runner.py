@@ -56,16 +56,49 @@ def test_detect_tools() -> None:
     assert "tools" in r
 
 
+def test_dedupe_and_security_score() -> None:
+    from hexstrike.mcp.solidity_audit_runner import _dedupe_vulnerabilities, _normalize_vulnerability, _security_score
+
+    a = _normalize_vulnerability({"check": "reentrancy-eth", "impact": "High", "description": "x"}, tool="slither")
+    b = _normalize_vulnerability({"check": "reentrancy-eth", "impact": "High", "description": "x"}, tool="slither")
+    c = _normalize_vulnerability({"check": "tx-origin", "impact": "Medium", "description": "y"}, tool="swc")
+    deduped = _dedupe_vulnerabilities([a, b, c])
+    assert len(deduped) == 2
+    assert _security_score(deduped) > 0
+
+
+def test_slither_functions_fallback() -> None:
+    from hexstrike.mcp.solidity_audit_runner import slither_functions
+
+    src = "pragma solidity ^0.8.0; contract T { function foo() public {} modifier onlyX() {} }"
+    r = slither_functions(src, source_is_code=True)
+    assert r["success"]
+    assert r["function_count"] >= 1
+
+
+def test_scan_contract_inline() -> None:
+    from hexstrike.mcp.solidity_audit_runner import scan_contract
+
+    r = scan_contract(SAMPLE, source_is_code=True)
+    assert r["success"]
+    assert "security_score" in r
+    assert "vulnerabilities" in r
+
+
 def main() -> int:
-    for fn in [
+    tests = [
         test_parse_contract_inline,
         test_check_oz_rules,
         test_swc_heuristic_tx_origin,
         test_detect_tools,
-    ]:
+        test_dedupe_and_security_score,
+        test_slither_functions_fallback,
+        test_scan_contract_inline,
+    ]
+    for fn in tests:
         fn()
         print(f"OK {fn.__name__}")
-    print(f"All {4} tests passed")
+    print(f"All {len(tests)} tests passed")
     return 0
 
 

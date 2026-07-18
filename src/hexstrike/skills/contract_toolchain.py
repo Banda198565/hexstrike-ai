@@ -145,6 +145,62 @@ class ContractToolchain:
                 result.findings = [{"raw": result.stdout[:2000]}]
         return result
 
+    def aderyn_scan(self, project_dir: Path) -> ToolResult:
+        binary = _which("aderyn")
+        if not binary:
+            return ToolResult("aderyn", ok=False, skipped=True, skip_reason="aderyn not installed")
+        out_md = project_dir / "aderyn-report.md"
+        result = self._run(
+            "aderyn",
+            [binary, str(project_dir), "--output", str(out_md)],
+            cwd=project_dir if project_dir.is_dir() else project_dir.parent,
+        )
+        if out_md.is_file():
+            text = out_md.read_text(encoding="utf-8", errors="replace")
+            result.stdout = text
+            # Parse markdown issue headers — real output only
+            findings: list[dict[str, Any]] = []
+            for line in text.splitlines():
+                line = line.strip()
+                if line.startswith("## ") or line.startswith("### "):
+                    title = line.lstrip("#").strip()
+                    if title and title.lower() not in ("summary", "report"):
+                        findings.append({"title": title, "source": "aderyn_markdown"})
+            result.findings = findings
+            result.ok = True
+        return result
+
+    def slither_raw_json(self, contract_path: Path) -> tuple[dict[str, Any] | None, ToolResult]:
+        """Run slither --json and return parsed payload + ToolResult."""
+        binary = _which("slither")
+        if not binary:
+            tr = ToolResult("slither", ok=False, skipped=True, skip_reason="slither not installed")
+            return None, tr
+        result = self._run(
+            "slither",
+            [binary, str(contract_path), "--json", "-"],
+            cwd=contract_path.parent,
+        )
+        payload: dict[str, Any] | None = None
+        if result.stdout.strip():
+            try:
+                payload = json.loads(result.stdout)
+                detectors = (payload.get("results") or {}).get("detectors", [])
+                result.findings = [
+                    {
+                        "check": d.get("check"),
+                        "impact": d.get("impact"),
+                        "confidence": d.get("confidence"),
+                        "description": d.get("description"),
+                        "elements": d.get("elements") or [],
+                    }
+                    for d in detectors
+                ]
+                result.ok = bool(payload.get("success", result.ok))
+            except json.JSONDecodeError:
+                result.findings = [{"raw": result.stdout[:2000]}]
+        return payload, result
+
     def echidna_fuzz(self, project_dir: Path) -> ToolResult:
         binary = _which("echidna-test")
         if not binary:

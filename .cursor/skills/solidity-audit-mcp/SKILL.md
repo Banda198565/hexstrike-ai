@@ -1,40 +1,43 @@
 ---
 name: solidity-audit-mcp
-description: Smart contract security audit via HexStrike Solidity Audit MCP. Use when analyzing Solidity/EVM contracts with Slither, Mythril, SWC patterns, OpenZeppelin heuristics, or read-only on-chain bytecode. Real tool output only — never fabricate findings.
+description: Smart contract static analysis via HexStrike Solidity Audit MCP (Slither, Aderyn, SWC, OZ heuristics). Use for Solidity audit workflows in Cursor. Real tool output only — never fabricate findings.
 ---
 
 # Solidity Audit MCP
 
-Audit smart contracts through **HexStrike Solidity Audit MCP** (`scripts/solidity_audit_mcp_server.py`).
+MCP server: `scripts/solidity_audit_mcp_server.py`  
+Config: `config/mcp/solidity-audit-mcp.json`
 
-## MCP config
+## Recommended audit order (static analysis)
 
-- `config/mcp/solidity-audit-mcp.json`
-- Registry: `config/mcp/solidity-audit-tools.registry.json`
-
-## Recommended audit order
-
-1. `detect_audit_tools` — what is installed locally
+1. `detect_audit_tools` — slither / aderyn / mythril installed?
 2. `parse_contract` — pragma, contracts, imports
-3. `run_static_analysis_slither` — primary static analysis
-4. `check_swc_patterns` — SWC mapping + source heuristics
-5. `check_openzeppelin_rules` — OZ import/guard hygiene
-6. `run_bytecode_scan_mythril` — optional deep scan (slow)
-7. `fetch_onchain_data` — read-only bytecode if address known
-8. Or `full_audit` — runs parse → slither → swc → oz in one call
+3. `slither_run_detectors` — primary static analysis
+4. `slither_functions` — external entry points
+5. `check_swc_patterns` — SWC mapping
+6. `slither_critical_sinks` — high-impact sinks for manual review
+7. `check_openzeppelin_rules` — OZ hygiene heuristics
+8. `run_aderyn` — optional formal-style patterns (if installed)
+9. `list_vulnerabilities` — deduplicated list + `security_score`
+10. `scan_contract` — one-shot aggregate (steps 2–8 summary)
+
+Optional (heavy): `run_bytecode_scan_mythril`, `full_audit`
+
+## Report format for Cursor agent
+
+After MCP tools return, write human report as table:
+
+| category | severity | swc_id | exploitability_hint | recommendation |
+|----------|----------|--------|---------------------|----------------|
+
+Use only data from MCP JSON — if `skipped: true`, state tool missing; do not invent rows.
 
 ## Non-emulation
 
-- Empty `findings[]` means tools found nothing or tool skipped — **do not invent CVEs**
-- `skipped: true` + `skip_reason` → tell user to install tool, do not simulate output
-- On-chain tool is **read-only** (`eth_getCode`) — no private keys, no txs
-- Audit reports → `artifacts/solidity-audit/` — not attack campaign logs
+- Empty `findings` / `vulnerabilities: []` = clean or tool unavailable
+- `security_score: 0` with empty list = no fabricated risk
+- `fetch_onchain_data` = read-only RPC
 
-## Cursor agent integration
+## Output artifacts
 
-Use with **HexStrike Orchestrator** agent. Execution policy remains in orchestrator; MCP returns real binary/RPC output only.
-
-## Related catalog skills
-
-- `evm_contract_analyze` — RPC contract model
-- `vuln_pattern_matcher` — pattern matching in reasoning plans
+`artifacts/solidity-audit/` — tool reports (not attack campaign logs)

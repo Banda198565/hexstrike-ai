@@ -122,6 +122,60 @@ def fetch_onchain_data(address: str, chain: str = "ethereum") -> str:
 
 
 @mcp.tool()
+def slither_run_detectors(source_or_path: str, source_is_code: bool = False) -> str:
+    """Run all Slither detectors — normalized JSON findings."""
+    inp = {"source_or_path": source_or_path[:200], "source_is_code": source_is_code}
+    result = sar.slither_run_detectors(source_or_path, source_is_code=source_is_code)
+    _maybe_trace("slither_run_detectors", inp, result)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def slither_functions(source_or_path: str, source_is_code: bool = False) -> str:
+    """List contract functions and modifiers (Slither JSON or source fallback)."""
+    inp = {"source_or_path": source_or_path[:200], "source_is_code": source_is_code}
+    result = sar.slither_functions(source_or_path, source_is_code=source_is_code)
+    _maybe_trace("slither_functions", inp, result)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def slither_critical_sinks(source_or_path: str, source_is_code: bool = False) -> str:
+    """High-impact sinks: delegatecall, transfers, reentrancy patterns from Slither."""
+    inp = {"source_or_path": source_or_path[:200], "source_is_code": source_is_code}
+    result = sar.slither_critical_sinks(source_or_path, source_is_code=source_is_code)
+    _maybe_trace("slither_critical_sinks", inp, result)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def run_aderyn(source_or_path: str, source_is_code: bool = False) -> str:
+    """Run real Aderyn static analysis. Skipped if aderyn not installed."""
+    inp = {"source_or_path": source_or_path[:200], "source_is_code": source_is_code}
+    result = sar.run_aderyn(source_or_path, source_is_code=source_is_code)
+    _maybe_trace("run_aderyn", inp, result)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def list_vulnerabilities(source_or_path: str, source_is_code: bool = False) -> str:
+    """Aggregated deduplicated vulnerability list with security_score."""
+    inp = {"source_or_path": source_or_path[:200], "source_is_code": source_is_code}
+    result = sar.list_vulnerabilities(source_or_path, source_is_code=source_is_code)
+    _maybe_trace("list_vulnerabilities", inp, result)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def scan_contract(source_or_path: str, source_is_code: bool = False) -> str:
+    """Quick aggregated scan: parse + vulnerabilities + critical sinks + security_score."""
+    inp = {"source_or_path": source_or_path[:200], "source_is_code": source_is_code}
+    result = sar.scan_contract(source_or_path, source_is_code=source_is_code)
+    _maybe_trace("scan_contract", inp, result)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
 def detect_audit_tools() -> str:
     """List locally available audit tools (slither, mythril, forge, echidna)."""
     result = sar.detect_audit_tools()
