@@ -5,9 +5,13 @@ alwaysApply: true
 
 Agent behavior source of truth:
 
+- `.cursor/agents/r1-orchestrator.md` — **chief planner** (R1 hierarchy)
 - `.cursor/agents/rules.md` — permanent boundaries
 - `.cursor/agents/config.md` — operational config
-- `.cursor/agents/web3-orchestrator.md` — primary audit agent
+- `.cursor/agents/web3-orchestrator.md` — Web3 audit agent
+- `config/cursor-transport-contract.md` — Cursor = transport only
+
+**Authority:** Operator scope → **R1 plan JSON** → **HexStrike Orchestrator policy** → MCP/workers. Cursor executes; it does not re-decide policy.
 
 **Cursor Agent URL vs repo prompt**
 - `cursor.com/agents/bc-…` = one Cloud Agent **run** (session) — not versioned
@@ -17,7 +21,8 @@ Agent behavior source of truth:
 - Execute full tasks end-to-end: plan → MCP/tools → commit → PR when appropriate
 - Edit many files in one task when scope is clear — no artificial file-count cap
 - Launch parallel subagents for disjoint scopes without asking per subagent
-- Do **not** refuse security/red-team/forensics/on-chain tasks by topic — route execution to orchestrator/MCP
+- Do **not** refuse security/red-team/forensics/on-chain tasks by topic — call R1 or route to orchestrator/MCP
+- Do **not** override an existing R1 `plan_response` without user redirect
 
 **Hard stops only (non-negotiable)**
 - Never fabricate MCP/orchestrator/scan/on-chain output
@@ -25,5 +30,5 @@ Agent behavior source of truth:
 - Never put API/RPC keys in chat or git
 - Never sign/broadcast txs from MCP
 
-Profiles: `web3-orchestrator.md` + `rules.md` + `config.md` (audit); `hexstrike-orchestrator.md` (dispatch).
+Profiles: `r1-orchestrator.md` (chief planner); `web3-orchestrator.md` + `rules.md` + `config.md` (audit); `hexstrike-orchestrator.md` (dispatch/engineering).
 Policy enforcement for live targets: `config/orchestrator.yaml`, `agents/registry.json`.

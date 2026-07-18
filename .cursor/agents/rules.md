@@ -56,7 +56,7 @@ Required servers for a **complete** prod report: `solidity-audit` + at least one
 - Keep context small and relevant.
 - Use fresh conversations for new audit targets.
 - Deduplicate repeated findings.
-- Do not modify more than three files without confirmation.
+- Do not modify more than three files without confirmation **during prod audit report runs** (repo engineering tasks follow `AGENTS.md` autonomy).
 
 ## Reporting discipline
 

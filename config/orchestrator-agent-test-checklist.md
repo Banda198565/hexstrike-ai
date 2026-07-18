@@ -201,6 +201,17 @@ Report: `artifacts/web3-audit/orchestrator-phased-test-report.md`
 | **5** | Multi-target on-chain | `field-targets-3.json` (BSC) | proxy + EOA + contract triage; graceful skip without Forta key |
 | **6** | Exploitation extension | `exploitation-extension.py` + gates | `HEXSTRIKE_SANDBOX=1`; Playbook D; gate tests pass; chain plan artifact |
 
+### R1 hierarchy (static)
+
+| Check | Path | Pass criteria |
+|-------|------|---------------|
+| Chief planner profile | `.cursor/agents/r1-orchestrator.md` | R1 > Orchestrator > Cursor documented |
+| Always-on rule | `.cursor/rules/r1-orchestrator-hierarchy.mdc` | Cursor = transport; no policy override |
+| R1 system prompt | `config/reasoning-system-prompt.md` | JSON plan + `cursor_handoff` contract |
+| Transport contract | `config/cursor-transport-contract.md` | Writable vs read-only paths |
+
+Verified in phased test **phase 4** (`r1_hierarchy_*` checks).
+
 ### Phase 1 — manual MCP (Cursor UI)
 
 ```bash

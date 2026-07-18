@@ -1,13 +1,33 @@
 # HexStrike — Cursor Agent Contract
 
-Cursor is a **UI shell and code editor** for the HexStrike stack.
+Cursor is a **UI shell and transport layer** for the HexStrike stack.
 Cursor does **not** decide what may be executed, scanned, or tested against live targets.
+**DeepSeek R1** produces mission plans; **HexStrike Orchestrator** enforces policy and dispatch.
+
+### Authority stack
+
+```
+Operator scope (authorization_ref, targets, mode)
+        ↓
+DeepSeek R1 — plan JSON, skill order, cursor_handoff
+        ↓
+HexStrike Orchestrator — config/orchestrator.yaml, agents/registry.json
+        ↓
+MCP / worker agents — real tool execution
+        ↓
+Artifacts
+        ↑
+Cursor — transport (files, terminal, MCP client, git) — no policy override
+```
+
+See: `.cursor/agents/r1-orchestrator.md`, `config/cursor-transport-contract.md`, `config/reasoning-system-prompt.md`.
 
 ### Cursor Agent URL vs repo prompt
 
 | Layer | What it is | Where |
 |-------|------------|-------|
 | `cursor.com/agents/bc-…` | One Cloud Agent **run** (model, branch, session) | Cursor UI — ephemeral |
+| `.cursor/agents/r1-orchestrator.md` | **Chief planner profile** — R1 hierarchy | Git — source of truth |
 | `.cursor/agents/*.md` | Agent **prompt** — role, inputs, outputs, MCP wiring | Git — source of truth |
 | `.cursor/agents/config.md` | Shared boundaries + workflow order | All profiles inherit |
 | `.cursor/rules/agents-config.mdc` | Always-on wiring for autonomy + hard stops | Cursor Rules |
@@ -38,7 +58,8 @@ All authorization, scope, sandbox, and execution policy is enforced by:
 
 | Layer | Responsibility |
 |-------|----------------|
-| **Cursor** | Plans, code, JSON schemas, log analysis — no tool output fabrication |
+| **R1 (DeepSeek)** | Mission plan JSON, skill selection, cursor_handoff — no direct execution |
+| **Cursor** | Transport: plans, code, JSON schemas, log analysis, MCP proxy — no tool output fabrication |
 | **MCP** | Transparent bridge to HexStrike server — real results only from server response |
 | **HexStrike Orchestrator** | Policy engine + actual execution on VPS / Kali / Docker |
 

@@ -252,6 +252,22 @@ def phase4_rules_compliance() -> dict[str, Any]:
         "config_plan_first": _status("plan-first" in config.lower(), "plan-first in config"),
         "config_mcp_order": _status("solidity-audit" in config and "foundry" in config, "MCP order documented"),
         "secrets_not_in_prompt": _status("never in agent prompts" in config.lower() or "env" in config.lower(), "secrets policy"),
+        "r1_hierarchy_rule": _status(
+            (ROOT / ".cursor/rules/r1-orchestrator-hierarchy.mdc").is_file(),
+            "r1-orchestrator-hierarchy.mdc present",
+        ),
+        "r1_orchestrator_profile": _status(
+            (ROOT / ".cursor/agents/r1-orchestrator.md").is_file(),
+            "r1-orchestrator.md present",
+        ),
+        "reasoning_system_prompt": _status(
+            (ROOT / "config/reasoning-system-prompt.md").is_file(),
+            "reasoning-system-prompt.md present",
+        ),
+        "cursor_transport_contract": _status(
+            (ROOT / "config/cursor-transport-contract.md").is_file(),
+            "cursor-transport-contract.md present",
+        ),
         "simulated_patch_gate": _status(
             True,
             "agent should ask before edits — verified by rules.md constraint (manual Cursor UI test)",
