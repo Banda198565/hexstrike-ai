@@ -40,6 +40,18 @@
       ],
       "description": "Faro Fino MCP — second-opinion deep scan (Slither/Mythril/Aderyn). Requires Docker image.",
       "timeout": 900
+    },
+    "plaid-cfo": {
+      "command": "python3",
+      "args": ["scripts/plaid_cfo_mcp_server.py"],
+      "env": {
+        "PLAID_CLIENT_ID": "${PLAID_CLIENT_ID}",
+        "PLAID_SECRET": "${PLAID_SECRET}",
+        "PLAID_ACCESS_TOKEN": "${PLAID_ACCESS_TOKEN}",
+        "PLAID_ENV": "sandbox"
+      },
+      "description": "Personal CFO — read-only Plaid (accounts, transactions, holdings, liabilities).",
+      "timeout": 120
     }
   }
 }

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "plaid-cfo": {
+      "command": "python3",
+      "args": ["scripts/plaid_cfo_mcp_server.py"],
+      "env": {
+        "PLAID_CLIENT_ID": "${PLAID_CLIENT_ID}",
+        "PLAID_SECRET": "${PLAID_SECRET}",
+        "PLAID_ACCESS_TOKEN": "${PLAID_ACCESS_TOKEN}",
+        "PLAID_ENV": "sandbox"
+      },
+      "description": "Personal CFO — read-only Plaid (accounts, transactions, holdings, liabilities). Keys in env only.",
+      "timeout": 120
+    }
+  }
+}

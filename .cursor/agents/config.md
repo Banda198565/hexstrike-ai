@@ -54,3 +54,27 @@ Merge findings with source tags; dedupe before report.
 ## Secrets
 
 API keys in MCP `env` only — never in agent prompts. See `.env.example` (`CHAINSTACK_API_KEY`, `ETH_RPC_URL`).
+
+## Personal CFO (Plaid) — separate stack
+
+Traditional finance read-only — **not** mixed with Web3 audit reports unless user asks.
+
+| Item | Path |
+|------|------|
+| Agent | `.cursor/agents/personal-cfo-agent.md` |
+| MCP | `plaid-cfo` in `.cursor/mcp.json` |
+| Skill | `.cursor/skills/plaid-cfo-mcp/SKILL.md` |
+
+Tool order: `detect_plaid_config` → accounts → transactions → holdings → liabilities → `plaid_cfo_summary`.
+
+## Desktop target pool (тест ЦЕЛИ)
+
+| Step | Command |
+|------|---------|
+| Sync from Mac | `scp -r ~/Desktop/тест\ ЦЕЛИ user@host:/workspace/data/pentest/targets/` |
+| Local sync | `bash scripts/sync-desktop-targets.sh ~/Desktop/тест\ ЦЕЛИ` |
+| Ingest | `python3 scripts/ingest-target-pool.py --root $SAMSON_TARGETS_DIR` |
+| Dry-run | `python3 scripts/ingest-target-pool.py --root $SAMSON_TARGETS_DIR --dry-run` |
+
+Default VPS path: `data/pentest/targets/` (seed: `web3-field-targets.txt`).  
+Loader: `samson/core/target_loader.py` → `artifacts/target-pool/ingested-pool.json`.

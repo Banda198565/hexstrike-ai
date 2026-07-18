@@ -3,7 +3,11 @@ description: HexStrike agent profiles — autonomy, MCP routing, non-emulation (
 alwaysApply: true
 ---
 
-Agent behavior source of truth: `.cursor/agents/config.md` (boundaries + workflow).
+Agent behavior source of truth:
+
+- `.cursor/agents/rules.md` — permanent boundaries
+- `.cursor/agents/config.md` — operational config
+- `.cursor/agents/web3-orchestrator.md` — primary audit agent
 
 **Cursor Agent URL vs repo prompt**
 - `cursor.com/agents/bc-…` = one Cloud Agent **run** (session) — not versioned
@@ -21,5 +25,5 @@ Agent behavior source of truth: `.cursor/agents/config.md` (boundaries + workflo
 - Never put API/RPC keys in chat or git
 - Never sign/broadcast txs from MCP
 
-Profiles: `web3-orchestrator.md` (audit), `hexstrike-orchestrator.md` (multi-MCP + dispatch).
+Profiles: `web3-orchestrator.md` + `rules.md` + `config.md` (audit); `hexstrike-orchestrator.md` (dispatch).
 Policy enforcement for live targets: `config/orchestrator.yaml`, `agents/registry.json`.
