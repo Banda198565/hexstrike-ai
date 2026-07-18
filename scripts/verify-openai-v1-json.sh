@@ -2,11 +2,12 @@
 # verify-openai-v1-json.sh — detect Nano AI / OpenAI-client JSON Parse errors
 # against local Ollama. Prints first bytes of each response and fails if body
 # is not JSON (classic "Unexpected character: E" = plain "Error: ...").
-set -euo pipefail
+set -uo pipefail
 
 HOST="${OLLAMA_HOST:-http://127.0.0.1:11434}"
 HOST="${HOST%/}"
 MODEL="${OLLAMA_MODEL:-${HEXSTRIKE_CHAT_MODEL:-qwen2.5-coder:7b}}"
+RC=0
 
 red() { printf '\033[31m%s\033[0m\n' "$*"; }
 ok() { printf '[OK]  %s\n' "$*"; }
@@ -54,7 +55,6 @@ probe() {
   return 1
 }
 
-RC=0
 probe "GET /api/tags" "${HOST}/api/tags" || RC=1
 probe "GET /v1/models" "${HOST}/v1/models" || RC=1
 
