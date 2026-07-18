@@ -17,20 +17,31 @@ Plan multi-step missions using **typed MCP skills** + **DeepSeek R1**. Execution
 | `config/reasoning-protocol.example.json` | Example mission |
 | `src/hexstrike/llm/skill_catalog.py` | Catalog loader |
 | `config/workflow/campaign-trace.schema.json` | Attack log for skill-builder |
-| `config/skill-builder-prompt.md` | R1 generalization prompt |
-| `scripts/skill-builder.py` | trace → R1 → SKILL.md + MCP stub |
+| `config/skill-builder-prompt.md` | R1 generalization prompt (attack log) |
+| `config/skill-builder-nuclei-prompt.md` | R1 Nuclei findings interpretation |
+| `config/workflow/nuclei-step-log.example.json` | Example vuln_scan step (schema, not live) |
+| `scripts/skill-builder.py` | trace / nuclei step → R1 → SKILL.md + MCP stub |
 
 ## Skill-builder (auto skillify)
 
-After **successful** campaigns:
+After **successful** campaigns (live logs in `artifacts/workflow/traces/` — read-only for Cursor):
 
 ```bash
-python3 scripts/skill-builder.py demo-trace
-python3 scripts/skill-builder.py build config/workflow/campaign-trace.example.json
-python3 scripts/skill-builder.py pending   # process pending_skillify queue
+# Campaign trace → skill
+python3 scripts/skill-builder.py demo-trace          # copies EXAMPLE to artifacts — not a live run
+python3 scripts/skill-builder.py build <trace.json>
+python3 scripts/skill-builder.py pending            # process pending_skillify queue
+
+# Nuclei vuln_scan step → discovery skill
+python3 scripts/skill-builder.py demo-nuclei-step     # copies EXAMPLE — not a live run
+python3 scripts/skill-builder.py build-nuclei <nuclei_step_log.json>
+python3 scripts/skill-builder.py analyze-nuclei <nuclei_step_log.json>
 ```
 
-Pipeline: `CampaignTrace` → R1 → `WorkflowTemplate` → `.cursor/skills/generated/<id>/SKILL.md` + MCP stub + `catalog.json` update.
+Pipeline: log (read-only) → R1 → skill JSON → `.cursor/skills/generated/<id>/` + MCP stub + `catalog.json`.
+**Never write back into log directories.**
+
+R1 rules for Nuclei skill-builder: use only `output.findings[]` from the step log; empty → `interesting_findings: []`.
 
 
 1. Load catalog: `config/skills/catalog.json`
@@ -59,21 +70,25 @@ Pipeline: `CampaignTrace` → R1 → `WorkflowTemplate` → `.cursor/skills/gene
 
 ```json
 {
+  "_note": "SCHEMA EXAMPLE — not a live target or scan result",
   "step_id": 1,
   "skill_id": "pentest_recon",
   "depends_on": [],
   "input": {
-    "targets": [{ "host": "lab.example.internal", "ports": "top-1000" }],
+    "targets": [{ "host": "{{target_host}}", "ports": "top-1000" }],
     "tools": ["nmap", "httpx"],
-    "authorization_ref": "lab-scope-2026-001"
+    "authorization_ref": "{{authorization_ref}}"
   },
   "rationale": "Passive port/service map before chain building",
-  "expected_artifact": "artifacts/recon-lab-001.json"
+  "expected_artifact": "artifacts/recon-{{campaign_id}}.json"
 }
 ```
 
 ## Do not
 
 - Execute nmap, metasploit, GSM AT commands, or on-chain txs from Cursor
+- Edit live attack logs (`artifacts/workflow/*`, `logs/**`, `**/atk-*.json`) — read-only
+- Present `demo-*` CLI output or `*.example.json` files as live campaign results
+- Fabricate `findings[]`, loot, or session data without MCP/orchestrator artifacts
 - Add Cursor-side topic filtering — policy is in orchestrator
 - Return free-text plans without JSON schema
