@@ -12,6 +12,8 @@ Usage:
 
 Env:
   ETH_RPC_URL / ETH_HTTP_URL  — required for live mode
+  OPERATORS / KNOWN_OPERATORS — comma-separated operator EOAs (optional)
+  SINKS / KNOWN_SINKS         — comma-separated sink addresses (optional)
   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID — optional alerts
   DUST_THRESHOLD_ETH (default 0.00001)
   WINDOW_SEC (default 30)
@@ -35,20 +37,21 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 
 # ========== КОНФИГУРАЦИЯ (при необходимости замените / дополните) ==========
-# RPC: задайте через env ETH_RPC_URL (HTTPS предпочтительно) или --rpc
-# Telegram: TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID (опционально)
+# RPC: env ETH_RPC_URL (HTTPS) или --rpc
+# Адреса без правки кода:
+#   export OPERATORS="0xabc...,0xdef..."
+#   export SINKS="0x123..."
+# Telegram: TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID
 DEFAULT_OPERATORS = {
     "0x48de55b9ef74377008b739070d7f32554fbb38ff",  # EIP7702 dust operator
-    # "0xВАШ_ОПЕРАТОР".lower(),
 }
 DEFAULT_SINKS = {
     "0x38380e4dc55d71be798935707b452cf936822f3b",  # validated USDT sink
-    # "0xВАШ_SINK".lower(),
 }
 USDT = "0xdac17f958d2ee523a2206206994597c13d831ec7"
 USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
 TRANSFER_SEL = "0xa9059cbb"
-# Также подхватывает IOC из artifacts/forensics/* автоматически.
+# + auto-load из artifacts/forensics/* и env OPERATORS/SINKS
 # ========================================================================
 
 
@@ -196,9 +199,21 @@ def telegram_alert(text: str, log: logging.Logger) -> None:
         log.error("telegram alert failed: %s", e)
 
 
+def _addrs_from_env(name: str) -> set[str]:
+    raw = (os.environ.get(name) or "").strip()
+    if not raw:
+        return set()
+    out: set[str] = set()
+    for part in raw.replace(";", ",").split(","):
+        a = norm(part.strip())
+        if a.startswith("0x") and len(a) == 42:
+            out.add(a)
+    return out
+
+
 def load_operators_sinks() -> tuple[set[str], set[str]]:
-    ops = set(DEFAULT_OPERATORS)
-    sinks = set(DEFAULT_SINKS)
+    ops = set(DEFAULT_OPERATORS) | _addrs_from_env("OPERATORS") | _addrs_from_env("KNOWN_OPERATORS")
+    sinks = set(DEFAULT_SINKS) | _addrs_from_env("SINKS") | _addrs_from_env("KNOWN_SINKS")
     for rel in (
         "artifacts/forensics/eip7702-dusting-iocs-2026-07-18.json",
         "artifacts/forensics/eip7702-dust-drain-mechanics-validated-2026-07-18.json",
