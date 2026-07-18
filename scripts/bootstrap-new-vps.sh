@@ -17,11 +17,14 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGET="${1:-}"
-KEY="${HEXSTRIKE_VPS_KEY:-$HOME/.ssh/hexstrike_vps}"
+# shellcheck source=scripts/vps-defaults.sh
+source "$ROOT/scripts/vps-defaults.sh"
+
+TARGET="${1:-$VPS_TARGET}"
+KEY="${HEXSTRIKE_VPS_KEY}"
 LOCAL_ENV="${LOCAL_ENV:-$ROOT/.env}"
 REPO_URL="${REPO_URL:-https://github.com/Banda198565/hexstrike-ai.git}"
-REMOTE_DIR="${REMOTE_DIR:-/root/hexstrike-ai}"
+REMOTE_DIR="${REMOTE_DIR:-$VPS_INSTALL}"
 BRANCH="${BOOTSTRAP_BRANCH:-master}"
 
 SKIP_PASSWD_ROTATE="${SKIP_PASSWD_ROTATE:-1}"
@@ -31,8 +34,7 @@ SKIP_OSINT="${SKIP_OSINT:-0}"
 log() { echo "[bootstrap-vps] $*"; }
 die() { echo "[bootstrap-vps] ERROR: $*" >&2; exit 1; }
 
-[[ -n "$TARGET" ]] || die "usage: bash scripts/bootstrap-new-vps.sh root@HOST"
-[[ "$TARGET" == *@* ]] || die "TARGET must look like root@IP"
+[[ "$TARGET" == *@* ]] || die "TARGET must look like root@IP (default: root@78.27.235.70)"
 command -v ssh >/dev/null || die "ssh required"
 
 SSH_BASE=(ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=25 -o ServerAliveInterval=5)
