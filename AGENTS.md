@@ -131,6 +131,8 @@ HexStrike MCP (`hexstrike-ai-mcp.json`) is a passthrough client:
 
 Cloud R1 (optional): `scripts/connect-cloud-r1-orchestrator.sh` — plan-only, no direct execution.
 
+Nuclei MCP (real scans): `scripts/nuclei_mcp_server.py` — see `config/mcp/nuclei-mcp.json`. Tools: `nuclei_scan`, `basic_scan`, `get_nuclei_tags`. Never fabricates findings.
+
 ---
 
 ## Quick reference

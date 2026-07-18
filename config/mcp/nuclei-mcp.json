@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "hexstrike-nuclei": {
+      "command": "python3",
+      "args": [
+        "/path/to/hexstrike-ai/scripts/nuclei_mcp_server.py"
+      ],
+      "env": {
+        "NUCLEI_BIN_PATH": "nuclei",
+        "NUCLEI_ARTIFACTS_DIR": "/path/to/hexstrike-ai/artifacts/nuclei"
+      },
+      "description": "HexStrike Nuclei MCP — real vulnerability scans (nuclei_scan, basic_scan, get_nuclei_tags). No simulated findings.",
+      "timeout": 600
+    }
+  }
+}
