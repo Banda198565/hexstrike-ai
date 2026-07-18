@@ -1,0 +1,34 @@
+{
+  "step_id": 2,
+  "phase": "vuln_scan",
+  "description": "HTTP vulnerability scan via Nuclei MCP",
+  "mcp_tool": "nuclei_scan",
+  "tool_kind": "mcp",
+  "input": {
+    "target": "https://victim.example.com",
+    "tags": "cve,sqli",
+    "severity": "high",
+    "rate_limit": 50
+  },
+  "output": {
+    "success": true,
+    "scan_id": "nuclei-20260718T192000Z-abc123",
+    "target": "https://victim.example.com",
+    "finding_count": 1,
+    "findings": [
+      {
+        "template_id": "CVE-2024-XXXX",
+        "name": "SQL Injection",
+        "severity": "high",
+        "host": "https://victim.example.com",
+        "matched_at": "https://victim.example.com/api/search?q=test",
+        "description": "SQL injection in search parameter",
+        "tags": ["cve", "sqli", "web"]
+      }
+    ],
+    "raw_report_path": "artifacts/nuclei/nuclei-20260718T192000Z-abc123.jsonl",
+    "command": "nuclei -u https://victim.example.com -tags cve,sqli -severity high -jsonl ..."
+  },
+  "status": "success",
+  "reasoning_snippet": "Confirmed exploitable SQLi in GET parameter q on /api/search."
+}

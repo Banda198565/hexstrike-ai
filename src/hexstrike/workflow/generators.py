@@ -54,6 +54,27 @@ def render_skill_md(template: dict[str, Any]) -> str:
     checklist = template.get("checklist") or []
     pitfalls = template.get("pitfalls") or []
 
+    nuclei_sections = ""
+    if template.get("format") == "nuclei_skill_output_v1":
+        findings = template.get("interesting_findings") or []
+        hint = template.get("workflow_hint") or {}
+        finding_lines = "\n".join(
+            f"- **{f.get('name', f.get('template_id', '?'))}** ({f.get('severity', '?')}) — "
+            f"`{f.get('exploitability_hint', 'unknown')}`"
+            for f in findings
+        ) or "- (none — scan may return empty findings)"
+        exploit_skills = ", ".join(f"`{s}`" for s in (hint.get("candidate_exploit_skills") or [])) or "(none)"
+        nuclei_sections = f"""
+## Interesting findings (from source scan)
+
+{finding_lines}
+
+## Workflow hint
+
+- **Next phase:** {hint.get('next_phase', 'exploit')}
+- **Candidate exploit skills:** {exploit_skills}
+"""
+
     return f"""---
 name: {wid}
 description: Auto-generated from campaign trace {template.get('source_trace_id', 'unknown')}. Use for {template.get('name', wid)} workflows in HexStrike orchestrator. Invoke via MCP tool `{template.get('mcp_tool', {}).get('name', 'run_' + wid)}`.
@@ -65,7 +86,7 @@ description: Auto-generated from campaign trace {template.get('source_trace_id',
 
 **Version:** {template.get('version', '1.0.0')}  
 **Tags:** {', '.join(template.get('tags') or [])}
-
+{nuclei_sections}
 ## Parameters
 
 {param_lines or '(none)'}
@@ -176,7 +197,7 @@ def write_artifacts(
 
     if template.get("input_schema"):
         skill_json = skills_root / wid / "skill.json"
-        skill_payload = {
+        skill_payload: dict[str, Any] = {
             "skill_name": template.get("workflow_id"),
             "description": template.get("description"),
             "tags": template.get("tags"),
@@ -185,6 +206,9 @@ def write_artifacts(
             "steps": template.get("steps"),
             "source_attack_id": template.get("source_trace_id"),
         }
+        if template.get("format") == "nuclei_skill_output_v1":
+            skill_payload["interesting_findings"] = template.get("interesting_findings") or []
+            skill_payload["workflow_hint"] = template.get("workflow_hint") or {}
         skill_json.write_text(json.dumps(skill_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         written["skill_json"] = str(skill_json)
 

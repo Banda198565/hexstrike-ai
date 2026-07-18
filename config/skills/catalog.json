@@ -225,6 +225,24 @@
         "chain"
       ],
       "workflow_steps": 4
+    },
+    "nuclei_web_sqli_discovery": {
+      "version": "1.0.0",
+      "layer": "generated",
+      "description": "Nuclei-based discovery and classification of SQL injection findings for web targets",
+      "input_schema": "config/skills/schemas/generated/nuclei_web_sqli_discovery.input.json",
+      "output_schema": "config/skills/schemas/generated/nuclei_web_sqli_discovery.output.json",
+      "mcp_tool": "run_nuclei_web_sqli_discovery",
+      "source_trace_id": "nuclei-20260718T192000Z-abc123",
+      "auto_generated": true,
+      "parallelizable": false,
+      "constraints": [
+        "nuclei",
+        "web",
+        "sql_injection",
+        "vuln_scan"
+      ],
+      "workflow_steps": 3
     }
   }
 }
