@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hexstrike://reasoning-master/v1",
+  "title": "HexStrike Reasoning-Master Contract",
+  "description": "Task contract passed to DeepSeek R1. R1 returns a PlanResponse; orchestrator validates and dispatches skill calls.",
+  "type": "object",
+  "required": ["task_id", "goal", "mode", "skills", "constraints"],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "Unique mission id (uuid or slug)"
+    },
+    "goal": {
+      "type": "string",
+      "description": "Human-readable mission objective"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["defense", "forensics", "recon", "validation", "offense", "research"],
+      "description": "Orchestrator mode — policy applied outside R1"
+    },
+    "context": {
+      "type": "object",
+      "description": "Opaque mission context (targets, prior artifacts, authorization ref)",
+      "additionalProperties": true
+    },
+    "skills": {
+      "type": "array",
+      "description": "Available MCP skills for this mission (from config/skills/catalog.json)",
+      "items": { "$ref": "#/$defs/skill_ref" },
+      "minItems": 1
+    },
+    "constraints": {
+      "$ref": "#/$defs/constraints"
+    },
+    "success_metrics": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/metric" }
+    },
+    "prior_steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/completed_step" },
+      "default": []
+    },
+    "state_ref": {
+      "type": "string",
+      "description": "Campaign state id in state_tracker skill (optional)"
+    }
+  },
+  "$defs": {
+    "skill_ref": {
+      "type": "object",
+      "required": ["skill_id", "version"],
+      "properties": {
+        "skill_id": { "type": "string" },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "description": { "type": "string" },
+        "input_schema": { "type": "string", "description": "Path to JSON Schema under config/skills/schemas/" },
+        "output_schema": { "type": "string" },
+        "constraints": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "parallelizable": { "type": "boolean", "default": false }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "max_steps": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 },
+        "max_parallel": { "type": "integer", "minimum": 1, "maximum": 32, "default": 4 },
+        "noise_level": { "type": "string", "enum": ["silent", "low", "medium", "high"] },
+        "timeout_sec": { "type": "integer", "minimum": 60 },
+        "sandbox_required": { "type": "boolean", "default": false },
+        "read_only": { "type": "boolean", "default": true },
+        "authorization_ref": { "type": "string" },
+        "budget_tokens_r1": { "type": "integer", "description": "Soft cap — cost_latency_monitor enforces" }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "required": ["id", "description"],
+      "properties": {
+        "id": { "type": "string" },
+        "description": { "type": "string" },
+        "target": { "type": "string" },
+        "required": { "type": "boolean", "default": true }
+      }
+    },
+    "completed_step": {
+      "type": "object",
+      "required": ["step_id", "skill_id", "status"],
+      "properties": {
+        "step_id": { "type": "integer" },
+        "skill_id": { "type": "string" },
+        "status": { "type": "string", "enum": ["success", "failed", "skipped", "partial"] },
+        "artifact_ref": { "type": "string" }
+      }
+    },
+    "plan_response": {
+      "type": "object",
+      "required": ["task_id", "reasoning_summary", "steps"],
+      "properties": {
+        "task_id": { "type": "string" },
+        "reasoning_summary": { "type": "string", "maxLength": 500 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "scatter_groups": {
+          "type": "array",
+          "description": "Parallel batches — orchestrator runs each group concurrently",
+          "items": {
+            "type": "object",
+            "required": ["group_id", "step_ids"],
+            "properties": {
+              "group_id": { "type": "integer" },
+              "step_ids": { "type": "array", "items": { "type": "integer" } }
+            }
+          }
+        },
+        "stop_conditions": { "type": "array", "items": { "type": "string" } },
+        "steps": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/plan_step" }
+        }
+      }
+    },
+    "plan_step": {
+      "type": "object",
+      "required": ["step_id", "skill_id", "input"],
+      "properties": {
+        "step_id": { "type": "integer" },
+        "skill_id": { "type": "string" },
+        "depends_on": { "type": "array", "items": { "type": "integer" }, "default": [] },
+        "input": { "type": "object", "additionalProperties": true },
+        "rationale": { "type": "string" },
+        "expected_artifact": { "type": "string" },
+        "mitre_attack": { "type": "string", "description": "Txxxx or tactic.phase label" },
+        "abort_on_failure": { "type": "boolean", "default": true }
+      }
+    }
+  }
+}

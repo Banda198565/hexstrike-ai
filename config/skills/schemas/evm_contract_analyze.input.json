@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "evm_contract_analyze.input",
+  "type": "object",
+  "required": ["chain", "address"],
+  "properties": {
+    "chain": { "type": "string", "enum": ["ethereum", "bsc", "base", "polygon", "arbitrum", "anvil-fork"] },
+    "address": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+    "block": { "type": ["integer", "string"], "description": "Block number or 'latest'" },
+    "include": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["bytecode", "storage", "events", "balances", "proxy_impl", "source"] },
+      "default": ["bytecode", "storage", "events", "balances"]
+    },
+    "event_filters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "signature": { "type": "string" },
+          "from_block": { "type": "integer" }
+        }
+      }
+    },
+    "rpc_endpoint": { "type": "string", "description": "Override; default from config/rpc_config.json" }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ss7_signaling_sim.output",
+  "type": "object",
+  "required": ["scenario", "status"],
+  "properties": {
+    "scenario": { "type": "string" },
+    "status": { "type": "string", "enum": ["simulated", "rejected", "error"] },
+    "location": {
+      "type": "object",
+      "properties": {
+        "vlr": { "type": "string" },
+        "cell_id": { "type": "string" },
+        "lac": { "type": "string" }
+      }
+    },
+    "intercepted_sms": { "type": "array", "items": { "type": "object" } },
+    "redirect_ack": { "type": "boolean" },
+    "trace_id": { "type": "string" },
+    "artifact_ref": { "type": "string" }
+  }
+}

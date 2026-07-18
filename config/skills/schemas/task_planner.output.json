@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "task_planner.output",
+  "type": "object",
+  "required": ["contract"],
+  "properties": {
+    "contract": { "$ref": "../../reasoning-master.schema.json" },
+    "assumptions": { "type": "array", "items": { "type": "string" } },
+    "skills_selected": { "type": "array", "items": { "type": "string" } }
+  }
+}

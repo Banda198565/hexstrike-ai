@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ss7_signaling_sim.input",
+  "description": "SS7 lab simulator — authorized testbed only",
+  "type": "object",
+  "required": ["scenario"],
+  "properties": {
+    "scenario": {
+      "type": "string",
+      "enum": ["locate_subscriber", "sms_intercept", "call_redirect", "send_sms", "profile_query"]
+    },
+    "subscriber": {
+      "type": "object",
+      "properties": {
+        "imsi": { "type": "string" },
+        "msisdn": { "type": "string" },
+        "mcc_mnc": { "type": "string" }
+      }
+    },
+    "redirect_to": { "type": "string", "description": "For call_redirect scenario" },
+    "lab_endpoint": { "type": "string", "description": "SS7 simulator API base URL" },
+    "authorization_ref": { "type": "string" }
+  }
+}

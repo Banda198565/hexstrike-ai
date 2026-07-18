@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "evm_contract_analyze.output",
+  "type": "object",
+  "required": ["contract", "chain"],
+  "properties": {
+    "chain": { "type": "string" },
+    "contract": {
+      "type": "object",
+      "required": ["address"],
+      "properties": {
+        "address": { "type": "string" },
+        "is_proxy": { "type": "boolean" },
+        "implementation": { "type": "string" },
+        "bytecode_hash": { "type": "string" },
+        "code_size": { "type": "integer" },
+        "verified_source": { "type": "boolean" },
+        "compiler": { "type": "string" }
+      }
+    },
+    "storage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slot": { "type": "string" },
+          "value": { "type": "string" },
+          "label": { "type": "string" }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tx_hash": { "type": "string" },
+          "block": { "type": "integer" },
+          "name": { "type": "string" },
+          "args": { "type": "object" }
+        }
+      }
+    },
+    "balances": {
+      "type": "object",
+      "properties": {
+        "native_wei": { "type": "string" },
+        "tokens": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "symbol": { "type": "string" },
+              "address": { "type": "string" },
+              "amount": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "protocol_hints": { "type": "array", "items": { "type": "string" } },
+    "artifact_ref": { "type": "string" }
+  }
+}

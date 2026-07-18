@@ -98,7 +98,13 @@ Cloud R1 (optional): `scripts/connect-cloud-r1-orchestrator.sh` — plan-only, n
 ## Quick reference
 
 ```bash
-# Plan (cloud R1, no execution)
+# Skill catalog (Python)
+python3 -c "from hexstrike.llm.skill_catalog import list_skills; import json; print(json.dumps(list_skills(), indent=2))"
+
+# Example mission contract
+cat config/reasoning-protocol.example.json
+
+# Plan (cloud R1, no execution) — requires PR #64 reasoning CLI
 python3 hexstrike_orchestrator.py reasoning plan config/reasoning-protocol.example.json
 
 # Dispatch to worker agent (orchestrator decides policy)
@@ -107,3 +113,7 @@ python3 hexstrike_orchestrator.py reasoning plan config/reasoning-protocol.examp
 # Status
 python3 hexstrike_orchestrator.py status
 ```
+
+## MCP skills catalog
+
+Reasoning-Master uses typed skills from `config/skills/catalog.json` (14 skills across infrastructure, pentest, blockchain, telecom, orchestration). Each skill has input/output JSON schemas under `config/skills/schemas/`. See `.cursor/skills/hexstrike-reasoning-master/SKILL.md`.
