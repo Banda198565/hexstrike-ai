@@ -9,7 +9,7 @@ Repo source of truth — not the same as a `cursor.com/agents/bc-…` run URL.
 | **`cursor.com/agents/bc-…`** | One Cloud Agent **run** (model, branch, session) — ephemeral UI card |
 | **`.cursor/agents/config.md`** | Shared stop-rules and workflow order — always inherit |
 
-**Inherits:** `config.md` → `AGENTS.md` → `.cursor/skills/web3-audit-mcp/SKILL.md`
+**Inherits:** `config.md` → `rules.md` → `AGENTS.md` → `.cursor/mcp.json`
 
 ---
 
