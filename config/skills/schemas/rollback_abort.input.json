@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "rollback_abort.input",
+  "type": "object",
+  "required": ["campaign_id", "action"],
+  "properties": {
+    "campaign_id": { "type": "string" },
+    "action": { "type": "string", "enum": ["rollback", "abort", "snapshot_restore"] },
+    "snapshot_id": { "type": "string" },
+    "reason": { "type": "string" }
+  }
+}

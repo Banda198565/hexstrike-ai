@@ -1,0 +1,61 @@
+{
+  "skill_name": "nuclei_web_sqli_discovery",
+  "description": "Nuclei-based discovery and classification of SQL injection findings for web targets",
+  "tags": ["nuclei", "web", "sql_injection", "vuln_scan"],
+  "source_scan_id": "nuclei-20260718T192000Z-abc123",
+  "input_schema": {
+    "type": "object",
+    "required": ["target_url"],
+    "properties": {
+      "target_url": {
+        "type": "string",
+        "description": "Base URL of web target, e.g. https://example.com"
+      },
+      "template_set": {
+        "type": "string",
+        "description": "Nuclei tags or template set",
+        "default": "cve,sqli"
+      },
+      "severity_threshold": {
+        "type": "string",
+        "description": "Minimum severity for interesting findings",
+        "default": "high"
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "success": { "type": "boolean" },
+      "interesting_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "template_id": { "type": "string" },
+            "severity": { "type": "string" },
+            "exploitability_hint": { "type": "string" }
+          }
+        }
+      },
+      "raw_report_path": { "type": "string" }
+    }
+  },
+  "interesting_findings": [
+    {
+      "template_id": "CVE-2024-XXXX",
+      "name": "SQL Injection",
+      "severity": "high",
+      "host": "{{target_url}}",
+      "location": "/api/search?q=FUZZ",
+      "tags": ["cve", "sqli"],
+      "type": "sql_injection",
+      "description": "SQL injection in search parameter",
+      "exploitability_hint": "sqli_dump_users"
+    }
+  ],
+  "workflow_hint": {
+    "next_phase": "exploit",
+    "candidate_exploit_skills": ["pentest_sql_injection_exploit", "pentest_web_session_hijack"]
+  }
+}

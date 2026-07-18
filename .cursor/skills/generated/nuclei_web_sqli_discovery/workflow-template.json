@@ -1,0 +1,169 @@
+{
+  "workflow_id": "nuclei_web_sqli_discovery",
+  "name": "Nuclei Web Sqli Discovery",
+  "version": "1.0.0",
+  "description": "Nuclei-based discovery and classification of SQL injection findings for web targets",
+  "tags": [
+    "nuclei",
+    "web",
+    "sql_injection",
+    "vuln_scan"
+  ],
+  "source_trace_id": "nuclei-20260718T192000Z-abc123",
+  "parameters": [
+    {
+      "name": "target_url",
+      "type": "string",
+      "required": true,
+      "description": "Base URL of web target, e.g. https://example.com"
+    },
+    {
+      "name": "template_set",
+      "type": "string",
+      "required": false,
+      "description": "Nuclei tags or template set"
+    },
+    {
+      "name": "severity_threshold",
+      "type": "string",
+      "required": false,
+      "description": "Minimum severity for interesting findings"
+    }
+  ],
+  "steps": [
+    {
+      "step_id": 1,
+      "skill_id": "nuclei_scan",
+      "phase": "vuln_scan",
+      "depends_on": [],
+      "input_template": {
+        "target": "{{target_url}}",
+        "tags": "cve,sqli",
+        "severity": "high"
+      },
+      "expected_output": {
+        "interesting_findings": "{{interesting_findings}}",
+        "raw_report_path": "{{raw_report_path}}"
+      },
+      "rationale": "Nuclei-based discovery and classification of SQL injection findings for web targets"
+    },
+    {
+      "step_id": 2,
+      "skill_id": "pentest_sql_injection_exploit",
+      "phase": "exploit",
+      "depends_on": [
+        1
+      ],
+      "input_template": {
+        "target_url": "{{target_url}}",
+        "from_findings": "{{interesting_findings}}"
+      },
+      "next_step_condition": "interesting_findings.length > 0",
+      "rationale": "Follow-up exploit skill suggested for findings (pentest_sql_injection_exploit)"
+    },
+    {
+      "step_id": 3,
+      "skill_id": "pentest_web_session_hijack",
+      "phase": "exploit",
+      "depends_on": [
+        1
+      ],
+      "input_template": {
+        "target_url": "{{target_url}}",
+        "from_findings": "{{interesting_findings}}"
+      },
+      "next_step_condition": "interesting_findings.length > 0",
+      "rationale": "Follow-up exploit skill suggested for findings (pentest_web_session_hijack)"
+    }
+  ],
+  "interesting_findings": [
+    {
+      "template_id": "CVE-2024-XXXX",
+      "name": "SQL Injection",
+      "severity": "high",
+      "host": "{{target_url}}",
+      "location": "/api/search?q=FUZZ",
+      "tags": [
+        "cve",
+        "sqli"
+      ],
+      "type": "sql_injection",
+      "description": "SQL injection in search parameter",
+      "exploitability_hint": "sqli_dump_users"
+    }
+  ],
+  "workflow_hint": {
+    "next_phase": "exploit",
+    "candidate_exploit_skills": [
+      "pentest_sql_injection_exploit",
+      "pentest_web_session_hijack"
+    ]
+  },
+  "mcp_tool": {
+    "name": "run_nuclei_web_sqli_discovery",
+    "description": "Nuclei-based discovery and classification of SQL injection findings for web targets",
+    "generate_stub": true
+  },
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "target_url"
+    ],
+    "properties": {
+      "target_url": {
+        "type": "string",
+        "description": "Base URL of web target, e.g. https://example.com"
+      },
+      "template_set": {
+        "type": "string",
+        "description": "Nuclei tags or template set",
+        "default": "cve,sqli"
+      },
+      "severity_threshold": {
+        "type": "string",
+        "description": "Minimum severity for interesting findings",
+        "default": "high"
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "success": {
+        "type": "boolean"
+      },
+      "interesting_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "template_id": {
+              "type": "string"
+            },
+            "severity": {
+              "type": "string"
+            },
+            "exploitability_hint": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "raw_report_path": {
+        "type": "string"
+      }
+    }
+  },
+  "format": "nuclei_skill_output_v1",
+  "preconditions": [
+    "Authorized scope for vulnerability scanning",
+    "Nuclei MCP server available (nuclei_scan / basic_scan)"
+  ],
+  "postconditions": [
+    "interesting_findings populated from real Nuclei output only",
+    "raw_report_path points to JSONL artifact when scan produces output"
+  ],
+  "stop_conditions": [
+    "Do not fabricate findings when Nuclei returns an empty set"
+  ]
+}

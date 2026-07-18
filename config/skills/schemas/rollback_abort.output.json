@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "rollback_abort.output",
+  "type": "object",
+  "required": ["status"],
+  "properties": {
+    "status": { "type": "string", "enum": ["rolled_back", "aborted", "failed"] },
+    "campaign_id": { "type": "string" },
+    "actions_taken": { "type": "array", "items": { "type": "string" } }
+  }
+}

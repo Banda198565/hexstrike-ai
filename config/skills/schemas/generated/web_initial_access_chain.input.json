@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "web_initial_access_chain.input",
+  "type": "object",
+  "required": [
+    "target_host",
+    "authorization_ref"
+  ],
+  "properties": {
+    "target_host": {
+      "type": "string",
+      "description": "Lab target hostname or IP"
+    },
+    "authorization_ref": {
+      "type": "string",
+      "description": "Signed scope reference"
+    },
+    "jenkins_port": {
+      "type": "integer",
+      "description": "HTTP port for Jenkins"
+    }
+  }
+}

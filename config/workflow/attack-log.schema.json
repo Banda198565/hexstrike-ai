@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hexstrike://attack-log/v1",
+  "title": "AttackLog",
+  "description": "Rich attack/campaign log for skill-builder — web, on-chain, GSM, SS7",
+  "type": "object",
+  "required": ["attack_id", "campaign_name", "timestamp_start", "timestamp_end", "target_profile", "steps", "result"],
+  "properties": {
+    "attack_id": { "type": "string" },
+    "campaign_name": { "type": "string" },
+    "timestamp_start": { "type": "string", "format": "date-time" },
+    "timestamp_end": { "type": "string", "format": "date-time" },
+    "target_profile": {
+      "type": "object",
+      "required": ["type", "primary_target"],
+      "properties": {
+        "type": { "type": "string", "enum": ["web_app", "evm_contract", "gsm_device", "ss7_subscriber", "infra", "mixed"] },
+        "primary_target": { "type": "string" },
+        "network": { "type": "object", "additionalProperties": true },
+        "tech_stack": { "type": "object", "additionalProperties": true },
+        "chain": { "type": "string" },
+        "contract_address": { "type": "string" }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "properties": {
+        "orchestrator": { "type": "string" },
+        "mcp_client": { "type": "string" },
+        "tools_context": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/attack_step" }
+    },
+    "result": {
+      "type": "object",
+      "required": ["success"],
+      "properties": {
+        "success": { "type": "boolean" },
+        "impact": { "type": "string" },
+        "notes": { "type": "string" },
+        "operator_comments": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "attack_step": {
+      "type": "object",
+      "required": ["step_id", "phase", "mcp_tool", "input", "output", "status"],
+      "properties": {
+        "step_id": { "type": "integer" },
+        "phase": { "type": "string" },
+        "description": { "type": "string" },
+        "mcp_tool": { "type": "string" },
+        "raw_command": { "type": "string" },
+        "input": { "type": "object", "additionalProperties": true },
+        "output": { "type": "object", "additionalProperties": true },
+        "status": { "type": "string", "enum": ["success", "failed", "skipped", "timeout"] },
+        "reasoning_snippet": { "type": "string" }
+      }
+    }
+  }
+}

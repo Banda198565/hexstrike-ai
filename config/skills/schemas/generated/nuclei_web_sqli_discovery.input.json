@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "required": [
+    "target_url"
+  ],
+  "properties": {
+    "target_url": {
+      "type": "string",
+      "description": "Base URL of web target, e.g. https://example.com"
+    },
+    "template_set": {
+      "type": "string",
+      "description": "Nuclei tags or template set",
+      "default": "cve,sqli"
+    },
+    "severity_threshold": {
+      "type": "string",
+      "description": "Minimum severity for interesting findings",
+      "default": "high"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "nuclei_web_sqli_discovery.input"
+}

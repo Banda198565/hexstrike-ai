@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hexstrike://skill-output/v1",
+  "title": "SkillBuilderOutput",
+  "description": "Parameterized MCP skill produced by R1 from attack log",
+  "type": "object",
+  "required": ["skill_name", "description", "input_schema", "output_schema", "steps"],
+  "properties": {
+    "skill_name": { "type": "string", "pattern": "^[a-z][a-z0-9_]{2,64}$" },
+    "description": { "type": "string" },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "source_attack_id": { "type": "string" },
+    "input_schema": { "type": "object" },
+    "output_schema": { "type": "object" },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "phase", "mcp_tool", "description"],
+        "properties": {
+          "id": { "type": "integer" },
+          "phase": { "type": "string" },
+          "mcp_tool": { "type": "string" },
+          "description": { "type": "string" },
+          "inputs_from": { "type": "object" },
+          "expected_output": { "type": "object" },
+          "next_step_condition": { "type": "string" }
+        }
+      }
+    }
+  }
+}

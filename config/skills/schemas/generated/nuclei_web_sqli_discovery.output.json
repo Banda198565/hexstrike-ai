@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean"
+    },
+    "interesting_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "template_id": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "exploitability_hint": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "raw_report_path": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "nuclei_web_sqli_discovery.output"
+}

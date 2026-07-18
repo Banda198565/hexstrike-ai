@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hexstrike://campaign-trace/v1",
+  "title": "CampaignTrace",
+  "description": "Full attack/campaign execution log for skill-builder pipeline",
+  "type": "object",
+  "required": ["trace_id", "campaign_id", "outcome", "steps"],
+  "properties": {
+    "trace_id": { "type": "string" },
+    "campaign_id": { "type": "string" },
+    "task_id": { "type": "string" },
+    "outcome": { "type": "string", "enum": ["success", "partial", "failed", "aborted"] },
+    "started_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": "string", "format": "date-time" },
+    "context": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string" },
+        "authorization_ref": { "type": "string" },
+        "environment": { "type": "string" },
+        "target_summary": { "type": "string" },
+        "stack": { "type": "array", "items": { "type": "string" } },
+        "defenses_observed": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "success_criteria_met": { "type": "array", "items": { "type": "string" } },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/trace_step" }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "kind": { "type": "string" },
+          "sha256": { "type": "string" }
+        }
+      }
+    },
+    "metadata": { "type": "object", "additionalProperties": true }
+  },
+  "$defs": {
+    "trace_step": {
+      "type": "object",
+      "required": ["seq", "tool", "status"],
+      "properties": {
+        "seq": { "type": "integer" },
+        "tool": { "type": "string", "description": "MCP tool or skill_id" },
+        "tool_kind": { "type": "string", "enum": ["mcp", "skill", "agent", "shell"], "default": "skill" },
+        "agent": { "type": "string" },
+        "task": { "type": "string" },
+        "input": { "type": "object", "additionalProperties": true },
+        "output": { "type": "object", "additionalProperties": true },
+        "status": { "type": "string", "enum": ["success", "failed", "skipped", "timeout"] },
+        "latency_ms": { "type": "number" },
+        "error": { "type": "string" },
+        "depends_on_seq": { "type": "array", "items": { "type": "integer" } },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

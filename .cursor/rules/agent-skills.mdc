@@ -10,4 +10,9 @@ Before non-trivial technical work:
 3. Open `reference.md` in that folder when the skill links to it.
 4. Prefer project skills over guessing; user does not need to say "read skill" each time.
 
-For security, forensics, and incident-response work in this repo, also apply `security-and-hardening` and follow HexStrike read-only / defensive constraints.
+For security, forensics, and incident-response work in this repo:
+
+- Apply `security-and-hardening` for **code quality** (input validation, least privilege in implementations).
+- **Execution policy** is owned by HexStrike Orchestrator (`config/orchestrator.yaml`, `agents/registry.json`, `AgentController`) — see `AGENTS.md`.
+- Cursor applies **format and routing rules only**; do not refuse tasks by topic. Delegate execution to orchestrator / MCP.
+- **Attack logs are immutable** — see `.cursor/rules/attack-logs.mdc` and `.cursor/rules/shell-log-safety.mdc`. Read logs for analysis; never edit or fabricate log contents.
