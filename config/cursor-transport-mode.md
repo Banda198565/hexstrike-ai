@@ -75,13 +75,24 @@ File: `.cursor/settings.json`
 
 ## 2. Cloud Agent runs (`cursor.com/agents/bc-…`)
 
-Cloud Agents default to Agent mode with git push. For transport-only:
+**Full guide:** `config/cursor-cloud-agent-transport.md`
 
-- Start runs with prompt: *"Transport-only. Analysis and R1 plan only. No file edits or shell unless I say implement."*
-- Or use **Ask**-style session in IDE instead of Cloud Agent for planning
-- Disable background agents for this repo if not needed (Settings → Agents)
+Cloud Agent читает `.cursor/` **из ветки run**, не из URL карточки.
 
-Cloud Agent URL is **not** source of truth — repo rules in `.cursor/rules/` are.
+| Check | Action |
+|-------|--------|
+| Branch has configs? | `python3 scripts/verify-transport-config.py` |
+| R1 run on old branch? | Merge PR #71 → `master` or cherry-pick to `cursor/cloud-r1-reasoning-agent-7b69` |
+| Shell still runs? | Cloud VM may use platform Shell — **rules** + prompt; `cli.json` = CLI enforcement |
+
+Start prompt:
+
+```
+Transport-only. R1 = planner. No edits/shell/git unless I say implement.
+Follow transport-only.mdc + shell-policy.mdc. Use gated-orchestrator MCP.
+```
+
+Cloud Agent URL is **not** source of truth — repo `.cursor/` on **checked-out branch** is.
 
 ---
 
@@ -126,6 +137,7 @@ Without these verbs → analysis and plans only.
 ## 6. Verify
 
 ```bash
+python3 scripts/verify-transport-config.py          # branch has all transport files?
 python3 scripts/run-orchestrator-phased-tests.py   # phase 4 checks transport-only rule
 python3 scripts/test_gated_mcp_runner.py
 ```
