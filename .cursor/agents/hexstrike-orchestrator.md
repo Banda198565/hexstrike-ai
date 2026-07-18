@@ -1,7 +1,8 @@
 # HexStrike Orchestrator Agent (Cursor)
 
 Specialized profile for planning, skill-building, and orchestration design.
-Inherits global contract from `AGENTS.md` at repo root.
+
+**Inherits:** `.cursor/agents/config.md` (behavioral boundaries) → `AGENTS.md` (non-emulation contract).
 
 ---
 
