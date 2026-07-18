@@ -92,23 +92,37 @@ def send_slack(webhook: str, text: str, log: logging.Logger) -> bool:
 
 def format_alert(alert: dict) -> str:
     amount = alert.get("amount_human", alert.get("amount", 0))
-    dust_amt = alert.get("dust_amount")  # optional / legacy
+    try:
+        amount_s = f"{float(amount):.6f}"
+    except (TypeError, ValueError):
+        amount_s = str(amount)
+    dust_amt = alert.get("dust_eth", alert.get("dust_amount"))
+    tx_dust = alert.get("tx_dust", alert.get("dust_tx", ""))
+    tx_drain = alert.get("tx_drain", alert.get("drain_tx", ""))
+    token = alert.get("token", alert.get("token_symbol", ""))
+    operator = alert.get("operator", alert.get("operator_dust", ""))
     lines = [
-        "🚨 *dust → drain* (≤30s pattern)",
-        f"• victim: `{alert.get('victim', '')}`",
-        f"• operator: `{alert.get('operator', '')}`",
-        f"• sink: `{alert.get('sink', '')}`",
-        f"• token: {alert.get('token', '')} amount: {amount}",
-        f"• delta: {alert.get('delta_sec', '')}s",
-        f"• blocks: dust={alert.get('block_dust', '')} drain={alert.get('block_drain', alert.get('block', ''))}",
-        f"• tx_dust: `{alert.get('tx_dust', alert.get('dust_tx', ''))}`",
-        f"• tx_drain: `{alert.get('tx_drain', alert.get('drain_tx', ''))}`",
+        "🚨 *Обнаружена атака dust → drain*",
+        f"• Жертва: `{alert.get('victim', '')}`",
+        f"• Оператор: `{operator}`",
+        f"• Sink: `{alert.get('sink', '')}`",
+        f"• Токен: {token}",
+        f"• Сумма слива: {amount_s}",
+        f"• Задержка: {alert.get('delta_sec', 0)} сек",
+        f"• Блок: dust={alert.get('block_dust', '')} drain={alert.get('block_drain', alert.get('block', ''))}",
+        f"• Хэш пыли: `{tx_dust}`",
+        f"• Хэш слива: `{tx_drain}`",
     ]
     if dust_amt is not None:
-        lines.insert(5, f"• dust ETH: {dust_amt}")
-    eth_dust = f"https://etherscan.io/tx/{alert.get('tx_dust', '')}"
-    eth_drain = f"https://etherscan.io/tx/{alert.get('tx_drain', '')}"
-    lines.append(f"• links: <{eth_dust}|dust> | <{eth_drain}|drain>")
+        try:
+            lines.insert(6, f"• Сумма пыли (ETH): {float(dust_amt):.8f}")
+        except (TypeError, ValueError):
+            lines.insert(6, f"• Сумма пыли (ETH): {dust_amt}")
+    if tx_dust or tx_drain:
+        lines.append(
+            f"• links: <https://etherscan.io/tx/{tx_dust}|dust> | "
+            f"<https://etherscan.io/tx/{tx_drain}|drain>"
+        )
     return "\n".join(lines)
 
 
@@ -125,24 +139,29 @@ def process_new(alerts_file: Path, pos_file: Path, webhook: str, log: logging.Lo
     with alerts_file.open("r", encoding="utf-8") as f:
         f.seek(pos)
         while True:
+            line_start = f.tell()
             line = f.readline()
             if not line:
                 break
-            line = line.strip()
-            if not line:
+            stripped = line.strip()
+            if not stripped:
                 continue
             try:
-                alert = json.loads(line)
+                alert = json.loads(stripped)
             except json.JSONDecodeError as e:
                 log.error("bad json: %s", e)
                 continue
             msg = format_alert(alert)
+            if not webhook:
+                log.warning("SLACK_WEBHOOK_URL empty — dry-run victim=%s", alert.get("victim"))
+                sent += 1
+                continue
             if send_slack(webhook, msg, log):
                 sent += 1
                 log.info("sent victim=%s", alert.get("victim"))
             else:
                 # do not advance past failed line — retry next run
-                save_pos(pos_file, f.tell() - len(line.encode("utf-8")) - 1)
+                save_pos(pos_file, line_start)
                 return sent
         save_pos(pos_file, f.tell())
     return sent
