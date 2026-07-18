@@ -23,8 +23,20 @@ OpenRouter may route the same model id through different upstream providers. Obs
 | --- | --- | --- |
 | Earlier | `deepseek/deepseek-v4-flash` | Venice |
 | Confirm capture | `deepseek/deepseek-v4-flash` | Parasail |
+| Live connect (`scripts/deep_seek_ai_connect.py`) | `deepseek/deepseek-v4-flash` | Alibaba |
 
 Marketing “DeepSeek-V4” maps to **Flash**, not official **V4-Pro**.
+
+## Connect (read-only CLI)
+
+```bash
+python3 scripts/deep_seek_ai_connect.py
+python3 scripts/deep_seek_ai_connect.py \
+  --prompt "Reply with exactly: CONNECT-OK" \
+  --output artifacts/deep-seek-ai-connect-session.json
+```
+
+Optional: `--model deepseek/deepseek-r1` or `deepseek/deepseek-v3.2`. Session artifact from the verified connect: [deep-seek-ai-connect-session.json](./deep-seek-ai-connect-session.json).
 
 ## Evidence
 
