@@ -108,6 +108,7 @@ def phase1_mcp_health() -> dict[str, Any]:
     # MCP server startup (audit stack only)
     mcp_cfg = json.loads(MCP_JSON.read_text(encoding="utf-8"))["mcpServers"]
     results["checks"]["mcp_solidity_audit"] = _mcp_script_health("scripts/solidity_audit_mcp_server.py")
+    results["checks"]["mcp_gated_orchestrator"] = _mcp_script_health("scripts/gated_orchestrator_mcp_server.py")
 
     if mcp_cfg.get("plaid-cfo"):
         results["checks"]["mcp_plaid_cfo"] = _mcp_script_health("scripts/plaid_cfo_mcp_server.py")
@@ -131,7 +132,7 @@ def phase1_mcp_health() -> dict[str, Any]:
     for label, script in (
         ("backend_solidity_audit", "scripts/test_solidity_audit_runner.py"),
         ("backend_web3_rpc", "scripts/test_web3_rpc_runner.py"),
-        ("backend_web3_audit", "scripts/test_web3_audit_runner.py"),
+        ("backend_gated_mcp", "scripts/test_gated_mcp_runner.py"),
     ):
         proc = subprocess.run([sys.executable, str(ROOT / script)], capture_output=True, text=True, cwd=str(ROOT))
         results["checks"][label] = _status(proc.returncode == 0, proc.stdout.strip().split("\n")[-1] if proc.stdout else proc.stderr[:200])
@@ -139,7 +140,7 @@ def phase1_mcp_health() -> dict[str, Any]:
     results["pass"] = all(
         c.get("ok")
         for k, c in results["checks"].items()
-        if k in ("mcp_json", "mcp_solidity_audit", "backend_solidity_audit", "backend_web3_rpc", "backend_web3_audit")
+        if k in ("mcp_json", "mcp_solidity_audit", "mcp_gated_orchestrator", "backend_solidity_audit", "backend_web3_rpc", "backend_web3_audit", "backend_gated_mcp")
     )
     return results
 
@@ -264,6 +265,14 @@ def phase4_rules_compliance() -> dict[str, Any]:
             (ROOT / "config/reasoning-system-prompt.md").is_file(),
             "reasoning-system-prompt.md present",
         ),
+        "gated_mcp_config": _status(
+            (ROOT / "config/gated-mcp.json").is_file(),
+            "gated-mcp.json present",
+        ),
+        "gated_mcp_in_cursor": _status(
+            "gated-orchestrator" in (ROOT / ".cursor/mcp.json").read_text(encoding="utf-8"),
+            "gated-orchestrator in .cursor/mcp.json",
+        ),
         "cursor_transport_contract": _status(
             (ROOT / "config/cursor-transport-contract.md").is_file(),
             "cursor-transport-contract.md present",
@@ -359,7 +368,17 @@ def phase6_exploitation_extension() -> dict[str, Any]:
         "config.md § exploitation extension",
     )
 
-    required = ("config_present", "gates_script", "playbook_d_doc", "gates_unit_tests", "extension_runner", "config_extension_section")
+    required = (
+        "config_present",
+        "gates_script",
+        "playbook_d_doc",
+        "gates_unit_tests",
+        "extension_runner",
+        "config_extension_section",
+        "gated_mcp_config",
+        "gated_mcp_in_cursor",
+        "cursor_transport_contract",
+    )
     passed = all(checks.get(k, {}).get("ok") for k in required if k in checks)
     return {"phase": 6, "name": "exploitation_extension", "checks": checks, "pass": passed}
 

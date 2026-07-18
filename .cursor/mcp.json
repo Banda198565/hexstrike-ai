@@ -1,5 +1,15 @@
 {
   "mcpServers": {
+    "gated-orchestrator": {
+      "command": "python3",
+      "args": ["scripts/gated_orchestrator_mcp_server.py"],
+      "env": {
+        "WEB3_RPC_URL": "${env:WEB3_RPC_URL}",
+        "WEB3_RPC_KEY": "${env:WEB3_RPC_KEY}"
+      },
+      "description": "Gated Orchestrator MCP — read-only RPC + controlled FS. Primary boundary for R1 transport.",
+      "timeout": 300
+    },
     "solidity-audit": {
       "command": "python3",
       "args": ["scripts/solidity_audit_mcp_server.py"],

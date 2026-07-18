@@ -124,12 +124,30 @@ HEXSTRIKE_SANDBOX=1 python3 scripts/sandbox/exploitation-extension.py --target s
 
 ## Tool strategy
 
+**Gated MCP first (transport boundary):** use `gated-orchestrator` tools for all RPC reads and file I/O.
+
+| Need | Gated tool | Not allowed |
+|------|------------|-------------|
+| Block metadata | `rpc_get_block` | raw RPC with keys in prompt |
+| Contract storage | `rpc_get_contract_state` | `eth_sendTransaction` |
+| Events / MEV | `rpc_get_events` | unbounded log scans |
+| Tx analysis | `rpc_trace_transaction` | weaponized replay |
+| Call simulation | `rpc_simulate_call` | broadcast txs |
+| Read source/config | `fs_read_file`, `fs_list_dir` | read outside allowlist |
+| Save report | `fs_create_report_file` | edit contracts/src directly |
+| Propose patch | `fs_edit_file` (dry_run=true) | apply without user + `HEXSTRIKE_FS_APPLY=1` |
+
+At audit end: **must** call `fs_create_report_file` → `reports/` or `artifacts/web3-audit/`.
+
+Extended stack (when playbook requires):
+
 Order unless playbook overrides:
 
-1. **solidity-audit** — static first  
-2. **foundry** — local/fork validation  
-3. **chainstack** / public RPC — on-chain reads  
-4. **faro-fino** — second opinion  
+1. **gated-orchestrator** — read-only RPC + controlled FS (default transport)
+2. **solidity-audit** — static first  
+3. **foundry** — local/fork validation  
+4. **chainstack** / public RPC — on-chain reads (prefer gated RPC tools)  
+5. **faro-fino** — second opinion  
 
 On tool failure: follow `rules.md` § MCP degradation.
 

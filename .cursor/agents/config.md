@@ -73,10 +73,31 @@ Switch to **prod** only when scope is confirmed. In prod, all on-chain ops are *
 
 ## MCP tool order (`.cursor/mcp.json`)
 
-1. **solidity-audit** — Slither, SWC, parse_contract
-2. **foundry** — forge build/test, cast, fork PoC
-3. **chainstack** — RPC, indexer, on-chain context
-4. **faro-fino** — second-opinion deep scan
+**Gated orchestrator (primary transport boundary):**
+
+| Tool | Purpose |
+|------|---------|
+| `rpc_get_block` | Block metadata (read-only) |
+| `rpc_get_contract_state` | Storage slots (read-only) |
+| `rpc_get_events` | Event logs with range cap |
+| `rpc_trace_transaction` | Tx trace frames |
+| `rpc_simulate_call` | eth_call simulation only |
+| `fs_list_dir` / `fs_read_file` | Read repo sources/config |
+| `fs_create_report_file` | Write reports to `reports/` or `artifacts/web3-audit/` |
+| `fs_read_report_index` | List existing reports |
+| `fs_edit_file` | dry_run diff preview only (default) |
+
+Config: `config/gated-mcp.json`. Server: `scripts/gated_orchestrator_mcp_server.py`.
+
+**Do not** use raw `eth_sendTransaction` or edit source files outside gated tools. At audit end, call `fs_create_report_file`.
+
+Extended stack (when needed):
+
+1. **gated-orchestrator** — RPC read + FS boundary (default for orchestrator)
+2. **solidity-audit** — Slither, SWC, parse_contract
+3. **foundry** — forge build/test, cast, fork PoC
+4. **chainstack** — RPC, indexer, on-chain context
+5. **faro-fino** — second-opinion deep scan
 
 Merge findings with source tags; dedupe before report.
 
