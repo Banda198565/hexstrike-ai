@@ -96,15 +96,16 @@ ssh_ok=0
 
 if port_open 22; then ssh_ok=1; else alert "sshd port 22 not listening"; fi
 
-if port_open "$SOCKS_PORT" || proc_running "$SOCKS_PATTERN"; then
+# Port is authoritative. Process pattern alone is NOT enough (e.g. ss-server on :8388).
+if port_open "$SOCKS_PORT"; then
   socks_ok=1
 else
   alert "SOCKS5 :$SOCKS_PORT down — recovering"
-  if recover_socks && { port_open "$SOCKS_PORT" || proc_running "$SOCKS_PATTERN"; }; then
+  if recover_socks && port_open "$SOCKS_PORT"; then
     socks_ok=1
     log "SOCKS5 recovered"
   else
-    alert "SOCKS5 recovery FAILED"
+    alert "SOCKS5 recovery FAILED (no listener on :$SOCKS_PORT; unrelated proxy procs ignored)"
   fi
 fi
 
