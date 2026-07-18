@@ -305,6 +305,49 @@ def phase5_multi_target() -> dict[str, Any]:
     }
 
 
+def phase6_exploitation_extension() -> dict[str, Any]:
+    """Sandbox exploitation extension — gates + static chain plan (forge optional)."""
+    ext_cfg = ROOT / "config" / "exploitation-extension.json"
+    gates_script = ROOT / "scripts" / "sandbox" / "test_exploitation_gates.py"
+    ext_script = ROOT / "scripts" / "sandbox" / "exploitation-extension.py"
+
+    checks: dict[str, Any] = {
+        "config_present": _status(ext_cfg.is_file(), str(ext_cfg.relative_to(ROOT))),
+        "gates_script": _status(gates_script.is_file(), "exploitation_gates.py present"),
+        "playbook_d_doc": _status(
+            "Playbook D" in (ROOT / ".cursor/agents/web3-orchestrator.md").read_text(encoding="utf-8"),
+            "Playbook D documented",
+        ),
+    }
+
+    if gates_script.is_file():
+        proc = subprocess.run([sys.executable, str(gates_script)], capture_output=True, text=True, cwd=str(ROOT))
+        checks["gates_unit_tests"] = _status(
+            proc.returncode == 0,
+            proc.stdout.strip().split("\n")[-1] if proc.stdout else proc.stderr[:200],
+        )
+
+    env = {**os.environ, "HEXSTRIKE_SANDBOX": "1"}
+    skip_forge = shutil.which("forge") is None
+    if ext_script.is_file():
+        cmd = [sys.executable, str(ext_script), "--skip-forge"]
+        proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT), env=env, timeout=180)
+        checks["extension_runner"] = _status(
+            proc.returncode == 0,
+            (proc.stdout.strip().split("\n")[-1] if proc.stdout else proc.stderr[:200]) + ("; forge skipped" if skip_forge else ""),
+        )
+
+    playbook_config = (ROOT / ".cursor/agents/config.md").read_text(encoding="utf-8")
+    checks["config_extension_section"] = _status(
+        "Exploitation extension" in playbook_config,
+        "config.md § exploitation extension",
+    )
+
+    required = ("config_present", "gates_script", "playbook_d_doc", "gates_unit_tests", "extension_runner", "config_extension_section")
+    passed = all(checks.get(k, {}).get("ok") for k in required if k in checks)
+    return {"phase": 6, "name": "exploitation_extension", "checks": checks, "pass": passed}
+
+
 def _render_report(phases: list[dict[str, Any]]) -> str:
     lines = [
         "# Web3 Orchestrator — Phased Test Report",
@@ -373,6 +416,7 @@ def main() -> int:
         phase3_vuln_revert(),
         phase4_rules_compliance(),
         phase5_multi_target(),
+        phase6_exploitation_extension(),
     ]
 
     for p in phases:

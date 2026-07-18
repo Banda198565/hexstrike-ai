@@ -84,6 +84,30 @@ Use the matching playbook when the user intent fits. Do not improvise a differen
 
 **Exit criteria:** timeline table; confirmed on-chain facts vs hypotheses clearly separated; MCP gaps listed.
 
+### Playbook D — Sandbox exploitation validation (extension)
+
+**When:** user asks to validate a finding with a local PoC, or to run the exploitation extension after static audit.  
+**Mode:** **test** only. Requires `HEXSTRIKE_SANDBOX=1`. Never against live mainnet addresses or remote hosts.
+
+| Step | Action | Tools |
+|------|--------|-------|
+| D1 | Gate check — sandbox env, allowlisted local `.sol` only | `exploitation_gates.py` |
+| D2 | Static analysis on sandbox target | `parse_contract`, `check_swc_patterns`, `slither_run_detectors` |
+| D3 | Build exploit-chain **plan** (JSON) — validation steps, not live weaponization | `config/exploitation-extension.json` |
+| D4 | Optional PoC — Foundry test in `scripts/sandbox/contracts/test/` | `forge test` via `exploitation-extension.py` |
+| D5 | Report — tag each finding `confirmed` (PoC pass) or `hypothesis` (PoC skipped/fail) | `artifacts/sandbox/exploitation-extension/` |
+
+**Run:**
+
+```bash
+HEXSTRIKE_SANDBOX=1 python3 scripts/sandbox/exploitation-extension.py
+HEXSTRIKE_SANDBOX=1 python3 scripts/sandbox/exploitation-extension.py --target scripts/sandbox/contracts/Bank.sol
+```
+
+**Hard blocks:** mainnet broadcast, remote execution, raw `0x…` live addresses, missing `HEXSTRIKE_SANDBOX=1`.
+
+**Exit criteria:** gate summary in artifact; chain plan JSON; PoC result or explicit `skipped: forge not installed`; no secrets in output.
+
 ### Playbook C — MEV / arbitrage surface (optional)
 
 **When:** user asks about sandwich, arb, or validator/MEV context around an address.

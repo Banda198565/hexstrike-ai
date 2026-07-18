@@ -150,3 +150,30 @@ Traditional finance read-only — **not** mixed with Web3 audit reports unless u
 | Dry-run | `python3 scripts/ingest-target-pool.py --root $SAMSON_TARGETS_DIR --dry-run` |
 
 Default VPS path: `data/pentest/targets/` (seed: `web3-field-targets.txt`).
+
+## Exploitation extension (Playbook D — sandbox only)
+
+Defensive PoC validation for local contracts. **Not** for live targets, RCE, or mainnet broadcast.
+
+| Item | Path |
+|------|------|
+| Config | `config/exploitation-extension.json` |
+| Gates | `scripts/sandbox/exploitation_gates.py` |
+| Runner | `scripts/sandbox/exploitation-extension.py` |
+| PoC tests | `scripts/sandbox/contracts/test/*.t.sol` |
+| Artifacts | `artifacts/sandbox/exploitation-extension/` |
+
+**Requirements:** `HEXSTRIKE_SANDBOX=1`, target under `scripts/sandbox/contracts/`.
+
+```bash
+# Gate unit tests
+python3 scripts/sandbox/test_exploitation_gates.py
+
+# Full extension (static + chain plan + optional forge PoC)
+HEXSTRIKE_SANDBOX=1 python3 scripts/sandbox/exploitation-extension.py --skip-forge
+
+# With Foundry PoC when forge is installed
+HEXSTRIKE_SANDBOX=1 python3 scripts/sandbox/exploitation-extension.py
+```
+
+Phased suite phase 6 runs gate + extension checks automatically.

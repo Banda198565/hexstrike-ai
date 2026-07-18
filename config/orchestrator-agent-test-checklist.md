@@ -199,6 +199,7 @@ Report: `artifacts/web3-audit/orchestrator-phased-test-report.md`
 | **3** | Known vuln contract | `RevertOnWithdraw.sol` | External call + honeypot logic; confirmed vs hypothesis |
 | **4** | rules.md / config.md | static checks in phased script | no exploit/fabrication rules; 3-file cap; secrets policy |
 | **5** | Multi-target on-chain | `field-targets-3.json` (BSC) | proxy + EOA + contract triage; graceful skip without Forta key |
+| **6** | Exploitation extension | `exploitation-extension.py` + gates | `HEXSTRIKE_SANDBOX=1`; Playbook D; gate tests pass; chain plan artifact |
 
 ### Phase 1 — manual MCP (Cursor UI)
 
