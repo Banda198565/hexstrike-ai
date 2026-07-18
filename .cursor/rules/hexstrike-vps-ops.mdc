@@ -1,0 +1,85 @@
+---
+description: HexStrike AI — VPS ops, deploy, debug (Mac ↔ VPS)
+globs:
+  - "scripts/**/*.sh"
+  - "scripts/**/*.py"
+  - "hexstrike_server.py"
+  - "hexstrike_orchestrator.py"
+  - "hexstrike-cli"
+  - "hexstrike-orchestrator"
+  - "Dockerfile"
+  - "Makefile"
+  - "*.yaml"
+  - "*.yml"
+alwaysApply: false
+---
+
+# HexStrike AI — VPS Ops Rules
+
+## CONTEXT
+
+- **Project**: HexStrike AI (MCP server, 150+ security tools, forensics/IR)
+- **Mac (local)**: `~/hexstrike-ai`
+- **VPS**: `root@78.27.235.70` (Ubuntu 22.04)
+- **SSH key (Mac → VPS)**: `~/.ssh/hexstrike_vps` (fallback: `~/.ssh/id_ed25519`)
+- **Install on VPS (primary)**: `/root/hexstrike-ai`
+- **Install on VPS (alternate bootstrap)**: `/opt/hexstrike-ai`
+- **Shared defaults**: `scripts/vps-defaults.sh`
+- **Services**: `hexstrike-server` (:8888 health), `hexstrike-orchestrator`, `autonomous_monitor`, Ollama (:11434)
+
+## COMMANDS (use existing scripts only)
+
+| Action | Command (run from Mac, in repo root) |
+|--------|--------------------------------------|
+| Check SSH + repo | `bash scripts/vps-from-mac.sh check` |
+| Service status | `bash scripts/vps-from-mac.sh status` |
+| Start / update server | `bash scripts/vps-from-mac.sh start` |
+| Install pubkey | `bash scripts/vps-from-mac.sh install-key` |
+| SOCKS tunnel (localhost only) | `bash scripts/vps-from-mac.sh tunnel` |
+| Stop tunnel | `bash scripts/vps-from-mac.sh tunnel-stop` |
+| Allow cloud agent IP | `bash scripts/vps-from-mac.sh allow-cloud <EGRESS_IP>` |
+
+**On VPS directly** (after `ssh -i ~/.ssh/hexstrike_vps root@78.27.235.70`):
+
+```bash
+cd /root/hexstrike-ai
+bash scripts/vps-start-server.sh
+systemctl status hexstrike-server hexstrike-orchestrator
+curl -sf http://127.0.0.1:8888/health | head -c 400
+```
+
+## PATH RULES
+
+- **Mac**: paths relative to `~/hexstrike-ai/`
+- **VPS**: primary `/root/hexstrike-ai/`; do not assume `/opt/` without checking
+- **Never** use `curl ifconfig.io` / `icanhazip` as the VPS IP — that is the **client** egress
+- **Never** bind SOCKS to `0.0.0.0` — use `127.0.0.1:1337` via `vps-from-mac.sh tunnel`
+- **Do not invent** scripts: no `vps-setup.sh`, `start_all.sh`, `health.sh`, `cursor-cloud` systemd unit
+
+## AGENT BEHAVIOR
+
+- May suggest fixes; prefer minimal diffs in files the user asked about
+- May run local `scripts/*` when the task requires it
+- **Ask first** before: `sudo` on VPS, `systemctl restart/stop`, editing `authorized_keys`, `sshd_config`, firewall/iptables, VPS reboot
+- **Do not touch** without explicit permission: `.ssh/config`, `sudoers`, network-wide UFW changes
+- Route non-trivial work via `.cursor/skills/using-agent-skills/SKILL.md` and matching skills
+
+## FORENSICS / DRAINER INTEL (defensive only)
+
+- **Read-only** on-chain and artifact analysis — no exploit, drain, or cash-out automation
+- **No** real seed phrases, private keys, or withdrawal API secrets in code or commits
+- **No** deploying drainer contracts or running withdrawal bots
+- Artifacts → `artifacts/forensics/`; follow `security-and-hardening` skill
+- Tests: testnet / mocked RPC only unless user provides explicit authorized scope
+
+## RESPONSE FORMAT (ops tasks)
+
+- Error: what failed → one concrete next command
+- Success: service state + evidence (systemd active, health JSON snippet)
+- If ambiguous: one clarifying question, then proceed
+
+## PRIORITY
+
+1. Infrastructure safety (no open SOCKS, no credential leaks)
+2. Literal execution of the user's request within defensive bounds
+3. Reuse existing scripts and conventions before adding new ones
