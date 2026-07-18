@@ -19,7 +19,7 @@
       "command": "uvx",
       "args": ["chainstack-mcp"],
       "env": {
-        "CHAINSTACK_API_KEY": "${CHAINSTACK_API_KEY}"
+        "CHAINSTACK_API_KEY": "${env:CHAINSTACK_API_KEY}"
       },
       "description": "Chainstack MCP — EVM RPC, indexer, web3 context for addresses and networks.",
       "timeout": 300
@@ -35,7 +35,7 @@
         "-e",
         "MYTHRIL_PATH=/usr/local/bin/myth",
         "-e",
-        "ETH_RPC_URL=${ETH_RPC_URL}",
+        "ETH_RPC_URL=${env:ETH_RPC_URL}",
         "faro-fino/mcp-server:latest"
       ],
       "description": "Faro Fino MCP — second-opinion deep scan (Slither/Mythril/Aderyn). Requires Docker image.",
@@ -45,9 +45,9 @@
       "command": "python3",
       "args": ["scripts/plaid_cfo_mcp_server.py"],
       "env": {
-        "PLAID_CLIENT_ID": "${PLAID_CLIENT_ID}",
-        "PLAID_SECRET": "${PLAID_SECRET}",
-        "PLAID_ACCESS_TOKEN": "${PLAID_ACCESS_TOKEN}",
+        "PLAID_CLIENT_ID": "${env:PLAID_CLIENT_ID}",
+        "PLAID_SECRET": "${env:PLAID_SECRET}",
+        "PLAID_ACCESS_TOKEN": "${env:PLAID_ACCESS_TOKEN}",
         "PLAID_ENV": "sandbox"
       },
       "description": "Personal CFO — read-only Plaid (accounts, transactions, holdings, liabilities).",
