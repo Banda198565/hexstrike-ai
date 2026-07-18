@@ -33,15 +33,23 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# ========== КОНФИГУРАЦИЯ (при необходимости замените / дополните) ==========
+# RPC: задайте через env ETH_RPC_URL (HTTPS предпочтительно) или --rpc
+# Telegram: TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID (опционально)
 DEFAULT_OPERATORS = {
-    "0x48de55b9ef74377008b739070d7f32554fbb38ff",
+    "0x48de55b9ef74377008b739070d7f32554fbb38ff",  # EIP7702 dust operator
+    # "0xВАШ_ОПЕРАТОР".lower(),
 }
 DEFAULT_SINKS = {
-    "0x38380e4dc55d71be798935707b452cf936822f3b",
+    "0x38380e4dc55d71be798935707b452cf936822f3b",  # validated USDT sink
+    # "0xВАШ_SINK".lower(),
 }
 USDT = "0xdac17f958d2ee523a2206206994597c13d831ec7"
 USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
 TRANSFER_SEL = "0xa9059cbb"
+# Также подхватывает IOC из artifacts/forensics/* автоматически.
+# ========================================================================
 
 
 def load_dotenv(path: Path | None = None) -> None:
