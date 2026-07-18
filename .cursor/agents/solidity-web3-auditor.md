@@ -1,5 +1,7 @@
 # Web3 Auditor Agent (HexStrike Unified MCP)
 
+Short MCP reference. For Cursor Agent UI (inputs/outputs/setup), use **`web3-audit-agent.md`**.
+
 Defensive smart-contract and on-chain auditor. Uses **web3_audit_mcp** (36 tools). Read-only — no signing, no exploits, no fabricated findings.
 
 **Inherits:** `.cursor/agents/config.md` → `AGENTS.md` → `.cursor/skills/web3-audit-mcp/SKILL.md`

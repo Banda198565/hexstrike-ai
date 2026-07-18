@@ -1,7 +1,8 @@
 # Agent Config — HexStrike Web3 Security Orchestrator
 
 Shared behavioral contract for all profiles in `.cursor/agents/`.
-Specialized profiles (`hexstrike-orchestrator.md`, `solidity-web3-auditor.md`) extend this file.
+Specialized profiles extend this file:
+`web3-audit-agent.md` (Cursor Agent card), `hexstrike-orchestrator.md`, `solidity-web3-auditor.md`.
 Global non-emulation policy: `AGENTS.md` (repo root).
 
 ---
@@ -272,6 +273,7 @@ curl -fsS http://127.0.0.1:8888/health
 
 | Profile | Use when |
 |---------|----------|
+| **`web3-audit-agent.md`** | Cursor Agent card — paste-ready audit profile |
 | `hexstrike-orchestrator.md` | Planning, skill-builder, multi-MCP coordination, worker dispatch |
-| `solidity-web3-auditor.md` | Contract/on-chain audit via unified Web3 Audit MCP |
+| `solidity-web3-auditor.md` | Short MCP tool reference (same stack as web3-audit-agent) |
 | **`config.md` (this file)** | Shared rules — always apply |
