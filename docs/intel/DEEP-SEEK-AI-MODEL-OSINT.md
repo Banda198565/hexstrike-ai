@@ -38,6 +38,26 @@ python3 scripts/deep_seek_ai_connect.py \
 
 Optional: `--model deepseek/deepseek-r1` or `deepseek/deepseek-v3.2`. Session artifact from the verified connect: [deep-seek-ai-connect-session.json](./deep-seek-ai-connect-session.json).
 
+### When UI shows «Вы достигли дневного лимита»
+
+That is the mirror’s freemium gate (HTTP 429 / PRO upsell). Same backend as this script — waiting or paying PRO is not required for HexStrike work.
+
+**Continue chat locally (Ollama already up on your Mac):**
+
+```bash
+cd /Volumes/Eva/mufasaai-storage/hexstrike-ai
+# interactive HexStrike chat (menu → 1)
+./hexstrike-go.sh
+
+# or directly:
+python3 scripts/hexstrike-terminal.py
+
+# or plain Ollama:
+ollama run deepseek-v2.5
+```
+
+**Official cloud chat** (not the mirror): https://chat.deepseek.com — use `model="deepseek-v4-flash"` on `api.deepseek.com`.
+
 ## Evidence
 
 ### 1. UI model config (`window.__CHAT_MODELS__`)

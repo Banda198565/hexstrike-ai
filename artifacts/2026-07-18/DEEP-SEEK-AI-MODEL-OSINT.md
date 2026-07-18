@@ -38,6 +38,26 @@ python3 scripts/deep_seek_ai_connect.py \
 
 Optional: `--model deepseek/deepseek-r1` or `deepseek/deepseek-v3.2`. Session artifact from the verified connect: [deep-seek-ai-connect-session.json](./deep-seek-ai-connect-session.json).
 
+### When UI shows «Вы достигли дневного лимита»
+
+That is the mirror’s freemium gate (HTTP 429 / PRO upsell). Same backend as this script — waiting or paying PRO is not required for HexStrike work.
+
+**Continue chat locally (Ollama already up on your Mac):**
+
+```bash
+cd /Volumes/Eva/mufasaai-storage/hexstrike-ai
+# interactive HexStrike chat (menu → 1)
+./hexstrike-go.sh
+
+# or directly:
+python3 scripts/hexstrike-terminal.py
+
+# or plain Ollama:
+ollama run deepseek-v2.5
+```
+
+**Official cloud chat** (not the mirror): https://chat.deepseek.com — use `model="deepseek-v4-flash"` on `api.deepseek.com`.
+
 ## Evidence
 
 ### 1. UI model config (`window.__CHAT_MODELS__`)
@@ -78,13 +98,32 @@ flowchart LR
 - “Unlimited free” marketing conflicts with daily limit / PRO upsell UX (HTTP 429 path in client).
 - Do not treat UI card names as authoritative without checking SSE `model`.
 
+## Official API model ids (api.deepseek.com)
+
+Do not confuse OpenRouter-style mirror ids (`deepseek/...`) with official DeepSeek API ids.
+
+| Official `model=` | Status | Notes |
+| --- | --- | --- |
+| `deepseek-v4-flash` | current | Fast / economical V4; works today |
+| `deepseek-v4-pro` | current | Larger V4; Expert-class |
+| `deepseek-chat` | deprecated | Retires **2026-07-24 15:59 UTC**; currently routes to V4-Flash non-thinking |
+| `deepseek-reasoner` | deprecated | Retires **2026-07-24 15:59 UTC**; currently routes to V4-Flash thinking |
+
+```text
+model="deepseek-reasoner"   # outdated — do not use for new integrations
+model="deepseek-v4-flash"   # correct official API id
+```
+
+Mirror `deep-seek.ai` still talks OpenRouter ids (`deepseek/deepseek-v4-flash`). That is **not** a drop-in string for `api.deepseek.com`.
+
 ## Remediation (users / operators)
 
-1. Prefer official channels: `chat.deepseek.com` or `api.deepseek.com` with `deepseek-v4-flash` / `deepseek-v4-pro`.
+1. Prefer official channels: `chat.deepseek.com` or `api.deepseek.com` with `deepseek-v4-flash` / `deepseek-v4-pro` (not `deepseek-reasoner` / `deepseek-chat`).
 2. Do not send secrets, keys, or PII to mirror/aggregator sites.
 3. If attributing a conversation for IR: capture SSE `model` + `provider` + request id from the stream.
 
 ## Official references
 
 - DeepSeek V4 preview release: https://api-docs.deepseek.com/news/news260424
+- Thinking mode guide: https://api-docs.deepseek.com/guides/thinking_mode
 - Transparency center: https://www.deepseek.com/en/transparency/

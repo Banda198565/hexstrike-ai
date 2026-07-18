@@ -175,12 +175,20 @@ def chat(
         )
     except urllib.error.HTTPError as exc:
         err_body = exc.read().decode("utf-8", "replace")
-        return {
+        out: dict[str, Any] = {
             "ok": False,
             "http_status": exc.code,
             "error": err_body[:1000],
             "limit_exhausted": exc.code == 429,
         }
+        if exc.code == 429:
+            out["fallback_local_chat"] = [
+                "./hexstrike-go.sh",
+                "python3 scripts/hexstrike-terminal.py",
+                "ollama run deepseek-v2.5",
+                "https://chat.deepseek.com  # official, not the mirror",
+            ]
+        return out
 
     text = body.decode("utf-8", "replace")
     ctype = resp_headers.get("content-type", "")
@@ -234,7 +242,10 @@ def connect(base: str, model: str | None, prompt: str, timeout: int) -> dict[str
             "provider": (result.get("provider_field_values") or [None])[0],
             "proxy": "OpenRouter" if result.get("openrouter_processing_marker") else "unknown",
             "assistant_text": result.get("assistant_text"),
+            "limit_exhausted": bool(result.get("limit_exhausted")),
         }
+        if result.get("fallback_local_chat"):
+            report["fallback_local_chat"] = result["fallback_local_chat"]
     except Exception as exc:  # noqa: BLE001 — surface connector failures as JSON
         report["error"] = str(exc)
     return report
