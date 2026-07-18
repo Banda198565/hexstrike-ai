@@ -207,6 +207,83 @@ class ContractToolchain:
             return ToolResult("echidna", ok=False, skipped=True, skip_reason="echidna not installed")
         return self._run("echidna", [binary, "."], cwd=project_dir)
 
+    def forge_compile_abi(
+        self, project_dir: Path, *, contract_name: str | None = None
+    ) -> ToolResult:
+        """Compile Foundry project and extract ABI/bytecode from out/ artifacts."""
+        binary = _which("forge")
+        if not binary:
+            return ToolResult("forge", ok=False, skipped=True, skip_reason="forge not installed")
+        if not (project_dir / "foundry.toml").is_file():
+            return ToolResult(
+                "forge",
+                ok=False,
+                skipped=True,
+                skip_reason="foundry.toml not found — not a Foundry project",
+            )
+        result = self._run("forge", [binary, "build"], cwd=project_dir)
+        if not result.ok:
+            return result
+        out_dir = project_dir / "out"
+        if not out_dir.is_dir():
+            result.ok = False
+            result.error = "forge build succeeded but out/ missing"
+            return result
+        artifacts: list[dict[str, Any]] = []
+        for json_path in out_dir.rglob("*.json"):
+            if json_path.name.endswith(".metadata.json"):
+                continue
+            try:
+                data = json.loads(json_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                continue
+            if not isinstance(data, dict) or "abi" not in data:
+                continue
+            name = data.get("contractName") or json_path.stem
+            if contract_name and name != contract_name:
+                continue
+            artifacts.append(
+                {
+                    "contract_name": name,
+                    "abi": data.get("abi"),
+                    "bytecode": (data.get("bytecode") or {}).get("object"),
+                    "deployed_bytecode": (data.get("deployedBytecode") or {}).get("object"),
+                    "artifact_path": str(json_path),
+                }
+            )
+        result.findings = artifacts
+        result.ok = bool(artifacts)
+        if not artifacts:
+            result.error = "no ABI artifacts found in out/"
+        return result
+
+    def mythril_analyze_bytecode(self, bytecode: str) -> ToolResult:
+        """Run Mythril on raw bytecode hex string."""
+        binary = _which("myth")
+        if not binary:
+            return ToolResult("mythril", ok=False, skipped=True, skip_reason="mythril not installed")
+        hex_body = bytecode[2:] if bytecode.startswith("0x") else bytecode
+        if not hex_body:
+            return ToolResult("mythril", ok=False, error="empty bytecode")
+        result = self._run("mythril", [binary, "analyze", "-c", f"0x{hex_body}", "-o", "json"])
+        if result.stdout.strip():
+            try:
+                payload = json.loads(result.stdout)
+                issues = payload if isinstance(payload, list) else payload.get("issues", [])
+                result.findings = [
+                    {
+                        "title": i.get("title"),
+                        "severity": i.get("severity"),
+                        "description": i.get("description"),
+                        "swc_id": i.get("swc-id") or i.get("swc_id"),
+                    }
+                    for i in issues
+                ]
+                result.ok = True
+            except json.JSONDecodeError:
+                result.findings = [{"raw": result.stdout[:2000]}]
+        return result
+
     def foundry_test(self, project_dir: Path, *, match: str | None = None) -> ToolResult:
         binary = _which("forge")
         if not binary:

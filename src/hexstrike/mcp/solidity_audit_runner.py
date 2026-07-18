@@ -39,6 +39,48 @@ _FUNCTION_RE = re.compile(
     re.I,
 )
 _MODIFIER_RE = re.compile(r"modifier\s+(\w+)", re.I)
+_INHERITANCE_RE = re.compile(r"\bcontract\s+(\w+)\s+is\s+([^{]+)\{", re.I)
+_EVENT_RE = re.compile(r"event\s+(\w+)", re.I)
+_STATE_VAR_RE = re.compile(
+    r"\b(constant\s+)?(immutable\s+)?(public\s+|private\s+|internal\s+)?(\w+(?:\[\])?)\s+(\w+)\s*[;=]",
+    re.I,
+)
+_LIBRARY_RE = re.compile(r"\blibrary\s+(\w+)", re.I)
+_CALL_RE = re.compile(r"\b(\w+)\s*\(", re.I)
+
+_EIP1967_IMPL_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+
+_SEVERITY_TO_GRADE: list[tuple[int, str]] = [
+    (90, "A"),
+    (80, "B"),
+    (70, "C"),
+    (60, "D"),
+    (0, "F"),
+]
+
+_SWC_EXPLOIT_SCENARIOS: dict[str, str] = {
+    "SWC-107": "Attacker re-enters before state update and drains ETH/tokens.",
+    "SWC-105": "Unauthorized party sends contract ETH to arbitrary address.",
+    "SWC-106": "Selfdestruct or unrestricted ETH send bricks funds or logic.",
+    "SWC-125": "Proxy implementation can be upgraded without proper auth.",
+    "SWC-115": "Phishing contract bypasses auth via tx.origin check.",
+    "SWC-120": "Weak randomness enables predictable outcomes / gaming.",
+    "SWC-104": "Unchecked low-level call return value hides failure.",
+    "SWC-112": "Delegatecall to untrusted code overwrites storage.",
+}
+
+_FINDING_CATEGORIES: dict[str, str] = {
+    "reentrancy": "reentrancy",
+    "tx-origin": "auth",
+    "arbitrary-send": "auth",
+    "delegatecall": "upgrade-risk",
+    "unprotected-upgrade": "upgrade-risk",
+    "suicidal": "DoS",
+    "unchecked": "logic",
+    "weak-prng": "economic",
+    "mint": "economic",
+    "overflow": "logic",
+}
 
 _CRITICAL_SINK_FRAGMENTS = (
     "delegatecall",
@@ -90,6 +132,123 @@ def _map_swc_id(check: str | None) -> str | None:
         if fragment in low:
             return swc
     return None
+
+
+def _detect_framework(path: Path | None) -> str:
+    if path is None:
+        return "bare"
+    search_dirs = [path.parent] if path.is_file() else [path]
+    for d in search_dirs:
+        for parent in [d, *d.parents]:
+            if (parent / "foundry.toml").is_file():
+                return "foundry"
+            if (parent / "hardhat.config.js").is_file() or (parent / "hardhat.config.ts").is_file():
+                return "hardhat"
+            if parent == _REPO_ROOT.parent:
+                break
+    return "bare"
+
+
+def _parse_contract_details(text: str) -> list[dict[str, Any]]:
+    contracts: list[dict[str, Any]] = []
+    for match in re.finditer(
+        r"\bcontract\s+(\w+)(?:\s+is\s+([^{]+))?\s*\{",
+        text,
+        re.I,
+    ):
+        name = match.group(1)
+        inheritance_raw = (match.group(2) or "").strip()
+        inheritance = [p.strip() for p in inheritance_raw.split(",") if p.strip()] if inheritance_raw else []
+        block_start = match.end()
+        depth = 1
+        i = block_start
+        while i < len(text) and depth > 0:
+            if text[i] == "{":
+                depth += 1
+            elif text[i] == "}":
+                depth -= 1
+            i += 1
+        block = text[block_start : i - 1]
+        modifiers = _MODIFIER_RE.findall(block)
+        events = _EVENT_RE.findall(block)
+        public_functions: list[str] = []
+        external_functions: list[str] = []
+        for fn_match in re.finditer(
+            r"function\s+(\w+)\s*\([^)]*\)\s*((?:\w+\s+)*)",
+            block,
+            re.I,
+        ):
+            fn_name = fn_match.group(1)
+            attrs = (fn_match.group(2) or "").lower()
+            if "external" in attrs:
+                external_functions.append(fn_name)
+            elif "public" in attrs or not any(v in attrs for v in ("internal", "private")):
+                public_functions.append(fn_name)
+        contracts.append(
+            {
+                "name": name,
+                "inheritance": inheritance,
+                "modifiers": modifiers,
+                "events": events,
+                "public_functions": public_functions,
+                "external_functions": external_functions,
+            }
+        )
+    return contracts
+
+
+def _slither_element_location(el: dict[str, Any]) -> dict[str, Any]:
+    sm = el.get("source_mapping") or {}
+    return {
+        "file": sm.get("filename_absolute") or sm.get("filename_relative") or sm.get("filename"),
+        "line": sm.get("lines", [None])[0] if sm.get("lines") else None,
+        "function": el.get("name") if el.get("type") == "function" else el.get("name"),
+    }
+
+
+def _slither_detector_to_spec(det: dict[str, Any]) -> dict[str, Any]:
+    check = det.get("check") or "unknown"
+    impact = str(det.get("impact") or "informational").lower()
+    locations: list[dict[str, Any]] = []
+    for el in det.get("elements") or []:
+        loc = _slither_element_location(el)
+        if loc.get("file") or loc.get("function"):
+            locations.append(loc)
+    swc = _map_swc_id(check)
+    return {
+        "id": check,
+        "title": check.replace("-", " ").title(),
+        "severity": impact,
+        "description": det.get("description") or "",
+        "locations": locations,
+        "swc_refs": [swc] if swc else [],
+    }
+
+
+def _infer_finding_category(label: str) -> str:
+    low = label.lower()
+    for fragment, category in _FINDING_CATEGORIES.items():
+        if fragment in low:
+            return category
+    return "logic"
+
+
+def _risk_grade(score: int) -> str:
+    for threshold, grade in _SEVERITY_TO_GRADE:
+        if score >= threshold:
+            return grade
+    return "F"
+
+
+def _count_by_severity(items: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    for item in items:
+        sev = str(item.get("severity") or item.get("impact") or "low").lower()
+        if sev in counts:
+            counts[sev] += 1
+        elif sev in ("informational", "info"):
+            counts["low"] += 1
+    return counts
 
 
 def _normalize_vulnerability(item: dict[str, Any], *, tool: str) -> dict[str, Any]:
@@ -153,26 +312,31 @@ def _read_source(path: Path | None, inline: str | None) -> tuple[str, str]:
 
 
 def parse_contract(source_or_path: str, *, source_is_code: bool = False) -> dict[str, Any]:
-    """Normalize contract source metadata — no simulated vulnerability data."""
+    """Normalize contract source metadata — structured contracts list, framework detection."""
     path, inline = _resolve_path(source_or_path, source_is_code=source_is_code)
     if path is None and inline is None:
         return {"success": False, "error": "path not found and no source provided", "contracts": []}
 
     text, label = _read_source(path, inline)
     pragmas = _PRAGMA_RE.findall(text)
-    contracts = _CONTRACT_RE.findall(text)
+    contract_details = _parse_contract_details(text)
     imports = _IMPORT_RE.findall(text)
+    compiler_version = pragmas[0] if pragmas else None
 
     return {
         "success": True,
         "source_label": label,
         "path": str(path) if path else None,
         "line_count": len(text.splitlines()),
+        "compiler_version": compiler_version,
+        "solidity_version_pragmas": pragmas,
         "pragma_versions": pragmas,
-        "contracts": contracts,
+        "contracts": contract_details,
+        "contract_names": [c["name"] for c in contract_details],
         "import_count": len(imports),
         "imports_sample": imports[:10],
         "uses_openzeppelin_import": bool(_OZ_IMPORT_RE.search(text)),
+        "detected_framework": _detect_framework(path),
     }
 
 
@@ -258,6 +422,7 @@ def check_swc_patterns(path_or_source: str, *, source_is_code: bool = False) -> 
                 "swc_id": "SWC-107",
                 "source": "source_heuristic",
                 "check": "external-call-with-value-without-guard",
+                "impact": "high",
                 "description": "Review reentrancy on ETH transfer via .call{value:}",
             }
         )
@@ -267,7 +432,25 @@ def check_swc_patterns(path_or_source: str, *, source_is_code: bool = False) -> 
                 "swc_id": "SWC-115",
                 "source": "source_heuristic",
                 "check": "tx-origin-usage",
+                "impact": "medium",
                 "description": "tx.origin used — authentication risk",
+            }
+        )
+
+    issues: list[dict[str, Any]] = []
+    for m in swc_matches:
+        swc_id = m.get("swc_id") or "SWC-UNKNOWN"
+        issues.append(
+            {
+                "swc_id": swc_id,
+                "title": m.get("check") or swc_id,
+                "severity": str(m.get("impact") or "medium").lower(),
+                "description": m.get("description") or "",
+                "locations": [],
+                "exploit_scenario_short": _SWC_EXPLOIT_SCENARIOS.get(
+                    swc_id, "Manual review required for exploit preconditions."
+                ),
+                "source": m.get("source"),
             }
         )
 
@@ -276,6 +459,8 @@ def check_swc_patterns(path_or_source: str, *, source_is_code: bool = False) -> 
     payload = {
         "success": True,
         "audit_id": audit_id,
+        "issues": issues,
+        "issue_count": len(issues),
         "swc_matches": swc_matches,
         "match_count": len(swc_matches),
         "slither_skipped": slither.get("skipped"),
@@ -357,9 +542,59 @@ def detect_audit_tools() -> dict[str, Any]:
     return {"success": True, "tools": tools, "available": [k for k, v in tools.items() if v]}
 
 
-def slither_run_detectors(path_or_source: str, *, source_is_code: bool = False) -> dict[str, Any]:
-    """Full Slither detector run — normalized JSON."""
-    return run_static_analysis_slither(path_or_source, source_is_code=source_is_code)
+def slither_run_detectors(
+    path_or_source: str,
+    *,
+    source_is_code: bool = False,
+    excluded_detectors: list[str] | None = None,
+) -> dict[str, Any]:
+    """Full Slither detector run — spec-shaped detectors[] with locations and swc_refs."""
+    audit_id = f"audit-{_utc_stamp()}-{uuid.uuid4().hex[:8]}"
+    path, inline, err = _prepare_sol_path(path_or_source, source_is_code=source_is_code, audit_id=audit_id)
+    if err:
+        return err
+
+    excluded = {d.lower() for d in (excluded_detectors or [])}
+    toolchain = ContractToolchain()
+    payload, result = toolchain.slither_raw_json(path)  # type: ignore[arg-type]
+
+    detectors: list[dict[str, Any]] = []
+    if payload and not result.skipped:
+        raw = (payload.get("results") or {}).get("detectors", [])
+        for det in raw:
+            spec = _slither_detector_to_spec(det)
+            if spec["id"].lower() in excluded:
+                continue
+            detectors.append(spec)
+    elif not result.skipped:
+        for f in result.findings:
+            check = f.get("check") or "unknown"
+            if check.lower() in excluded:
+                continue
+            swc = _map_swc_id(check)
+            detectors.append(
+                {
+                    "id": check,
+                    "title": check.replace("-", " ").title(),
+                    "severity": str(f.get("impact") or "informational").lower(),
+                    "description": f.get("description") or "",
+                    "locations": [],
+                    "swc_refs": [swc] if swc else [],
+                }
+            )
+
+    return {
+        "success": result.ok or result.skipped or bool(detectors),
+        "audit_id": audit_id,
+        "path": str(path),
+        "detectors": detectors,
+        "detector_count": len(detectors),
+        "findings": result.findings,
+        "finding_count": len(detectors),
+        "skipped": result.skipped,
+        "skip_reason": result.skip_reason,
+        "error": result.error,
+    }
 
 
 def slither_functions(path_or_source: str, *, source_is_code: bool = False) -> dict[str, Any]:
@@ -544,3 +779,436 @@ def full_audit(path_or_source: str, *, source_is_code: bool = False) -> dict[str
     report["raw_report_path"] = str(report_path)
     report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return report
+
+
+def slither_structure(path_or_source: str, *, source_is_code: bool = False) -> dict[str, Any]:
+    """Extract contract structure: state vars, call graph hints, external entry points."""
+    audit_id = f"audit-{_utc_stamp()}-{uuid.uuid4().hex[:8]}"
+    path, inline, err = _prepare_sol_path(path_or_source, source_is_code=source_is_code, audit_id=audit_id)
+    if err:
+        return err
+
+    text, label = _read_source(path, inline)
+    parsed = _parse_contract_details(text)
+    libraries = _LIBRARY_RE.findall(text)
+    contracts_out: list[dict[str, Any]] = []
+
+    for c in parsed:
+        block_match = re.search(rf"\bcontract\s+{re.escape(c['name'])}\s*[^{{]*\{{", text, re.I)
+        block = ""
+        if block_match:
+            start = block_match.end()
+            depth = 1
+            i = start
+            while i < len(text) and depth > 0:
+                if text[i] == "{":
+                    depth += 1
+                elif text[i] == "}":
+                    depth -= 1
+                i += 1
+            block = text[start : i - 1]
+
+        state_variables: list[dict[str, Any]] = []
+        for sv in _STATE_VAR_RE.finditer(block):
+            state_variables.append(
+                {
+                    "type": sv.group(4),
+                    "name": sv.group(5),
+                    "visibility": "public" if "public" in sv.group(0) else "internal",
+                    "constant": bool(sv.group(1)),
+                    "immutable": bool(sv.group(2)),
+                }
+            )
+        contracts_out.append(
+            {
+                "name": c["name"],
+                "base_contracts": c.get("inheritance", []),
+                "uses_libraries": libraries,
+                "state_variables": state_variables,
+            }
+        )
+
+    call_graph: list[dict[str, str]] = []
+    fn_names = {f for c in parsed for f in c.get("public_functions", []) + c.get("external_functions", [])}
+    for fn in fn_names:
+        fn_block_match = re.search(rf"function\s+{re.escape(fn)}\s*\([^{{]*\{{", text, re.I)
+        if not fn_block_match:
+            continue
+        start = fn_block_match.end()
+        depth = 1
+        i = start
+        while i < len(text) and depth > 0:
+            if text[i] == "{":
+                depth += 1
+            elif text[i] == "}":
+                depth -= 1
+            i += 1
+        body = text[start : i - 1]
+        for callee in set(_CALL_RE.findall(body)):
+            if callee in fn_names and callee != fn:
+                call_graph.append({"caller": fn, "callee": callee, "type": "internal"})
+
+    external_entry_points = [
+        {"contract": c["name"], "function": fn, "visibility": "external"}
+        for c in parsed
+        for fn in c.get("external_functions", [])
+    ] + [
+        {"contract": c["name"], "function": fn, "visibility": "public"}
+        for c in parsed
+        for fn in c.get("public_functions", [])
+    ]
+
+    return {
+        "success": True,
+        "audit_id": audit_id,
+        "source_label": label,
+        "path": str(path),
+        "contracts": contracts_out,
+        "call_graph": call_graph,
+        "external_entry_points": external_entry_points,
+    }
+
+
+def aderyn_analyze(
+    path_or_source: str,
+    *,
+    source_is_code: bool = False,
+    ruleset: str = "default",
+) -> dict[str, Any]:
+    """Run Aderyn and map findings to violations[] with property/status."""
+    raw = run_aderyn(path_or_source, source_is_code=source_is_code)
+    violations: list[dict[str, Any]] = []
+    if raw.get("skipped"):
+        return {
+            **raw,
+            "ruleset": ruleset,
+            "violations": [],
+            "violation_count": 0,
+        }
+    for idx, f in enumerate(raw.get("findings") or []):
+        title = f.get("title") or f.get("check") or f"aderyn-rule-{idx}"
+        violations.append(
+            {
+                "rule_id": title.lower().replace(" ", "-"),
+                "property": title,
+                "status": "violated",
+                "details": f.get("description") or f.get("source") or "See Aderyn report",
+            }
+        )
+    if not violations and raw.get("success"):
+        violations.append(
+            {
+                "rule_id": "aderyn-clean",
+                "property": "no violations reported",
+                "status": "satisfied",
+                "details": "Aderyn completed without flagged issues in parsed output",
+            }
+        )
+    return {
+        **raw,
+        "ruleset": ruleset,
+        "violations": violations,
+        "violation_count": len([v for v in violations if v["status"] == "violated"]),
+    }
+
+
+def mythril_scan_summary(
+    *,
+    bytecode: str | None = None,
+    address: str | None = None,
+    chain: str = "ethereum",
+    path_or_source: str | None = None,
+    source_is_code: bool = False,
+) -> dict[str, Any]:
+    """Light Mythril summary from bytecode, on-chain address, or source file."""
+    audit_id = f"audit-{_utc_stamp()}-{uuid.uuid4().hex[:8]}"
+    toolchain = ContractToolchain()
+    result: ToolResult | None = None
+
+    if address:
+        onchain = fetch_onchain_data(address, chain=chain)
+        if not onchain.get("success") or not onchain.get("is_contract"):
+            return {
+                "success": False,
+                "audit_id": audit_id,
+                "error": "address has no contract bytecode",
+                "issues": [],
+            }
+        code_hex = "0x"
+        try:
+            client = StealthRpcClient(RPC_CONFIG)
+            _, resp = client.call("eth_getCode", [address.strip().lower(), "latest"], timeout=12.0)
+            code_hex = resp.get("result") or "0x"
+        except Exception:
+            code_hex = "0x"
+        result = toolchain.mythril_analyze_bytecode(code_hex)
+    elif bytecode:
+        result = toolchain.mythril_analyze_bytecode(bytecode)
+    elif path_or_source:
+        myth = run_bytecode_scan_mythril(path_or_source, source_is_code=source_is_code)
+        issues = [
+            {
+                "type": (f.get("title") or f.get("check") or "unknown").lower().replace(" ", "-"),
+                "severity": f.get("severity") or f.get("impact") or "unknown",
+                "description": f.get("description") or "",
+                "exploitability_estimate": "manual_review",
+            }
+            for f in (myth.get("findings") or [])
+        ]
+        return {
+            **myth,
+            "audit_id": audit_id,
+            "issues": issues,
+            "issue_count": len(issues),
+        }
+    else:
+        return {"success": False, "audit_id": audit_id, "error": "provide bytecode, address, or path", "issues": []}
+
+    assert result is not None
+    issues: list[dict[str, Any]] = []
+    for f in result.findings:
+        sev = str(f.get("severity") or "medium").lower()
+        exploitability = "low"
+        if sev in ("high", "critical"):
+            exploitability = "likely"
+        issues.append(
+            {
+                "type": (f.get("title") or "unknown").lower().replace(" ", "-"),
+                "severity": sev,
+                "description": f.get("description") or "",
+                "exploitability_estimate": exploitability,
+                "swc_id": f.get("swc_id"),
+            }
+        )
+    return {
+        "success": result.ok or result.skipped,
+        "audit_id": audit_id,
+        "issues": issues,
+        "issue_count": len(issues),
+        "skipped": result.skipped,
+        "skip_reason": result.skip_reason,
+        "error": result.error,
+        "read_only": bool(address),
+    }
+
+
+def contract_security_score(
+    path_or_source: str,
+    *,
+    source_is_code: bool = False,
+    include_mythril: bool = False,
+) -> dict[str, Any]:
+    """Aggregated triage score (100 = best) with grade and top risks."""
+    audit_id = f"audit-{_utc_stamp()}-{uuid.uuid4().hex[:8]}"
+    slither = slither_run_detectors(path_or_source, source_is_code=source_is_code)
+    swc = check_swc_patterns(path_or_source, source_is_code=source_is_code)
+    normalized = normalize_findings(
+        {
+            "slither": slither.get("detectors") or [],
+            "swc": swc.get("issues") or [],
+        }
+    )
+    deduped = normalized.get("deduped_findings") or []
+    metrics = _count_by_severity(deduped)
+    risk_points = min(
+        100,
+        metrics["critical"] * 25 + metrics["high"] * 15 + metrics["medium"] * 8 + metrics["low"] * 3,
+    )
+    score = max(0, 100 - risk_points)
+    top_risks = [
+        {
+            "id": f.get("id"),
+            "category": f.get("category"),
+            "severity": f.get("severity"),
+            "description": (f.get("description") or "")[:200],
+            "sources": f.get("sources"),
+        }
+        for f in deduped[:5]
+    ]
+
+    mythril_block: dict[str, Any] | None = None
+    if include_mythril:
+        mythril_block = mythril_scan_summary(path_or_source=path_or_source, source_is_code=source_is_code)
+
+    return {
+        "success": True,
+        "audit_id": audit_id,
+        "score": score,
+        "grade": _risk_grade(score),
+        "metrics": metrics,
+        "top_risks": top_risks,
+        "slither_skipped": slither.get("skipped"),
+        "mythril": mythril_block,
+    }
+
+
+def onchain_metadata(address: str, chain: str = "ethereum") -> dict[str, Any]:
+    """Read-only on-chain metadata: proxy hints, bytecode, verification status unknown without explorer."""
+    audit_id = f"audit-{_utc_stamp()}-{uuid.uuid4().hex[:8]}"
+    addr = address.strip().lower()
+    if not re.match(r"^0x[0-9a-f]{40}$", addr):
+        return {"success": False, "error": "invalid address", "audit_id": audit_id}
+
+    base = fetch_onchain_data(addr, chain=chain)
+    if not base.get("success"):
+        return {**base, "audit_id": audit_id}
+
+    implementation_address: str | None = None
+    is_proxy = False
+    try:
+        client = StealthRpcClient(RPC_CONFIG)
+        _, storage = client.call("eth_getStorageAt", [addr, _EIP1967_IMPL_SLOT, "latest"], timeout=12.0)
+        slot_val = storage.get("result") or "0x" + "0" * 64
+        if slot_val and int(slot_val, 16) != 0:
+            is_proxy = True
+            implementation_address = "0x" + slot_val[-40:]
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "audit_id": audit_id,
+        "address": addr,
+        "chain": chain,
+        "is_contract": base.get("is_contract"),
+        "bytecode_length": base.get("bytecode_length"),
+        "is_proxy": is_proxy,
+        "implementation_address": implementation_address,
+        "deployer": None,
+        "txn_history_summary": {
+            "note": "Full deploy/upgrade history requires block explorer API (read-only RPC only here)",
+        },
+        "verified_source": {
+            "available": False,
+            "note": "Use explorer MCP/API to confirm verified source matches audited code",
+        },
+        "read_only": True,
+    }
+
+
+def compile_and_abi(path_or_source: str, *, contract_name: str | None = None) -> dict[str, Any]:
+    """Compile Foundry project and return ABI/bytecode artifacts."""
+    audit_id = f"audit-{_utc_stamp()}-{uuid.uuid4().hex[:8]}"
+    path, inline = _resolve_path(path_or_source, source_is_code=False)
+    if path is None:
+        return {
+            "success": False,
+            "audit_id": audit_id,
+            "error": "compile_and_abi requires a project or file path",
+        }
+    project_dir = path.parent if path.is_file() else path
+    toolchain = ContractToolchain()
+    result = toolchain.forge_compile_abi(project_dir, contract_name=contract_name)
+    if result.skipped:
+        return {
+            "success": False,
+            "audit_id": audit_id,
+            "skipped": True,
+            "skip_reason": result.skip_reason,
+            "abi": None,
+            "bytecode": None,
+            "deployed_bytecode": None,
+        }
+    artifact = (result.findings or [{}])[0] if result.findings else {}
+    return {
+        "success": result.ok,
+        "audit_id": audit_id,
+        "contract_name": artifact.get("contract_name") or contract_name,
+        "abi": artifact.get("abi"),
+        "bytecode": artifact.get("bytecode"),
+        "deployed_bytecode": artifact.get("deployed_bytecode"),
+        "artifact_path": artifact.get("artifact_path"),
+        "artifacts": result.findings,
+        "error": result.error,
+    }
+
+
+def generate_audit_report_skeleton(contract_name: str, purpose: str = "token") -> dict[str, Any]:
+    """Return standardized audit report section skeleton for agent fill-in."""
+    purpose = purpose.lower()
+    security_model_notes = {
+        "governance": "Document admin keys, timelocks, proposal thresholds, and upgrade paths.",
+        "token": "Document mint/burn roles, pausing, blacklist, and fee mechanics.",
+        "staking": "Document reward rate, withdrawal delays, slashing, and oracle trust.",
+        "defi": "Document oracle sources, liquidation, collateral factors, and external call trust.",
+    }
+    return {
+        "success": True,
+        "contract_name": contract_name,
+        "purpose": purpose,
+        "sections": {
+            "summary": {
+                "title": "Executive Summary",
+                "fields": ["scope", "methodology", "overall_grade", "critical_count"],
+            },
+            "security_model": {
+                "title": "Security Model & Trust Assumptions",
+                "prompt": security_model_notes.get(purpose, "Document roles, privileges, and invariants."),
+            },
+            "findings": {
+                "title": "Findings",
+                "row_schema": ["id", "severity", "category", "swc_id", "location", "description", "recommendation"],
+            },
+            "recommendations": {
+                "title": "Recommendations",
+                "groups": ["critical_fixes", "defense_in_depth", "monitoring"],
+            },
+            "risk_matrix": {
+                "title": "Risk Matrix",
+                "axes": {"likelihood": ["low", "medium", "high"], "impact": ["low", "medium", "high", "critical"]},
+            },
+        },
+    }
+
+
+def normalize_findings(raw_findings: dict[str, Any] | list[dict[str, Any]]) -> dict[str, Any]:
+    """Merge and dedupe findings from multiple analyzer outputs."""
+    audit_id = f"audit-{_utc_stamp()}-{uuid.uuid4().hex[:8]}"
+    collected: list[dict[str, Any]] = []
+
+    if isinstance(raw_findings, list):
+        buckets = {"items": raw_findings}
+    else:
+        buckets = raw_findings
+
+    for source, items in buckets.items():
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            label = item.get("id") or item.get("check") or item.get("title") or item.get("swc_id") or "unknown"
+            sev = str(item.get("severity") or item.get("impact") or "info").lower()
+            desc = item.get("description") or item.get("details") or ""
+            locs = item.get("locations") or []
+            if not locs and item.get("source"):
+                locs = [{"source": item.get("source")}]
+            collected.append(
+                {
+                    "id": f"{source}:{label}",
+                    "category": _infer_finding_category(str(label)),
+                    "severity": sev,
+                    "description": desc,
+                    "sources": [source],
+                    "locations": locs,
+                    "swc_id": (item.get("swc_refs") or [None])[0] if item.get("swc_refs") else item.get("swc_id"),
+                }
+            )
+
+    merged: dict[tuple[str, str], dict[str, Any]] = {}
+    for f in collected:
+        key = (f.get("category", ""), (f.get("description") or "")[:120])
+        if key in merged:
+            merged[key]["sources"] = sorted(set(merged[key]["sources"] + f["sources"]))
+            if f.get("locations"):
+                merged[key]["locations"].extend(f["locations"])
+        else:
+            merged[key] = {**f, "locations": list(f.get("locations") or [])}
+
+    deduped = sorted(merged.values(), key=lambda x: -_severity_weight(x.get("severity")))
+    return {
+        "success": True,
+        "audit_id": audit_id,
+        "deduped_findings": deduped,
+        "finding_count": len(deduped),
+    }

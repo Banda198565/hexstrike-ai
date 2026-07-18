@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "slither_run_detectors",
+  "type": "object",
+  "required": ["success", "detectors"],
+  "properties": {
+    "success": { "type": "boolean" },
+    "audit_id": { "type": "string" },
+    "detectors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "severity", "description", "locations", "swc_refs"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "severity": { "enum": ["low", "medium", "high", "critical", "informational", "info"] },
+          "description": { "type": "string" },
+          "locations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "file": { "type": ["string", "null"] },
+                "line": { "type": ["integer", "null"] },
+                "function": { "type": ["string", "null"] }
+              }
+            }
+          },
+          "swc_refs": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "skipped": { "type": "boolean" },
+    "skip_reason": { "type": ["string", "null"] }
+  }
+}
