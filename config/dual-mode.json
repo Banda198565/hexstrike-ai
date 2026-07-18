@@ -33,6 +33,12 @@
       "defense": true,
       "offense": false
     },
+    "aderyn": {
+      "binary": "aderyn",
+      "install": "cargo install aderyn",
+      "defense": true,
+      "offense": false
+    },
     "mythril": {
       "binary": "myth",
       "install": "pip install mythril",

@@ -1,0 +1,47 @@
+{
+  "server": "solidity_audit_mcp",
+  "version": "1.2.0",
+  "non_emulation": true,
+  "recommended_order": [
+    "detect_audit_tools",
+    "parse_contract",
+    "slither_run_detectors",
+    "check_swc_patterns",
+    "slither_structure",
+    "slither_critical_sinks",
+    "check_openzeppelin_rules",
+    "aderyn_analyze",
+    "normalize_findings",
+    "contract_security_score",
+    "generate_audit_report_skeleton"
+  ],
+  "deployed_address_order": [
+    "onchain_metadata",
+    "mythril_scan_summary",
+    "compile_and_abi"
+  ],
+  "tools": [
+    {"name": "parse_contract", "phase": "contract_audit", "spec_id": 1},
+    {"name": "slither_run_detectors", "phase": "contract_audit", "spec_id": 2},
+    {"name": "slither_structure", "phase": "contract_audit", "spec_id": 3},
+    {"name": "check_swc_patterns", "phase": "contract_audit", "spec_id": 4},
+    {"name": "aderyn_analyze", "phase": "contract_audit", "spec_id": 5},
+    {"name": "mythril_scan_summary", "phase": "contract_audit", "spec_id": 6, "optional": true},
+    {"name": "contract_security_score", "phase": "contract_audit", "spec_id": 7},
+    {"name": "onchain_metadata", "phase": "contract_audit", "spec_id": 8},
+    {"name": "compile_and_abi", "phase": "contract_audit", "spec_id": 9},
+    {"name": "generate_audit_report_skeleton", "phase": "contract_audit", "spec_id": 10},
+    {"name": "normalize_findings", "phase": "contract_audit", "spec_id": 11},
+    {"name": "detect_audit_tools", "phase": "contract_audit"},
+    {"name": "slither_functions", "phase": "contract_audit"},
+    {"name": "slither_critical_sinks", "phase": "contract_audit"},
+    {"name": "run_static_analysis_slither", "phase": "contract_audit", "legacy": true},
+    {"name": "run_aderyn", "phase": "contract_audit", "legacy": true},
+    {"name": "run_bytecode_scan_mythril", "phase": "contract_audit", "legacy": true},
+    {"name": "fetch_onchain_data", "phase": "contract_audit", "legacy": true},
+    {"name": "check_openzeppelin_rules", "phase": "contract_audit"},
+    {"name": "list_vulnerabilities", "phase": "contract_audit"},
+    {"name": "scan_contract", "phase": "contract_audit"},
+    {"name": "full_audit", "phase": "contract_audit"}
+  ]
+}

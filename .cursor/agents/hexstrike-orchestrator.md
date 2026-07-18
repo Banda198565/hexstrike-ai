@@ -13,6 +13,7 @@ Inherits global contract from `AGENTS.md` at repo root.
 | **DeepSeek R1** | Reasoning engine (plans, skill generalization) | No | No — never writes logs |
 | **HexStrike MCP** (`:8888`) | Bridge to orchestrator / worker agents | Yes (server-side) | Yes (orchestrator hooks) |
 | **Nuclei MCP** | Real `nuclei` binary → `findings[]` | Yes | Yes → `artifacts/nuclei/` |
+| **Solidity Audit MCP** | Slither/Mythril/SWC/OZ heuristics, read-only RPC | Yes | Yes → `artifacts/solidity-audit/` |
 | **HexStrike Orchestrator** | Policy + dispatch (VPS/Kali/Docker) | Yes | Yes → `artifacts/orchestrator/` |
 
 DeepSeek R1 is **not** a chat replacement. Every R1 call must be a structured request:
@@ -39,7 +40,8 @@ Config files (set paths for your machine):
 | Server | Config | Tools | When to use | Must NOT |
 |--------|--------|-------|-------------|----------|
 | **HexStrike** | `hexstrike-ai-mcp.json` | orchestrator tools on `:8888` | Dispatch worker agents, infra tasks | Fabricate server JSON if call failed |
-| **Nuclei** | `config/mcp/nuclei-mcp.json` (PR #68) | `nuclei_scan`, `basic_scan`, `get_nuclei_tags` | Authorized vuln scans | Return fake findings when binary silent |
+| **Nuclei** | `config/mcp/nuclei-mcp.json` | `nuclei_scan`, `basic_scan`, `get_nuclei_tags` | Authorized vuln scans | Return fake findings when binary silent |
+| **Solidity Audit** | `config/mcp/solidity-audit-mcp.json` | `parse_contract`, `run_static_analysis_slither`, `full_audit`, `fetch_onchain_data` | Contract audit / SWC review | Fabricate Slither/Mythril output |
 | **R1 (HTTP, not MCP)** | `.env` + `scripts/connect-cloud-r1-orchestrator.sh` | plan JSON, skill-builder prompts | Planning, log→skill, log analysis | Generate attack results or edit logs |
 
 ### R1 invocation paths
@@ -83,6 +85,7 @@ Route via `.cursor/skills/using-agent-skills/SKILL.md`, then:
 | Skill | Path | Use when |
 |-------|------|----------|
 | **Reasoning-Master** | `.cursor/skills/hexstrike-reasoning-master/SKILL.md` | R1 mission planning, catalog, scatter-gather |
+| **Solidity Audit MCP** | `.cursor/skills/solidity-audit-mcp/SKILL.md` | Contract audit tool order, non-emulation |
 | **Security hardening** | `.cursor/skills/security-and-hardening/SKILL.md` | Code quality in MCP/orchestrator implementations |
 | **Git workflow** | `.cursor/skills/git-workflow-and-versioning/SKILL.md` | Commits, branches, PRs |
 
