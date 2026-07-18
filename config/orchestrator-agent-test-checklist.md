@@ -2,7 +2,7 @@
 
 Use this checklist to verify the **orchestrator role** (planner/coordinator), not monolithic chat behavior.
 
-**Agent profile:** `.cursor/agents/hexstrike-orchestrator.md` or `.cursor/agents/solidity-web3-auditor.md`  
+**Agent profile:** `.cursor/agents/web3-orchestrator.md` (primary) or `.cursor/agents/hexstrike-orchestrator.md`  
 **Non-emulation:** findings only from MCP/orchestrator artifacts — never fabricated (`AGENTS.md`).
 
 ---
