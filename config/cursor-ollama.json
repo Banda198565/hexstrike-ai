@@ -68,6 +68,6 @@
     "script": "scripts/hexstrike-terminal.py",
     "launcher": "hexstrike-go.sh",
     "setup": "scripts/setup-local-orchestrator.sh",
-    "default_chat_model_hint": "deepseek-v2.5:7b"
+    "default_chat_model_hint": "qwen2.5-coder:7b"
   }
 }

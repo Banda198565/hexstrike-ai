@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-07-18T15:23:25Z",
+  "mode": "read-only_no_exploit",
+  "base_url": "https://deep-seek.ai",
+  "ok": true,
+  "bootstrap": {
+    "http_status": 200,
+    "site_name": "DeepSeek",
+    "session_present": true,
+    "xsrf_present": true,
+    "models": [
+      {
+        "id": "deepseek/deepseek-v4-flash",
+        "slug": "deepseek",
+        "name": "DeepSeek-V4",
+        "color": "#4D6BFE"
+      },
+      {
+        "id": "deepseek/deepseek-r1",
+        "slug": "deepseek-v3",
+        "name": "DeepSeek-R1",
+        "color": "#4D6BFE"
+      },
+      {
+        "id": "deepseek/deepseek-v3.2",
+        "slug": "deepseek-r1",
+        "name": "DeepSeek-V3",
+        "color": "#4D6BFE"
+      }
+    ],
+    "default_model": "deepseek/deepseek-v4-flash"
+  },
+  "chat": {
+    "ok": true,
+    "http_status": 200,
+    "content_type": "text/event-stream; charset=utf-8",
+    "requested_model": "deepseek/deepseek-v4-flash",
+    "prompt": "Reply with exactly: CONNECT-OK. One short line only.",
+    "openrouter_processing_marker": true,
+    "model_field_values": [
+      "deepseek/deepseek-v4-flash"
+    ],
+    "provider_field_values": [
+      "Alibaba"
+    ],
+    "request_ids": [
+      "gen-1784388209-hT0kLYMicQjsTSHNOPsZ"
+    ],
+    "assistant_text": "CONNECT-OK.",
+    "reasoning_preview": "We need to reply with exactly \"CONNECT-OK.\" and nothing else. One short line only. So just output that.",
+    "raw_prefix": ": OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\n: OPENROUTER PROCESSING\n\ndata: {\"id\":\"gen-1784388209-hT0kLYMicQjsTSHNOPsZ\",\"object\":\"chat.completion.chunk\",\"created\":1784388209,\"model\":\"deepseek/deepseek-v4-flash\",\"provider\":\"Alibaba\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"\",\"role\":\"assistant\",\"reasoning\":\"We\",\"reasoning_details\":[{\"type\":\"reasoning.text\",\"text\":\"We\",\"format\":\"unknown\",\"index\":0}]},\"finish_reason\":null,\"native_finish_reason\":null}]}\n\ndata: {\"id\":\"gen-1784388209-hT0kLYMicQjsTSHNOPsZ\",\"object\":\"chat.completion.chunk\",\"created\":1784388209,\"model\":\"deepseek/deepseek-v4-flash\""
+  },
+  "verdict": {
+    "connected": true,
+    "model": "deepseek/deepseek-v4-flash",
+    "provider": "Alibaba",
+    "proxy": "OpenRouter",
+    "assistant_text": "CONNECT-OK."
+  }
+}

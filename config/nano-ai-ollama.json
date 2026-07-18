@@ -1,0 +1,39 @@
+{
+  "app": "Nano AI (iOS / OpenAI-compatible)",
+  "purpose": "Avoid JSON Parse error: Unexpected character: E",
+  "cause": "Client expected JSON object but received plain text starting with E (usually Error: model ... not found) or HTML from a wrong URL",
+  "settings": {
+    "base_url": "http://127.0.0.1:11434/v1",
+    "base_url_lan_example": "http://192.168.1.10:11434/v1",
+    "api_key": "ollama",
+    "model": "qwen2.5-coder:7b",
+    "stream": false
+  },
+  "do_not_use": {
+    "base_url_paths": [
+      "http://127.0.0.1:11434/api/generate",
+      "http://127.0.0.1:11434/api/chat",
+      "https://deep-seek.ai/api/chat"
+    ],
+    "model_ids_not_local_ollama": [
+      "deepseek-v4-flash",
+      "deepseek-v4-pro",
+      "deepseek/deepseek-v4-flash",
+      "deepseek-reasoner",
+      "deepseek-chat"
+    ]
+  },
+  "local_model_alternatives": [
+    "qwen2.5-coder:7b",
+    "qwen2.5-coder:3b",
+    "deepseek-v2.5",
+    "deepseek-r1:7b",
+    "hexstrike-r1-direct"
+  ],
+  "ios_note": "127.0.0.1 on iPhone is the phone itself. Use Mac LAN IP or a tunnel; set OLLAMA_HOST=0.0.0.0 on the Mac.",
+  "verify_on_mac": "bash scripts/verify-openai-v1-json.sh",
+  "hexstrike_chat": {
+    "launcher": "./hexstrike-go.sh",
+    "direct": "HEXSTRIKE_CHAT_MODEL=qwen2.5-coder:7b python3 scripts/hexstrike-terminal.py"
+  }
+}
