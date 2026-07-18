@@ -144,6 +144,41 @@ Always include stack status (`detect_web3_audit_stack`) in report header.
 
 **Credentials:** API keys and RPC URLs live in MCP server `env` only — never in prompts or commits.
 
+### MCP stack (4-server) — `.cursor/mcp.json`
+
+Default Cursor project config wires four complementary servers:
+
+| Order | Server | Tools / purpose |
+|-------|--------|-----------------|
+| 1 | **solidity-audit** | `parse_contract`, `slither_run_detectors`, `check_swc_patterns`, SWC — primary static |
+| 2 | **foundry** | `forge build`, `forge test`, `cast call` — compile + PoC verification |
+| 3 | **chainstack** | RPC, indexer, address/network context — on-chain read |
+| 4 | **faro-fino** | Deep Slither/Mythril/Aderyn pass — second opinion, cross-check |
+
+**Workflow**
+
+```
+solidity-audit (static findings)
+  → foundry (reproduce / test fixes)
+  → chainstack (deployed state, proxy, logs)
+  → faro-fino (confirm or escalate severity)
+  → merge findings (dedupe; tag source: solidity-audit | foundry | chainstack | faro-fino)
+```
+
+**Subagent split (optional parallel)**
+
+| Subagent | MCP server | Scope |
+|----------|------------|-------|
+| A | solidity-audit | static, SWC, structure |
+| B | foundry | build, test, cast read calls |
+| C | chainstack | RPC, indexer, address intel |
+| D | faro-fino | deep scan cross-check |
+
+**Env (shell or Cursor Environment Secrets):** `CHAINSTACK_API_KEY`, `ETH_RPC_URL`  
+Docs: `config/mcp/cursor-audit-stack.md`
+
+**Do not run** two static Slither servers in parallel (HexStrike + faro-fino) on same file without merge — dedupe required.
+
 ---
 
 ## Orchestration & subagents

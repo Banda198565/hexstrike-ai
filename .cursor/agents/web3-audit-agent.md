@@ -70,21 +70,37 @@ Severity: Critical > High > Medium > Low > Informational.
 
 ## MCP setup
 
-1. Cursor → MCP → Add server from `config/mcp/web3-audit-mcp.json`
-2. Set absolute path to `scripts/web3_audit_mcp_server.py`
-3. Put API keys in MCP **env** only (never in agent prompt):
+**Project config (recommended):** [`.cursor/mcp.json`](../../.cursor/mcp.json) — 4-server stack:
 
-| Variable | Service |
-|----------|---------|
-| `WEB3_RPC_URL` + `WEB3_RPC_KEY` | Infura / Alchemy / Chainstack |
-| `FORTA_API_KEY` | Forta alerts |
-| `MYTHX_API_KEY` | MythX |
-| `TENDERLY_*` | Tenderly simulate |
-| `SCAMSNIFFER_API_KEY` | Tx risk |
-| `POCKET_UNIVERSE_API_KEY` | Tx simulation |
-| `KERBERUS_API_KEY` | URL/tx risk |
+| Server | Role |
+|--------|------|
+| `solidity-audit` | HexStrike static (Slither, SWC) |
+| `foundry` | forge / cast / anvil |
+| `chainstack` | RPC + indexer |
+| `faro-fino` | Second-opinion deep scan |
 
-GoPlus works without a key. Missing keys → tool returns `skipped: true` — report honestly.
+**Tool order:** solidity-audit → foundry → chainstack → faro-fino → merge report.
+
+1. Cursor picks up `.cursor/mcp.json` automatically (or paste into Settings → MCP).
+2. Export secrets — never in agent prompt:
+
+```bash
+export CHAINSTACK_API_KEY="..."
+export ETH_RPC_URL="https://..."
+```
+
+3. Optional unified 36-tool server: `config/mcp/web3-audit-mcp.json` (replaces solidity-audit + partial RPC).
+
+Full docs: `config/mcp/cursor-audit-stack.md`
+
+### Env reference
+
+| Variable | Server |
+|----------|--------|
+| `CHAINSTACK_API_KEY` | chainstack |
+| `ETH_RPC_URL` | faro-fino (Docker) |
+| `WEB3_RPC_URL` + `WEB3_RPC_KEY` | hexstrike-web3-audit (optional unified) |
+| `FORTA_API_KEY`, `MYTHX_API_KEY`, `TENDERLY_*` | unified web3-audit only |
 
 ---
 
