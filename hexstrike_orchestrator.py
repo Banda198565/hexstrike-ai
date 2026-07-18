@@ -25,6 +25,8 @@ from hexstrike.llm.provider import (
     resolve_llm_config,
     write_env_llm_block,
 )
+from hexstrike.llm.cloud_r1 import CloudR1Provider, resolve_cloud_r1_config
+from hexstrike.llm.reasoning import ReasoningAgent
 from hexstrike.core.execution.broadcaster import ExecutionBroadcaster, SnipingProfile
 from hexstrike.core.forensics.engine import ForensicsEngine
 from hexstrike.core.monitor.mempool import MempoolMonitor, MonitorConfig
@@ -434,6 +436,18 @@ def main() -> int:
     llm_hs = llm_sub.add_parser("handshake", help="Defense-prompted chat + latency probes")
     llm_hs.add_argument("--probe", choices=("models", "chat", "both"), default="both")
 
+    r1_p = sub.add_parser("reasoning", help="Cloud R1 reasoning agent (plan only, no execution)")
+    r1_sub = r1_p.add_subparsers(dest="reasoning_cmd")
+    r1_sub.add_parser("status", help="Show cloud R1 provider status")
+    r1_sub.add_parser("handshake", help="Ping cloud R1 endpoint")
+    r1_plan = r1_sub.add_parser("plan", help="Generate JSON plan from task file")
+    r1_plan.add_argument(
+        "task_file",
+        nargs="?",
+        default="config/reasoning-protocol.example.json",
+        help="Path to reasoning task JSON",
+    )
+
     args = parser.parse_args()
 
     # Lightweight LLM subcommands (no full orchestrator bootstrap required)
@@ -458,6 +472,26 @@ def main() -> int:
             print(json.dumps(report, indent=2))
             return 0 if report.get("llm", {}).get("selected_provider_reachable") else 1
         print("usage: hexstrike_orchestrator.py llm {connect|status|handshake}", file=sys.stderr)
+        return 2
+
+    if args.command == "reasoning":
+        cfg = resolve_cloud_r1_config()
+        provider = CloudR1Provider(cfg)
+        agent = ReasoningAgent(provider)
+        if args.reasoning_cmd == "status":
+            st = agent.status()
+            print(json.dumps(st, indent=2))
+            return 0 if st.get("provider", {}).get("authenticated") else 1
+        if args.reasoning_cmd == "handshake":
+            report = provider.handshake()
+            print(json.dumps(report, indent=2))
+            ok = report.get("r1", {}).get("authenticated") and report.get("ping", {}).get("ok")
+            return 0 if ok else 1
+        if args.reasoning_cmd == "plan":
+            result = agent.plan_from_file(ROOT / args.task_file)
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+            return 0 if result.get("ok") else 1
+        print("usage: hexstrike_orchestrator.py reasoning {status|handshake|plan}", file=sys.stderr)
         return 2
 
     orch = HexStrikeOrchestrator(config_path=Path(args.config))
