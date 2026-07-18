@@ -201,7 +201,8 @@ python3 scripts/test_web3_audit_runner.py
 
 | File | Use when |
 |------|----------|
-| **`web3-audit-agent.md`** (this) | Cursor Agent card — contract/on-chain audit |
+| **`web3-audit-agent.md`** (this) | Cursor Agent card — paste into Cursor UI |
+| `web3-orchestrator.md` | Full orchestration prompt — plan, delegate, report |
 | `config.md` | Shared boundaries for all agents |
 | `hexstrike-orchestrator.md` | Multi-MCP planning, R1, worker dispatch |
-| `solidity-web3-auditor.md` | Short reference — same MCP, less UI metadata |
+| `solidity-web3-auditor.md` | Short MCP tool reference |

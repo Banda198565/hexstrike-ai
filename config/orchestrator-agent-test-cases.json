@@ -1,6 +1,8 @@
 {
   "version": "1.0.0",
   "agent_profiles": [
+    ".cursor/agents/web3-orchestrator.md",
+    ".cursor/agents/web3-audit-agent.md",
     ".cursor/agents/hexstrike-orchestrator.md",
     ".cursor/agents/solidity-web3-auditor.md"
   ],
