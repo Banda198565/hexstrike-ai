@@ -2,25 +2,23 @@
 # Mac → VPS: checkout master, sync Eva drainer repos + artifacts, trigger VPS run
 #
 # Usage:
-#   export VPS_HOST=78.27.235.70
-#   export VPS_USER=root
 #   bash scripts/mac-to-vps-sync.sh
+#   # defaults: root@78.27.235.70  key ~/.ssh/hexstrike_vps
 #
-# Optional: VPS_SSH_KEY=~/.ssh/id_ed25519  (preferred over password)
+# Optional: HEXSTRIKE_VPS_KEY / VPS_SSH_KEY  VPS_HOST  VPS_USER
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+# shellcheck source=scripts/vps-defaults.sh
+source "$ROOT/scripts/vps-defaults.sh"
 
-VPS_HOST="${VPS_HOST:-78.27.235.70}"
-VPS_USER="${VPS_USER:-root}"
-VPS_INSTALL="${VPS_INSTALL:-/opt/hexstrike-ai}"
 EVA_STORAGE="${EVA_STORAGE:-/Volumes/Eva/mufasaai-storage}"
 DRAINER_INTEL="${VPS_DRAINER_INTEL:-/opt/drainer-intel}"
 
 RSYNC_SSH=(ssh -o StrictHostKeyChecking=accept-new)
-if [[ -n "${VPS_SSH_KEY:-}" && -f "$VPS_SSH_KEY" ]]; then
-  RSYNC_SSH=(ssh -i "$VPS_SSH_KEY" -o StrictHostKeyChecking=accept-new)
+if [[ -f "$HEXSTRIKE_VPS_KEY" ]]; then
+  RSYNC_SSH=(ssh -i "$HEXSTRIKE_VPS_KEY" -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new)
 fi
 
 log() { echo "[mac-sync] $*"; }

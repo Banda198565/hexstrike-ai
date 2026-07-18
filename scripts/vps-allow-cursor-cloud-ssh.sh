@@ -2,17 +2,44 @@
 # Allow Cursor cloud agent egress IPs through ufw/fail2ban (run ON VPS as root).
 #
 #   bash scripts/vps-allow-cursor-cloud-ssh.sh
-#   # or: curl -fsSL ... | bash
+#   EXTRA_CLOUD_IPS="44.233.218.155,1.2.3.4" bash scripts/vps-allow-cursor-cloud-ssh.sh
+#   bash scripts/vps-allow-cursor-cloud-ssh.sh 44.233.218.155
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/vps-defaults.sh
+source "$SCRIPT_DIR/vps-defaults.sh"
+
 [[ $(id -u) -eq 0 ]] || { echo "run as root"; exit 1; }
 
-# Refresh these if cloud agent still cannot SSH (curl -4 ifconfig.me from agent).
-IPS=(
-  "52.40.48.127"
-  "44.236.205.197"
-  "52.13.17.46"
-  "54.201.20.43"
-)
+IPS=("${CLOUD_EGRESS_IPS_DEFAULT[@]}")
+
+# Positional args = extra IPs
+for arg in "$@"; do
+  [[ "$arg" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "skip invalid: $arg"; continue; }
+  IPS+=("$arg")
+done
+
+# EXTRA_CLOUD_IPS=ip1,ip2
+if [[ -n "${EXTRA_CLOUD_IPS:-}" ]]; then
+  IFS=',' read -r -a _extra <<<"$EXTRA_CLOUD_IPS"
+  for ip in "${_extra[@]}"; do
+    ip="${ip// /}"
+    [[ -z "$ip" ]] && continue
+    [[ "$ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
+    IPS+=("$ip")
+  done
+fi
+
+# Dedupe
+declare -A SEEN=()
+UNIQUE=()
+for ip in "${IPS[@]}"; do
+  [[ -n "${SEEN[$ip]:-}" ]] && continue
+  SEEN[$ip]=1
+  UNIQUE+=("$ip")
+done
+IPS=("${UNIQUE[@]}")
 
 for ip in "${IPS[@]}"; do
   if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -qi active; then
@@ -24,13 +51,11 @@ for ip in "${IPS[@]}"; do
     fail2ban-client set ssh unbanip "$ip" 2>/dev/null || true
     echo "fail2ban unban $ip (if was banned)"
   fi
-  # hosts.allow soft allow (if tcpwrappers in use)
   if [[ -f /etc/hosts.allow ]]; then
     grep -q "sshd: $ip" /etc/hosts.allow 2>/dev/null || echo "sshd: $ip  # cursor-cloud" >>/etc/hosts.allow
   fi
 done
 
-# Drop any iptables DROP for these sources on dport 22 (best-effort)
 if command -v iptables >/dev/null 2>&1; then
   for ip in "${IPS[@]}"; do
     iptables -C INPUT -p tcp -s "$ip" --dport 22 -j ACCEPT 2>/dev/null \
@@ -39,5 +64,6 @@ if command -v iptables >/dev/null 2>&1; then
   done
 fi
 
-echo "DONE — ask cloud agent to retry: ssh root@$(hostname -I | awk '{print $1}')"
+echo "DONE — allowlisted: ${IPS[*]}"
+echo "Cloud agent retry: ssh ${VPS_USER}@${VPS_HOST}"
 sshd -t 2>/dev/null && systemctl reload sshd 2>/dev/null || systemctl reload ssh 2>/dev/null || true
