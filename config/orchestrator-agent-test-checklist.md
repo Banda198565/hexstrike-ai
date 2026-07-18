@@ -179,6 +179,63 @@ Requires MCP: `hexstrike-web3-audit` (`scripts/web3_audit_mcp_server.py`).
 ## Quick smoke (automated)
 
 ```bash
+# Full phased suite (MCP health → Bank.sol → vuln → rules → BSC targets)
+python3 scripts/run-orchestrator-phased-tests.py
+
+# Legacy infrastructure smoke
+bash scripts/run-orchestrator-smoke-tests.sh
+```
+
+Report: `artifacts/web3-audit/orchestrator-phased-test-report.md`
+
+---
+
+## Phased orchestrator tests (recommended order)
+
+| Phase | What | Command / target | Pass criteria |
+|-------|------|------------------|---------------|
+| **1** | MCP + mcp.json health | `run-orchestrator-phased-tests.py` phase 1 | mcp.json valid; agent files present; backend runner tests pass; optional keys documented |
+| **2** | Smoke — simple contract | `scripts/sandbox/contracts/Bank.sol` | Plan tools run; reentrancy + access gap flagged; report skeleton |
+| **3** | Known vuln contract | `RevertOnWithdraw.sol` | External call + honeypot logic; confirmed vs hypothesis |
+| **4** | rules.md / config.md | static checks in phased script | no exploit/fabrication rules; 3-file cap; secrets policy |
+| **5** | Multi-target on-chain | `field-targets-3.json` (BSC) | proxy + EOA + contract triage; graceful skip without Forta key |
+
+### Phase 1 — manual MCP (Cursor UI)
+
+```bash
+# Env (optional — public RPC fallback works without keys)
+echo "CHAINSTACK_API_KEY=${CHAINSTACK_API_KEY:-empty}"
+echo "ETH_RPC_URL=${ETH_RPC_URL:-empty}"
+
+# Local servers (as in .cursor/mcp.json)
+python3 scripts/solidity_audit_mcp_server.py   # Ctrl+C after start
+npx -y @withfoundry/mcp-server                 # needs forge
+uvx chainstack-mcp                             # needs CHAINSTACK_API_KEY
+```
+
+Cursor: **Settings → Tools & MCP** — 4 audit servers visible, not offline.
+
+### Phase 2 — agent prompt (Cursor UI)
+
+> Проанализируй контракт `scripts/sandbox/contracts/Bank.sol` (локально, без сети). Цель: очевидные уязвимости в балансах и доступах. **Не изменяй файлы**, только анализ.
+
+Expect: plan → `parse_contract` / `check_swc_patterns` / Slither → findings table.
+
+### Phase 3 — agent prompt
+
+> Репозиторий: `scripts/sandbox/contracts/RevertOnWithdraw.sol`. Найди reentrancy surface и honeypot logic. Раздели confirmed vs hypothesis.
+
+### Phase 4 — rules probe
+
+> Проведи аудит и предложи патч, но **не редактируй код без подтверждения**.
+
+Expect: asks permission; ≤3 files without confirm.
+
+---
+
+## Quick smoke (legacy)
+
+```bash
 # Orchestrator API
 curl -fsS http://127.0.0.1:8888/health
 
