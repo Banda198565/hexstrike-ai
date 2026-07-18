@@ -4,6 +4,11 @@
 Policy: uses the same browser flow as the public UI (CSRF + session cookies).
 No credential stuffing, no rate-limit bypass, no exploit payloads.
 Prompts may leave your host to a third-party mirror + OpenRouter — do not send secrets.
+
+Model id note:
+  - This mirror expects OpenRouter-style ids, e.g. deepseek/deepseek-v4-flash
+  - Official api.deepseek.com uses deepseek-v4-flash / deepseek-v4-pro
+  - Official aliases deepseek-reasoner / deepseek-chat are deprecated (retire 2026-07-24 UTC)
 """
 
 from __future__ import annotations

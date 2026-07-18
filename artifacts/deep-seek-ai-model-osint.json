@@ -108,11 +108,27 @@
   "remediation_for_users": [
     "Prefer official chat.deepseek.com or api.deepseek.com",
     "Official model ids: deepseek-v4-flash / deepseek-v4-pro",
-    "Do not send secrets or PII to mirror sites"
+    "Do not use deprecated deepseek-reasoner / deepseek-chat after retirement window",
+    "Do not send secrets or PII to mirror sites",
+    "Mirror OpenRouter id deepseek/deepseek-v4-flash is not the official API string"
   ],
   "official_reference": {
     "v4_release": "https://api-docs.deepseek.com/news/news260424",
     "transparency": "https://www.deepseek.com/en/transparency/"
   },
-  "prior_probe_provider": "Venice"
+  "prior_probe_provider": "Venice",
+  "official_api_model_ids": {
+    "base_url": "https://api.deepseek.com",
+    "current": [
+      "deepseek-v4-flash",
+      "deepseek-v4-pro"
+    ],
+    "deprecated": {
+      "deepseek-chat": "retires 2026-07-24 15:59 UTC; currently routes to deepseek-v4-flash non-thinking",
+      "deepseek-reasoner": "retires 2026-07-24 15:59 UTC; currently routes to deepseek-v4-flash thinking"
+    },
+    "migration_note": "Use model=\"deepseek-v4-flash\" (not deepseek-reasoner) for new official API integrations.",
+    "mirror_openrouter_ids_are_different": true,
+    "source": "https://api-docs.deepseek.com/news/news260424"
+  }
 }
