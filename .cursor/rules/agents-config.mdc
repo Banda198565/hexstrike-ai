@@ -10,6 +10,7 @@ Agent behavior source of truth:
 - `.cursor/agents/config.md` — operational config
 - `.cursor/agents/web3-orchestrator.md` — Web3 audit agent
 - `config/cursor-transport-contract.md` — Cursor = transport only
+- `.cursor/rules/shell-policy.mdc` — shell behavior (enforcement: `.cursor/cli.json`)
 
 **Authority:** Operator scope → **R1 plan JSON** → **HexStrike Orchestrator policy** → MCP/workers. Cursor executes; it does not re-decide policy.
 

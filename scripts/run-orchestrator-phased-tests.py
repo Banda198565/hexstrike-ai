@@ -242,6 +242,22 @@ def phase3_vuln_revert() -> dict[str, Any]:
     return results
 
 
+def _cli_shell_blocked() -> bool:
+    cli = ROOT / ".cursor/cli.json"
+    if not cli.is_file():
+        return False
+    try:
+        cfg = json.loads(cli.read_text(encoding="utf-8"))
+        perms = cfg.get("permissions") or {}
+        deny = perms.get("deny") or []
+        allow = perms.get("allow") or []
+        has_deny = any(str(x).startswith("Shell(") for x in deny)
+        has_allow_shell = any(str(x).startswith("Shell(") for x in allow)
+        return has_deny and not has_allow_shell
+    except json.JSONDecodeError:
+        return False
+
+
 def phase4_rules_compliance() -> dict[str, Any]:
     rules = (ROOT / ".cursor/agents/rules.md").read_text(encoding="utf-8")
     config = (ROOT / ".cursor/agents/config.md").read_text(encoding="utf-8")
@@ -286,9 +302,12 @@ def phase4_rules_compliance() -> dict[str, Any]:
             "cursor.agent.autoApply false in settings.json",
         ),
         "cli_shell_denied": _status(
-            (ROOT / ".cursor/cli.json").is_file()
-            and "Shell(*)" in (ROOT / ".cursor/cli.json").read_text(encoding="utf-8"),
-            "cli.json denies Shell(*)",
+            _cli_shell_blocked(),
+            "cli.json denies Shell(*), no Shell in allow",
+        ),
+        "shell_policy_rule": _status(
+            (ROOT / ".cursor/rules/shell-policy.mdc").is_file(),
+            "shell-policy.mdc behavioral layer",
         ),
         "permissions_terminal_empty": _status(
             (ROOT / ".cursor/permissions.json").is_file()

@@ -33,6 +33,15 @@ Global template: `config/cursor-cli-config.example.json` → copy to `~/.cursor/
 
 **Engineering mode** (user said `implement` / `run tests`): merge from `config/cursor-cli.engineering.example.json` into `.cursor/cli.json` temporarily — adds `Shell(python3)`, `Shell(git)`, etc., still denies `Shell(rm)`.
 
+Validate commands before allowlist merge:
+
+```bash
+python3 scripts/cursor-shell-guard.py "python3 scripts/run-orchestrator-phased-tests.py"
+python3 scripts/cursor-shell-guard.py "ls && rm -rf /"   # exit 1
+```
+
+Patterns: `config/cursor-shell-patterns.json` · Behavior rule: `.cursor/rules/shell-policy.mdc`
+
 Docs: [Cursor CLI Permissions](https://cursor.com/docs/cli/reference/permissions)
 
 ---
