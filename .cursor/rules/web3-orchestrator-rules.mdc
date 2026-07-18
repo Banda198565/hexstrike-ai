@@ -1,0 +1,14 @@
+---
+description: Web3 orchestrator rules — security boundaries and audit discipline
+alwaysApply: true
+---
+
+Follow `.cursor/agents/rules.md` and `.cursor/agents/config.md` for every Web3 audit task.
+
+Primary agent profile: `.cursor/agents/web3-orchestrator.md`
+
+Hard stops: no fabricated MCP/on-chain output; no secrets in chat; no weaponization; immutable attack logs (see rules.md).
+
+MCP stack: `.cursor/mcp.json` (solidity-audit → foundry → chainstack → faro-fino).
+
+Global: `AGENTS.md`.
