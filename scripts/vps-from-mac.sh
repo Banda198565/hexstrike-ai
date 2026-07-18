@@ -53,20 +53,22 @@ EOF
 [[ "$CMD" == "-h" || "$CMD" == "--help" ]] && usage 0
 
 resolve_key() {
-  # Ignore stale/wrong overrides (e.g. Linux /root/... path pasted on a Mac)
+  local default_key="$HOME/.ssh/hexstrike_vps"
+  # Missing override → fall back (covers Mac /Users/..., Linux /root/..., unset default)
   if [[ -n "${HEXSTRIKE_VPS_KEY:-}" && ! -f "$HEXSTRIKE_VPS_KEY" ]]; then
-    if [[ "$HEXSTRIKE_VPS_KEY" == /root/* || "$HEXSTRIKE_VPS_KEY" == /home/* ]]; then
-      log "WARN: HEXSTRIKE_VPS_KEY=$HEXSTRIKE_VPS_KEY missing on this host — falling back to ~/.ssh"
-      HEXSTRIKE_VPS_KEY="$HOME/.ssh/hexstrike_vps"
+    if [[ "$HEXSTRIKE_VPS_KEY" == "$default_key" \
+       || "$HEXSTRIKE_VPS_KEY" == /root/* \
+       || "$HEXSTRIKE_VPS_KEY" == /home/* \
+       || "$HEXSTRIKE_VPS_KEY" == /Users/* ]]; then
+      log "WARN: key missing ($HEXSTRIKE_VPS_KEY) — trying ~/.ssh fallbacks"
     else
       die "HEXSTRIKE_VPS_KEY not found: $HEXSTRIKE_VPS_KEY"
     fi
   fi
-  if [[ -f "$HEXSTRIKE_VPS_KEY" ]]; then
+  if [[ -f "${HEXSTRIKE_VPS_KEY:-}" ]]; then
     return 0
   fi
-  # Common Mac/operator fallbacks (never /root on a laptop; never ifconfig.io as host)
-  for cand in "$HOME/.ssh/hexstrike_vps" "$HOME/.ssh/id_ed25519" "$HOME/.ssh/id_rsa"; do
+  for cand in "$default_key" "$HOME/.ssh/id_ed25519" "$HOME/.ssh/id_rsa"; do
     if [[ -f "$cand" ]]; then
       HEXSTRIKE_VPS_KEY="$cand"
       log "using key: $HEXSTRIKE_VPS_KEY"
