@@ -58,6 +58,19 @@ ollama run deepseek-v2.5
 
 **Official cloud chat** (not the mirror): https://chat.deepseek.com — use `model="deepseek-v4-flash"` on `api.deepseek.com`.
 
+**R1 local, direct answers (no mirror limit / less soft refusals):**
+
+```bash
+ollama pull deepseek-r1:7b
+ollama create hexstrike-r1-direct -f config/hexstrike-r1-direct.modelfile
+ollama run hexstrike-r1-direct
+# or:
+export HEXSTRIKE_CHAT_MODEL=hexstrike-r1-direct HEXSTRIKE_CHAT_TIMEOUT=300
+python3 scripts/hexstrike-terminal.py
+```
+
+Hard HexStrike rules still apply (no drain / theft / KYC bypass). See [config/hexstrike-r1-direct.modelfile](../../config/hexstrike-r1-direct.modelfile).
+
 ## Evidence
 
 ### 1. UI model config (`window.__CHAT_MODELS__`)
