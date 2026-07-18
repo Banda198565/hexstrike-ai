@@ -1,0 +1,11 @@
+{
+  "_comment": "IDE auto-run allowlists — empty terminal = no auto-run shell. Copy to .cursor/permissions.json (committed). Global: ~/.cursor/permissions.json merges.",
+  "terminalAllowlist": [],
+  "mcpAllowlist": [
+    "gated-orchestrator:*",
+    "solidity-audit:*"
+  ],
+  "autoRun": {
+    "instructions": "Do not auto-run terminal commands. Shell is denied in .cursor/cli.json. Use gated-orchestrator MCP for RPC and report writes. R1 orchestrator decides tool order."
+  }
+}

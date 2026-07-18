@@ -33,6 +33,8 @@ Cursor is **dumb transport**; R1 is brain. Hard block: `.cursor/rules/transport-
 
 Setup guide: `config/cursor-transport-mode.md` · Settings: `.cursor/settings.json` (`autoApply: false`).
 
+**Shell enforcement:** `.cursor/cli.json` → `deny: ["Shell(*)"]` (not achievable via rules alone).
+
 ---
 
 ## Operating modes

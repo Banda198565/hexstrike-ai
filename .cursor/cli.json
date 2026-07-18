@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "editor": { "vimMode": false },
+  "_comment": "HexStrike transport-only — enforcement layer. Rules: .cursor/rules/transport-only.mdc. Setup: config/cursor-transport-mode.md",
+  "permissions": {
+    "allow": [
+      "Read(scripts/**)",
+      "Read(src/**)",
+      "Read(config/**)",
+      "Read(.cursor/agents/**)",
+      "Read(.cursor/rules/**)",
+      "Read(reports/**)",
+      "Read(artifacts/web3-audit/**)",
+      "Read(artifacts/sandbox/**)",
+      "Read(data/pentest/**)",
+      "Read(plans/**)",
+      "Read(AGENTS.md)",
+      "Write(reports/**)",
+      "Write(artifacts/web3-audit/**)",
+      "Write(artifacts/sandbox/exploitation-extension/**)",
+      "Write(plans/**)",
+      "Mcp(gated-orchestrator:*)",
+      "Mcp(solidity-audit:*)",
+      "Mcp(foundry:*)",
+      "Mcp(chainstack:*)",
+      "Mcp(faro-fino:*)",
+      "Mcp(plaid-cfo:*)"
+    ],
+    "deny": [
+      "Shell(*)",
+      "Read(.env*)",
+      "Read(**/.env*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Write(artifacts/workflow/traces/**)",
+      "Write(attack_logs/**)",
+      "Write(nuclei_steps/**)",
+      "Write(artifacts/nuclei/**)",
+      "Write(src/**)",
+      "Write(scripts/**)",
+      "Write(config/**)",
+      "Write(.cursor/**)"
+    ]
+  }
+}

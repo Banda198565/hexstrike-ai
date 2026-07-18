@@ -285,6 +285,16 @@ def phase4_rules_compliance() -> dict[str, Any]:
             '"autoApply": false' in (ROOT / ".cursor/settings.json").read_text(encoding="utf-8"),
             "cursor.agent.autoApply false in settings.json",
         ),
+        "cli_shell_denied": _status(
+            (ROOT / ".cursor/cli.json").is_file()
+            and "Shell(*)" in (ROOT / ".cursor/cli.json").read_text(encoding="utf-8"),
+            "cli.json denies Shell(*)",
+        ),
+        "permissions_terminal_empty": _status(
+            (ROOT / ".cursor/permissions.json").is_file()
+            and '"terminalAllowlist": []' in (ROOT / ".cursor/permissions.json").read_text(encoding="utf-8"),
+            "permissions.json terminalAllowlist empty",
+        ),
         "cursor_transport_contract": _status(
             (ROOT / "config/cursor-transport-contract.md").is_file(),
             "cursor-transport-contract.md present",

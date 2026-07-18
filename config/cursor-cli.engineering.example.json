@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "editor": { "vimMode": false },
+  "_comment": "Engineering escape hatch — merge into .cursor/cli.json when user explicitly requests implement/run/commit. NOT default.",
+  "permissions": {
+    "allow": [
+      "Shell(python3)",
+      "Shell(git)",
+      "Shell(bash)",
+      "Shell(npx)",
+      "Shell(npm)",
+      "Shell(forge)",
+      "Shell(slither)",
+      "Read(**/*)",
+      "Write(**/*)",
+      "Mcp(*:*)"
+    ],
+    "deny": [
+      "Shell(rm)",
+      "Shell(curl)",
+      "Shell(wget)",
+      "Shell(sshpass)",
+      "Shell(ssh)",
+      "Write(artifacts/workflow/traces/**)",
+      "Write(attack_logs/**)",
+      "Write(nuclei_steps/**)",
+      "Write(.env*)"
+    ]
+  }
+}

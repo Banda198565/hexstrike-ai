@@ -210,7 +210,14 @@ Report: `artifacts/web3-audit/orchestrator-phased-test-report.md`
 | R1 system prompt | `config/reasoning-system-prompt.md` | JSON plan + `cursor_handoff` contract |
 | Transport contract | `config/cursor-transport-contract.md` | Writable vs read-only paths |
 
-Verified in phased test **phase 4** (`r1_hierarchy_*` checks).
+| Check | Path | Pass criteria |
+|-------|------|---------------|
+| Shell denied | `.cursor/cli.json` | `deny: ["Shell(*)"]`, no Shell in allow |
+| IDE terminal auto-run | `.cursor/permissions.json` | `terminalAllowlist: []` |
+| Transport rule | `.cursor/rules/transport-only.mdc` | behavioral policy |
+| Setup guide | `config/cursor-transport-mode.md` | cli.json + permissions docs |
+
+Verified in phased test **phase 4** (`cli_shell_denied`, `permissions_terminal_empty`).
 
 ### Phase 1 — manual MCP (Cursor UI)
 

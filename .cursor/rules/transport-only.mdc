@@ -21,6 +21,8 @@ Unless the user message contains an **explicit action verb** (see Escape hatch b
 6. **Background work** — no subagents, no parallel implementation unless user ordered it
 7. **On-chain writes** — no `eth_sendTransaction`, no broadcast, no signing (gated MCP is read-only anyway)
 
+**Enforcement:** `.cursor/cli.json` → `permissions.deny: ["Shell(*)"]` — rules alone cannot block shell; permissions can.
+
 Allowed **without** explicit action verb:
 
 - Analysis, planning, JSON plans (R1 format)
@@ -34,6 +36,8 @@ Allowed **without** explicit action verb:
 Transport-only lifts **only for the requested action** when user clearly says one of:
 
 `implement`, `apply`, `commit`, `push`, `run tests`, `execute plan step N`, `edit file`, `create PR`, `deploy`, `fix`
+
+**Note:** With default `.cursor/cli.json`, `Shell(*)` is denied at platform level — even after escape hatch, tell user to merge `config/cursor-cli.engineering.example.json` into `.cursor/cli.json` for shell, or run commands manually in terminal.
 
 Examples:
 

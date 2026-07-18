@@ -2,7 +2,38 @@
 
 How to **minimize Cursor autonomy** so R1 remains the brain and Cursor is dumb transport.
 
-Repo enforces behavior via `.cursor/rules/transport-only.mdc` (always on). UI settings below reduce platform auto-actions.
+Repo enforces behavior via:
+
+| Layer | File | Enforces |
+|-------|------|----------|
+| **Permissions (hard)** | `.cursor/cli.json` | `Shell(*)` denied — agent cannot run terminal |
+| **IDE auto-run** | `.cursor/permissions.json` | `terminalAllowlist: []` |
+| **Behavior (soft)** | `.cursor/rules/transport-only.mdc` | No auto-init shell/MCP without explicit verb |
+
+> Rules describe policy; **`permissions` in `cli.json` enforce it**. Deny wins over allow.
+
+---
+
+## 0. Shell hard block (cli.json) — primary enforcement
+
+Project file: **`.cursor/cli.json`** (committed)
+
+```json
+"permissions": {
+  "allow": [ /* no Shell(...) entries */ ],
+  "deny": [ "Shell(*)" ]
+}
+```
+
+- No `Shell(...)` in `allow` → agent cannot execute or auto-run commands
+- `deny: Shell(*)` → blanket block even if global config allows something
+- MCP + Read/Write report paths remain in `allow` for audit transport
+
+Global template: `config/cursor-cli-config.example.json` → copy to `~/.cursor/cli-config.json`
+
+**Engineering mode** (user said `implement` / `run tests`): merge from `config/cursor-cli.engineering.example.json` into `.cursor/cli.json` temporarily — adds `Shell(python3)`, `Shell(git)`, etc., still denies `Shell(rm)`.
+
+Docs: [Cursor CLI Permissions](https://cursor.com/docs/cli/reference/permissions)
 
 ---
 
