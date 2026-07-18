@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "web_initial_access_chain.output",
+  "type": "object",
+  "required": [
+    "workflow_id",
+    "status"
+  ],
+  "properties": {
+    "workflow_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "steps_completed": {
+      "type": "integer"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

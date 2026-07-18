@@ -16,8 +16,22 @@ Plan multi-step missions using **typed MCP skills** + **DeepSeek R1**. Execution
 | `config/skills/schemas/*.json` | Per-skill input/output contracts |
 | `config/reasoning-protocol.example.json` | Example mission |
 | `src/hexstrike/llm/skill_catalog.py` | Catalog loader |
+| `config/workflow/campaign-trace.schema.json` | Attack log for skill-builder |
+| `config/skill-builder-prompt.md` | R1 generalization prompt |
+| `scripts/skill-builder.py` | trace → R1 → SKILL.md + MCP stub |
 
-## Workflow
+## Skill-builder (auto skillify)
+
+After **successful** campaigns:
+
+```bash
+python3 scripts/skill-builder.py demo-trace
+python3 scripts/skill-builder.py build config/workflow/campaign-trace.example.json
+python3 scripts/skill-builder.py pending   # process pending_skillify queue
+```
+
+Pipeline: `CampaignTrace` → R1 → `WorkflowTemplate` → `.cursor/skills/generated/<id>/SKILL.md` + MCP stub + `catalog.json` update.
+
 
 1. Load catalog: `config/skills/catalog.json`
 2. Build or validate task JSON against `reasoning-master.schema.json`

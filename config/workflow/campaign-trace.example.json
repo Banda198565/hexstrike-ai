@@ -1,0 +1,75 @@
+{
+  "trace_id": "trace-web-chain-20260718-001",
+  "campaign_id": "campaign-mission-redteam-web-001",
+  "task_id": "mission-redteam-web-001",
+  "outcome": "success",
+  "started_at": "2026-07-18T14:00:00Z",
+  "finished_at": "2026-07-18T14:42:00Z",
+  "context": {
+    "mode": "validation",
+    "authorization_ref": "lab-scope-2026-001",
+    "environment": "docker-kali + lab vlan",
+    "target_summary": "lab.example.internal — Jenkins 2.375, nginx reverse proxy",
+    "stack": ["nginx", "jenkins", "java"],
+    "defenses_observed": ["waf_none", "auth_basic_jenkins"]
+  },
+  "success_criteria_met": ["initial_access", "shell_obtained", "privesc_local"],
+  "steps": [
+    {
+      "seq": 1,
+      "tool": "pentest_recon",
+      "tool_kind": "skill",
+      "input": {
+        "targets": [{ "host": "lab.example.internal", "ports": "top-1000" }],
+        "tools": ["nmap", "httpx", "nuclei"],
+        "authorization_ref": "lab-scope-2026-001"
+      },
+      "output": {
+        "summary": { "host_count": 1, "open_port_count": 4, "critical_findings": 1 },
+        "hosts": [{ "host": "lab.example.internal", "ports": [{ "port": 8080, "service": "http", "state": "open" }] }]
+      },
+      "status": "success",
+      "latency_ms": 124000,
+      "timestamp": "2026-07-18T14:05:00Z"
+    },
+    {
+      "seq": 2,
+      "tool": "nuclei_scan",
+      "tool_kind": "mcp",
+      "input": { "target": "http://lab.example.internal:8080", "tags": "cve,jenkins" },
+      "output": { "findings": [{ "id": "CVE-2024-23897", "severity": "critical" }] },
+      "status": "success",
+      "depends_on_seq": [1],
+      "latency_ms": 45000,
+      "timestamp": "2026-07-18T14:08:00Z"
+    },
+    {
+      "seq": 3,
+      "tool": "custom_exploit",
+      "tool_kind": "agent",
+      "agent": "Agent-Battle-07",
+      "task": "sandbox-poc",
+      "input": { "cve": "CVE-2024-23897", "target": "lab.example.internal:8080" },
+      "output": { "access": "shell", "user": "jenkins", "artifact": "artifacts/shell-session.json" },
+      "status": "success",
+      "depends_on_seq": [2],
+      "latency_ms": 180000,
+      "timestamp": "2026-07-18T14:20:00Z"
+    },
+    {
+      "seq": 4,
+      "tool": "post_exploit_enum",
+      "tool_kind": "shell",
+      "input": { "command": "sudo -l" },
+      "output": { "privesc_vector": "sudo java" },
+      "status": "success",
+      "depends_on_seq": [3],
+      "latency_ms": 12000,
+      "timestamp": "2026-07-18T14:35:00Z"
+    }
+  ],
+  "artifacts": [
+    { "path": "artifacts/recon-lab-001.json", "kind": "recon" },
+    { "path": "artifacts/shell-session.json", "kind": "session" }
+  ]
+}

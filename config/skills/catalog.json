@@ -11,7 +11,9 @@
       "mcp_tool": null,
       "orchestrator_hook": "hexstrike.llm.reasoning:ReasoningAgent.plan",
       "parallelizable": false,
-      "constraints": ["plan-only"]
+      "constraints": [
+        "plan-only"
+      ]
     },
     "scatter_gather": {
       "version": "1.0.0",
@@ -30,8 +32,12 @@
       "input_schema": "config/skills/schemas/skillify.input.json",
       "output_schema": "config/skills/schemas/skillify.output.json",
       "mcp_tool": "orchestrator_skillify",
+      "orchestrator_hook": "hexstrike.workflow.skill_builder:SkillBuilder.build_from_trace",
       "parallelizable": false,
-      "constraints": ["plan-only"]
+      "constraints": [
+        "plan-only",
+        "success-traces-only"
+      ]
     },
     "pentest_recon": {
       "version": "1.0.0",
@@ -40,9 +46,16 @@
       "input_schema": "config/skills/schemas/pentest_recon.input.json",
       "output_schema": "config/skills/schemas/pentest_recon.output.json",
       "mcp_tool": "nmap_scan",
-      "hexstrike_agents": ["Agent-Web-04", "Agent-Vuln-05", "Agent-OSINT-03"],
+      "hexstrike_agents": [
+        "Agent-Web-04",
+        "Agent-Vuln-05",
+        "Agent-OSINT-03"
+      ],
       "parallelizable": true,
-      "constraints": ["authorization-required", "sandbox-optional"]
+      "constraints": [
+        "authorization-required",
+        "sandbox-optional"
+      ]
     },
     "exploit_chain_builder": {
       "version": "1.0.0",
@@ -51,9 +64,14 @@
       "input_schema": "config/skills/schemas/exploit_chain_builder.input.json",
       "output_schema": "config/skills/schemas/exploit_chain_builder.output.json",
       "mcp_tool": null,
-      "hexstrike_agents": ["Agent-Battle-07"],
+      "hexstrike_agents": [
+        "Agent-Battle-07"
+      ],
       "parallelizable": false,
-      "constraints": ["sandbox-required", "authorization-required"]
+      "constraints": [
+        "sandbox-required",
+        "authorization-required"
+      ]
     },
     "credential_session": {
       "version": "1.0.0",
@@ -63,7 +81,9 @@
       "output_schema": "config/skills/schemas/credential_session.output.json",
       "mcp_tool": "orchestrator_credential_vault",
       "parallelizable": false,
-      "constraints": ["encrypted-at-rest"]
+      "constraints": [
+        "encrypted-at-rest"
+      ]
     },
     "evm_contract_analyze": {
       "version": "1.0.0",
@@ -72,9 +92,15 @@
       "input_schema": "config/skills/schemas/evm_contract_analyze.input.json",
       "output_schema": "config/skills/schemas/evm_contract_analyze.output.json",
       "mcp_tool": "mcp_rpc_gateway",
-      "hexstrike_agents": ["Agent-Contract-03", "Agent-Contract-04", "Agent-Forensics-01"],
+      "hexstrike_agents": [
+        "Agent-Contract-03",
+        "Agent-Contract-04",
+        "Agent-Forensics-01"
+      ],
       "parallelizable": true,
-      "constraints": ["read-only"]
+      "constraints": [
+        "read-only"
+      ]
     },
     "vuln_pattern_matcher": {
       "version": "1.0.0",
@@ -83,9 +109,15 @@
       "input_schema": "config/skills/schemas/vuln_pattern_matcher.input.json",
       "output_schema": "config/skills/schemas/vuln_pattern_matcher.output.json",
       "mcp_tool": null,
-      "hexstrike_agents": ["Agent-Contract-04", "Agent-DualMode-08"],
+      "hexstrike_agents": [
+        "Agent-Contract-04",
+        "Agent-DualMode-08"
+      ],
       "parallelizable": false,
-      "constraints": ["read-only", "defense"]
+      "constraints": [
+        "read-only",
+        "defense"
+      ]
     },
     "exploit_generator_stub": {
       "version": "1.0.0",
@@ -94,9 +126,14 @@
       "input_schema": "config/skills/schemas/exploit_generator_stub.input.json",
       "output_schema": "config/skills/schemas/exploit_generator_stub.output.json",
       "mcp_tool": null,
-      "hexstrike_agents": ["Agent-DualMode-08"],
+      "hexstrike_agents": [
+        "Agent-DualMode-08"
+      ],
       "parallelizable": false,
-      "constraints": ["sandbox-required", "no-mainnet"]
+      "constraints": [
+        "sandbox-required",
+        "no-mainnet"
+      ]
     },
     "gsm_sim800c_control": {
       "version": "1.0.0",
@@ -106,7 +143,10 @@
       "output_schema": "config/skills/schemas/gsm_sim800c_control.output.json",
       "mcp_tool": "gsm_sim800c",
       "parallelizable": false,
-      "constraints": ["lab-hardware", "authorization-required"]
+      "constraints": [
+        "lab-hardware",
+        "authorization-required"
+      ]
     },
     "ss7_signaling_sim": {
       "version": "1.0.0",
@@ -116,7 +156,10 @@
       "output_schema": "config/skills/schemas/ss7_signaling_sim.output.json",
       "mcp_tool": "ss7_lab_sim",
       "parallelizable": false,
-      "constraints": ["lab-only", "authorization-required"]
+      "constraints": [
+        "lab-only",
+        "authorization-required"
+      ]
     },
     "state_tracker": {
       "version": "1.0.0",
@@ -147,6 +190,23 @@
       "mcp_tool": "orchestrator_cost_monitor",
       "parallelizable": false,
       "constraints": []
+    },
+    "web_initial_access_chain": {
+      "version": "1.0.0",
+      "layer": "generated",
+      "description": "Recon → nuclei/Jenkins CVE → sandbox initial access → local privesc enumeration",
+      "input_schema": "config/skills/schemas/generated/web_initial_access_chain.input.json",
+      "output_schema": "config/skills/schemas/generated/web_initial_access_chain.output.json",
+      "mcp_tool": "run_web_initial_access_chain",
+      "source_trace_id": "trace-web-chain-20260718-001",
+      "auto_generated": true,
+      "parallelizable": false,
+      "constraints": [
+        "pentest",
+        "web",
+        "jenkins"
+      ],
+      "workflow_steps": 2
     }
   }
 }

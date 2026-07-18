@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hexstrike://workflow-template/v1",
+  "title": "WorkflowTemplate",
+  "description": "Parameterized workflow produced by R1 skill-builder from campaign trace",
+  "type": "object",
+  "required": ["workflow_id", "name", "version", "parameters", "steps"],
+  "properties": {
+    "workflow_id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{2,48}$" },
+    "name": { "type": "string" },
+    "version": { "type": "string", "default": "1.0.0" },
+    "description": { "type": "string" },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "source_trace_id": { "type": "string" },
+    "parameters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": { "type": "string" },
+          "type": { "type": "string", "enum": ["string", "integer", "boolean", "array", "object"] },
+          "required": { "type": "boolean", "default": true },
+          "description": { "type": "string" },
+          "example": {}
+        }
+      }
+    },
+    "preconditions": { "type": "array", "items": { "type": "string" } },
+    "postconditions": { "type": "array", "items": { "type": "string" } },
+    "stop_conditions": { "type": "array", "items": { "type": "string" } },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["step_id", "skill_id", "input_template"],
+        "properties": {
+          "step_id": { "type": "integer" },
+          "skill_id": { "type": "string" },
+          "depends_on": { "type": "array", "items": { "type": "integer" } },
+          "input_template": { "type": "object", "additionalProperties": true },
+          "condition": { "type": "string", "description": "Expression on prior step outputs" },
+          "expected_output_keys": { "type": "array", "items": { "type": "string" } },
+          "rationale": { "type": "string" }
+        }
+      }
+    },
+    "mcp_tool": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "generate_stub": { "type": "boolean", "default": true }
+      }
+    },
+    "pitfalls": { "type": "array", "items": { "type": "string" } },
+    "checklist": { "type": "array", "items": { "type": "string" } }
+  }
+}
