@@ -5,6 +5,9 @@
 #   bash scripts/vps-cursor-recover.sh root@78.27.235.70
 #   EXTRA_IPS="52.34.217.149" bash scripts/vps-cursor-recover.sh
 #
+# NOTE: EXTRA_IPS must be the *cloud agent* egress IP (ask agent / Cursor run),
+# NOT your Mac's public IP from `curl ifconfig.me` on the Mac.
+#
 # What it does:
 #   1. SSH with operator key
 #   2. Allowlist current Cursor cloud egress IPs + EXTRA_IPS

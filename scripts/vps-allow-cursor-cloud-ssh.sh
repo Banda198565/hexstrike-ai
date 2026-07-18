@@ -16,6 +16,7 @@ IPS=(
   "44.239.176.212"
   "50.112.242.221"
   "52.34.217.149"
+  "35.167.27.154"
 )
 
 # Optional runtime extras (space-separated)
