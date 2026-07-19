@@ -19,7 +19,9 @@ NC='\033[0m'
 
 TARGET_ENV="${TARGET_ENV:-mainnet}"
 RPC_URL="${ETH_RPC_URL:-${ETH_HTTP_URL:-${RPC_URL:-}}}"
+WS_URL="${ETH_RPC_WS:-${ALCHEMY_WS:-}}"
 OUT_DIR="${FORENSICS_KIT_OUT:-$ROOT/artifacts/forensics-kit}"
+CONFIG_FILE="${FORENSICS_KIT_CONFIG:-$ROOT/config/forensics-kit.config.json}"
 LOG_FILE=""
 NONINTERACTIVE=0
 
@@ -33,6 +35,7 @@ Options:
   --help, -h           Show help
   --deps               Check dependencies and exit
   --env NAME           mainnet|testnet|local (default: mainnet)
+  --config PATH        JSON config (default: config/forensics-kit.config.json)
   --rpc URL            Override ETH_RPC_URL
   --recon ADDR         Fetch ABI + bytecode (read-only)
   --permit ADDR        Check EIP-2612 DOMAIN_SEPARATOR (read-only)
@@ -44,11 +47,65 @@ Options:
   --report             Generate markdown summary from kit log
   --noninteractive     Skip "press Enter" prompts
 
-Env:
+Config JSON keys (see config/forensics-kit.config.example.json):
+  rpc_url_mainnet, rpc_url_testnet, rpc_url_local,
+  etherscan_key, alchemy_ws
+
+Env (overrides config):
   ETH_RPC_URL / ETH_HTTP_URL   JSON-RPC HTTPS
+  ETH_RPC_WS / ALCHEMY_WS      optional websocket (reserved)
   ETHERSCAN_API_KEY            optional for ABI fetch
   SLACK_WEBHOOK_URL            optional for slack-once
 EOF
+}
+
+load_kit_config() {
+  local cfg="${1:-$CONFIG_FILE}"
+  [[ -f "$cfg" ]] || return 0
+  command -v jq &>/dev/null || return 0
+
+  local mainnet testnet local_rpc etherscan alchemy
+  mainnet=$(jq -r '.rpc_url_mainnet // empty' "$cfg")
+  testnet=$(jq -r '.rpc_url_testnet // empty' "$cfg")
+  local_rpc=$(jq -r '.rpc_url_local // empty' "$cfg")
+  etherscan=$(jq -r '.etherscan_key // empty' "$cfg")
+  alchemy=$(jq -r '.alchemy_ws // empty' "$cfg")
+
+  # Skip unreplaced placeholders
+  _usable() {
+    local v="$1"
+    [[ -n "$v" ]] || return 1
+    [[ "$v" != *YOUR_KEY* && "$v" != *YOUR_API_KEY* && "$v" != *YOUR_ETHERSCAN* ]] || return 1
+    return 0
+  }
+
+  case "$TARGET_ENV" in
+    mainnet)
+      if [[ -z "${ETH_RPC_URL:-}" ]] && _usable "$mainnet"; then
+        export ETH_RPC_URL="$mainnet"
+      fi
+      ;;
+    testnet|sepolia)
+      if [[ -z "${ETH_RPC_URL:-}" ]] && _usable "$testnet"; then
+        export ETH_RPC_URL="$testnet"
+      fi
+      ;;
+    local|anvil)
+      if [[ -z "${ETH_RPC_URL:-}" ]] && _usable "$local_rpc"; then
+        export ETH_RPC_URL="$local_rpc"
+      elif [[ -z "${ETH_RPC_URL:-}" ]]; then
+        export ETH_RPC_URL="http://127.0.0.1:8545"
+      fi
+      ;;
+  esac
+
+  if [[ -z "${ETHERSCAN_API_KEY:-}" ]] && _usable "$etherscan"; then
+    export ETHERSCAN_API_KEY="$etherscan"
+  fi
+  if [[ -z "${ETH_RPC_WS:-}${ALCHEMY_WS:-}" ]] && _usable "$alchemy"; then
+    export ALCHEMY_WS="$alchemy"
+    export ETH_RPC_WS="$alchemy"
+  fi
 }
 
 load_env() {
@@ -65,7 +122,9 @@ load_env() {
     source "$ROOT/.env"
     set +a
   fi
+  load_kit_config "$CONFIG_FILE"
   RPC_URL="${ETH_RPC_URL:-${ETH_HTTP_URL:-${RPC_URL:-}}}"
+  WS_URL="${ETH_RPC_WS:-${ALCHEMY_WS:-${WS_URL:-}}}"
 }
 
 init_out() {
@@ -106,8 +165,22 @@ check_dependencies() {
   log_message "${CYAN}Опционально доступно: ${opt_ok[*]:-none}${NC}"
   if [[ -z "$RPC_URL" ]]; then
     log_message "${YELLOW}ETH_RPC_URL не задан — cast/bytecode шаги будут пропущены${NC}"
+    log_message "${YELLOW}Скопируй config/forensics-kit.config.example.json → config/forensics-kit.config.json${NC}"
   else
-    log_message "${GREEN}RPC: ${RPC_URL:0:48}...${NC}"
+    log_message "${GREEN}RPC env=$TARGET_ENV: ${RPC_URL:0:48}...${NC}"
+  fi
+  if [[ -f "$CONFIG_FILE" ]]; then
+    log_message "${GREEN}config: $CONFIG_FILE${NC}"
+  else
+    log_message "${YELLOW}config missing: $CONFIG_FILE (see *.example.json)${NC}"
+  fi
+  if [[ -n "${ETHERSCAN_API_KEY:-}" ]]; then
+    log_message "${GREEN}ETHERSCAN_API_KEY: set${NC}"
+  else
+    log_message "${YELLOW}ETHERSCAN_API_KEY: empty${NC}"
+  fi
+  if [[ -n "$WS_URL" ]]; then
+    log_message "${GREEN}WS: ${WS_URL:0:48}...${NC}"
   fi
   return 0
 }
@@ -355,23 +428,52 @@ main_menu() {
 }
 
 # ---- entry ----
+# Pass 1: flags that affect config loading
+ARGS=("$@")
+PASS2=()
+i=0
+while [[ $i -lt ${#ARGS[@]} ]]; do
+  a="${ARGS[$i]}"
+  case "$a" in
+    --help|-h) usage; exit 0 ;;
+    --noninteractive) NONINTERACTIVE=1 ;;
+    --env)
+      i=$((i + 1))
+      TARGET_ENV="${ARGS[$i]:-}"
+      ;;
+    --config)
+      i=$((i + 1))
+      CONFIG_FILE="${ARGS[$i]:-}"
+      ;;
+    --rpc)
+      i=$((i + 1))
+      export ETH_RPC_URL="${ARGS[$i]:-}"
+      RPC_URL="$ETH_RPC_URL"
+      ;;
+    *)
+      PASS2+=("$a")
+      ;;
+  esac
+  i=$((i + 1))
+done
+
 load_env
 init_out
 
-if [[ $# -eq 0 ]]; then
+if [[ ${#PASS2[@]} -eq 0 ]]; then
   echo "=== HexStrike Forensics Command Kit ===" >"$LOG_FILE"
   echo "start: $(date -u -Iseconds) user=$(whoami) host=$(hostname)" >>"$LOG_FILE"
   main_menu
   exit 0
 fi
 
+set -- "${PASS2[@]}"
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --help|-h) usage; exit 0 ;;
-    --noninteractive) NONINTERACTIVE=1; shift ;;
-    --env) TARGET_ENV="$2"; shift 2 ;;
-    --rpc) RPC_URL="$2"; export ETH_RPC_URL="$2"; shift 2 ;;
-    --deps) check_dependencies; exit $? ;;
+    --deps)
+      check_dependencies
+      exit $?
+      ;;
     --recon)
       recon_scan_contracts "$2"
       exit $?
