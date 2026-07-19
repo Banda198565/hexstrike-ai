@@ -23,15 +23,17 @@ fi
 
 DIR="${HOME}/Library/Application Support/Zed"
 FILE="${DIR}/settings.json"
-mkdir -p "$DIR"
+ALT_DIR="${HOME}/.config/zed"
+ALT_FILE="${ALT_DIR}/settings.json"
+mkdir -p "$DIR" "$ALT_DIR"
 
-python3 - "$FILE" "$KEY" << 'PY'
+python3 - "$FILE" "$ALT_FILE" "$KEY" << 'PY'
 import json
 import sys
 from pathlib import Path
 
-path = Path(sys.argv[1])
-api_key = sys.argv[2]
+paths = [Path(sys.argv[1]), Path(sys.argv[2])]
+api_key = sys.argv[3]
 
 cfg = {
     "agent": {
@@ -60,9 +62,12 @@ cfg = {
     },
 }
 
-path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
-json.loads(path.read_text(encoding="utf-8"))
-print(f"OK: wrote {path} ({path.stat().st_size} bytes)")
+text = json.dumps(cfg, indent=2) + "\n"
+json.loads(text)
+for path in paths:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    print(f"OK: wrote {path} ({path.stat().st_size} bytes)")
 PY
 
 echo "Restarting Zed..."

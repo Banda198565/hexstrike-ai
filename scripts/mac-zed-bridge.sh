@@ -9,19 +9,21 @@ set -euo pipefail
 CMD="${1:-status}"
 KEY="${2:-${DEEPSEEK_API_KEY:-}}"
 
-SETTINGS="${HOME}/Library/Application Support/Zed/settings.json"
+SETTINGS="${HOME}/.config/zed/settings.json"
+SETTINGS_ALT="${HOME}/Library/Application Support/Zed/settings.json"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 [[ "$(uname -s)" == "Darwin" ]] || die "Run on macOS"
 
 status_json() {
-  python3 - "$SETTINGS" << 'PY'
+  python3 - "$SETTINGS" "$SETTINGS_ALT" << 'PY'
 import json, subprocess, sys
 from pathlib import Path
 
-p = Path(sys.argv[1])
-out = {"settings_path": str(p), "settings_exists": p.is_file(), "json_ok": False, "key_len": 0, "key_placeholder": False, "zed_running": False, "models_api_ok": False}
+paths = [Path(sys.argv[1]), Path(sys.argv[2])]
+p = paths[0] if paths[0].is_file() else paths[1]
+out = {"settings_path": str(p), "settings_exists": p.is_file(), "json_ok": False, "key_len": 0, "key_placeholder": False, "zed_running": False, "models_api_ok": False, "both_paths": [str(x) for x in paths]}
 
 try:
     r = subprocess.run(["pgrep", "-x", "zed"], capture_output=True)
