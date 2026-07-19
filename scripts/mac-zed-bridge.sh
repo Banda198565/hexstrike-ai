@@ -18,7 +18,7 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 
 status_json() {
   python3 - "$SETTINGS" "$SETTINGS_ALT" << 'PY'
-import json, subprocess, sys
+import json, os, subprocess, sys
 from pathlib import Path
 
 paths = [Path(sys.argv[1]), Path(sys.argv[2])]
@@ -38,7 +38,15 @@ if not p.is_file():
 try:
     data = json.loads(p.read_text(encoding="utf-8"))
     out["json_ok"] = True
-    key = data.get("language_models", {}).get("providers", {}).get("deepseek", {}).get("api_key", "")
+    key = (
+        data.get("language_models", {}).get("providers", {}).get("deepseek", {}).get("api_key")
+        or os.environ.get("DEEPSEEK_API_KEY", "")
+    )
+    if not key and Path.home().joinpath(".config/zed/env").is_file():
+        for line in Path.home().joinpath(".config/zed/env").read_text().splitlines():
+            if line.startswith("export DEEPSEEK_API_KEY="):
+                key = line.split("=", 1)[1].strip().strip("'\"")
+                break
     out["key_len"] = len(key)
     out["key_placeholder"] = "ВАШ" in key or key.endswith("_КЛЮЧ")
     if key and not out["key_placeholder"]:
