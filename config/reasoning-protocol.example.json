@@ -1,0 +1,48 @@
+{
+  "task_id": "example-domain-recon-001",
+  "goal": "Passive reconnaissance and defensive web-phase prep for authorized lab target example.com",
+  "mode": "defense",
+  "context": {
+    "target_domain": "example.com",
+    "authorization_ref": "lab-scope-2026-001",
+    "prior_findings": []
+  },
+  "tools": [
+    {
+      "id": "Agent-OSINT-03:infra-mapping",
+      "agent": "Agent-OSINT-03",
+      "task": "infra-mapping",
+      "description": "Passive on-chain → off-chain infra mapping (GitHub dorking, ENS, metadata)",
+      "constraints": ["read-only", "passive", "no-nmap"]
+    },
+    {
+      "id": "Agent-OSINT-03:found-targets-recon",
+      "agent": "Agent-OSINT-03",
+      "task": "found-targets-recon",
+      "description": "IPInfo, InternetDB, WHOIS, Jenkins fingerprint, wallet correlation",
+      "constraints": ["read-only", "passive", "defensive-ir"]
+    },
+    {
+      "id": "Agent-Web-04:tech-detect",
+      "agent": "Agent-Web-04",
+      "task": "tech-detect",
+      "description": "Technology stack fingerprint (Wappalyzer-style, passive headers)",
+      "constraints": ["read-only", "passive"]
+    },
+    {
+      "id": "Agent-Vuln-05:nuclei-passive",
+      "agent": "Agent-Vuln-05",
+      "task": "nuclei-passive",
+      "description": "Passive nuclei templates only — no intrusive exploitation",
+      "constraints": ["read-only", "passive", "defensive-ir"]
+    }
+  ],
+  "constraints": {
+    "max_steps": 6,
+    "noise_level": "low",
+    "timeout_sec": 3600,
+    "sandbox_required": false,
+    "read_only": true
+  },
+  "prior_steps": []
+}

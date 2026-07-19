@@ -3,6 +3,7 @@ scripts/sandbox/.venv/
 scripts/sandbox/anvil.env
 .env
 *.env.local
+config/mac-bridge.env
 
 # Go OSINT agent
 *.exe
@@ -41,3 +42,4 @@ samson/redteam/guardrail/configs/*.json
 # local VPS bootstrap secrets (never commit)
 .vps-bootstrap-*
 *.vps-password
+data/rag/
