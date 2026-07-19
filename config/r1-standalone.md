@@ -69,6 +69,24 @@ bash scripts/connect-r1.sh --plan config/reasoning-protocol.example.json
 
 R1 **не выполняет** команды — только план JSON.
 
+### 4. Zed-style reasoning benchmark (3 теста)
+
+Те же промпты, что для DeepSeek R1 в Zed (логика recon JSON, JWT review, nuclei parser):
+
+```bash
+python3 scripts/r1-zed-benchmark.py
+```
+
+Артефакты: `artifacts/r1-benchmark/` (summary + полные ответы, reasoning_content).
+
+**Ожидаемые критерии:**
+
+| Тест | Что проверяется |
+|------|-----------------|
+| 1 | JSON-массив 5 шагов, ключи `step/agent/task/cmd_command`, passive-флаги |
+| 2 | JWT `alg:none` attack, исправленный `verify_agent_session` |
+| 3 | `async def parse_nuclei_output`, regex, обработка битых строк |
+
 ---
 
 ## Где запускать
