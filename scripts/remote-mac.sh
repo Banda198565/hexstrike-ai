@@ -16,54 +16,49 @@ fi
 
 CMD="${1:-status}"
 MAC_SSH="${MAC_SSH:-}"
-MAC_SSH_KEY="${MAC_SSH_KEY:-}"
+MAC_SSH_KEY="${MAC_SSH_KEY:-$HOME/.ssh/hexstrike_mac_bridge}"
+MAC_SSH_JUMP="${MAC_SSH_JUMP:-}"
+MAC_SSH_PORT="${MAC_SSH_PORT:-22}"
 REPO_ON_MAC="${MAC_HEXSTRIKE_PATH:-~/hexstrike-ai}"
 
 if [[ -z "$MAC_SSH" ]]; then
   cat << EOF
-MAC_SSH not set. One-time setup on iMac:
-
-1) System Settings → General → Sharing → Remote Login ON
-2) Add cloud agent public key to ~/.ssh/authorized_keys on Mac:
-   $(cat "${ROOT}/config/mac-bridge-cloud.pub" 2>/dev/null || echo '  (run: bash scripts/setup-mac-bridge.sh)')
-
-3) Create ${ROOT}/config/mac-bridge.env:
-   MAC_SSH=mufasaai@YOUR_MAC_IP
-   MAC_SSH_KEY=~/.ssh/hexstrike_mac_bridge
-   DEEPSEEK_API_KEY=sk-...
-
-Optional (Mac behind NAT): on iMac run reverse tunnel:
-   bash scripts/mac-reverse-tunnel.sh
-
-Then retry: bash scripts/remote-mac.sh ${CMD}
+MAC_SSH not set. On iMac run:
+  DEEPSEEK_API_KEY=sk-... bash scripts/mac-open-bridge.sh
 EOF
   exit 1
 fi
 
-SSH=(ssh -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new)
-if [[ -n "${MAC_SSH_KEY:-}" ]]; then
-  SSH+=(-i "$MAC_SSH_KEY" -o IdentitiesOnly=yes)
-fi
-if [[ -n "${MAC_SSH_JUMP:-}" ]]; then
-  SSH+=(-J "$MAC_SSH_JUMP")
-fi
-if [[ -n "${MAC_SSH_PORT:-}" ]]; then
-  SSH+=(-p "$MAC_SSH_PORT")
-fi
+run_on_mac() {
+  local remote_cmd="$1"
+  if [[ -n "$MAC_SSH_JUMP" ]]; then
+    [[ -f "$MAC_SSH_KEY" ]] || { echo "Missing key: $MAC_SSH_KEY" >&2; exit 1; }
+    ssh -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new \
+      -i "$MAC_SSH_KEY" "$MAC_SSH_JUMP" "bash -s" <<EOF
+set -euo pipefail
+install -m 700 -d /root/.ssh
+cat > /root/.ssh/hexstrike_mac_bridge << 'KEYEOF'
+$(cat "$MAC_SSH_KEY")
+KEYEOF
+chmod 600 /root/.ssh/hexstrike_mac_bridge
+ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 \
+  -i /root/.ssh/hexstrike_mac_bridge -p ${MAC_SSH_PORT} ${MAC_SSH} $(printf '%q' "$remote_cmd")
+EOF
+  else
+    ssh -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new \
+      -i "$MAC_SSH_KEY" -o IdentitiesOnly=yes "$MAC_SSH" "$remote_cmd"
+  fi
+}
 
 REMOTE="cd ${REPO_ON_MAC} && bash scripts/mac-zed-bridge.sh"
 
 case "$CMD" in
-  status)
-    "${SSH[@]}" "$MAC_SSH" "${REMOTE} status"
-    ;;
+  status) run_on_mac "${REMOTE} status" ;;
   fix)
     [[ -n "${DEEPSEEK_API_KEY:-}" ]] || { echo "Set DEEPSEEK_API_KEY in mac-bridge.env" >&2; exit 1; }
-    "${SSH[@]}" "$MAC_SSH" "DEEPSEEK_API_KEY='${DEEPSEEK_API_KEY}' ${REMOTE} fix"
+    run_on_mac "DEEPSEEK_API_KEY='${DEEPSEEK_API_KEY}' ${REMOTE} fix"
     ;;
-  restart)
-    "${SSH[@]}" "$MAC_SSH" "${REMOTE} restart"
-    ;;
+  restart) run_on_mac "${REMOTE} restart" ;;
   *)
     echo "Usage: remote-mac.sh {status|fix|restart}" >&2
     exit 1
