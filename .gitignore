@@ -3,6 +3,7 @@ scripts/sandbox/.venv/
 scripts/sandbox/anvil.env
 .env
 *.env.local
+config/forensics-kit.config.json
 
 # Go OSINT agent
 *.exe

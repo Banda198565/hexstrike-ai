@@ -97,7 +97,12 @@ for u in urls:
     if echo "$acct_resp" | grep -qE '"result"\s*:\s*\[\s*\]'; then
       ok "eth_accounts returns empty (no key exposure)"
     elif echo "$acct_resp" | grep -qE '"result"\s*:\s*\['; then
-      bad "eth_accounts exposes accounts — CRITICAL RPC misconfiguration"
+      # Local Anvil/Foundry exposes default unlocked test keys — expected in sandbox.
+      if [[ "$ACTIVE_RPC" =~ ^https?://(127\.0\.0\.1|localhost)(:|/|$) ]]; then
+        ok "eth_accounts lists Anvil lab accounts (local sandbox only)"
+      else
+        bad "eth_accounts exposes accounts — CRITICAL RPC misconfiguration"
+      fi
     else
       ok "eth_accounts blocked or unavailable (acceptable)"
     fi

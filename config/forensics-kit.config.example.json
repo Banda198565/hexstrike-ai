@@ -1,0 +1,8 @@
+{
+  "rpc_url_mainnet": "https://mainnet.infura.io/v3/YOUR_KEY",
+  "rpc_url_testnet": "https://sepolia.infura.io/v3/YOUR_KEY",
+  "rpc_url_local": "http://127.0.0.1:8545",
+  "etherscan_key": "YOUR_ETHERSCAN_KEY",
+  "alchemy_ws": "wss://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY",
+  "notes": "Copy to forensics-kit.config.json (gitignored) or merge keys into .env. Never commit real keys."
+}
