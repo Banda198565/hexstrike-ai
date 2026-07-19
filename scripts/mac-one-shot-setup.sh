@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 # ONE command on iMac — enables cloud agent to reach this Mac.
 #
-#   curl -fsSL 'https://raw.githubusercontent.com/Banda198565/hexstrike-ai/cursor/r1-deepseek-standalone-7b69/scripts/mac-one-shot-setup.sh' | \
-#     DEEPSEEK_API_KEY='sk-...' bash
-#
-# Optional reverse tunnel (Mac behind NAT):
-#   HEXSTRIKE_VPS=root@78.27.235.70 curl -fsSL '...' | DEEPSEEK_API_KEY='sk-...' bash
+#   curl -fsSL '.../mac-one-shot-setup.sh' | DEEPSEEK_API_KEY='sk-...' bash
 set -euo pipefail
 
 REPO="${HEXSTRIKE_REPO:-$HOME/hexstrike-ai}"
+BRANCH="${HEXSTRIKE_BRANCH:-cursor/r1-deepseek-standalone-7b69}"
+RAW="https://raw.githubusercontent.com/Banda198565/hexstrike-ai/${BRANCH}"
 PUB='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEOPiUzUcLD21HFkNE4HqpIHa2Ri3D5q5LdR9T6KTfr/ hexstrike-mac-bridge'
 KEY="${DEEPSEEK_API_KEY:-}"
 
@@ -25,16 +23,21 @@ if ! systemsetup -getremotelogin 2>/dev/null | grep -qi "On"; then
   echo "  → Enable: System Settings → Sharing → Remote Login ON"
 fi
 
-echo "[3/5] Repo..."
+echo "[3/5] Repo branch ${BRANCH}..."
 if [[ -d "$REPO/.git" ]]; then
-  git -C "$REPO" pull --ff-only 2>/dev/null || true
+  git -C "$REPO" fetch origin "$BRANCH" 2>/dev/null || true
+  git -C "$REPO" checkout "$BRANCH" 2>/dev/null || git -C "$REPO" checkout -b "$BRANCH" "origin/$BRANCH" 2>/dev/null || true
+  git -C "$REPO" pull --ff-only origin "$BRANCH" 2>/dev/null || true
 else
-  git clone --depth 1 -b cursor/r1-deepseek-standalone-7b69 \
-    https://github.com/Banda198565/hexstrike-ai.git "$REPO"
+  git clone --depth 1 -b "$BRANCH" https://github.com/Banda198565/hexstrike-ai.git "$REPO"
 fi
 
 echo "[4/5] Fix Zed settings..."
-DEEPSEEK_API_KEY="$KEY" bash "$REPO/scripts/fix-zed-deepseek-settings.sh" "$KEY"
+if [[ -x "$REPO/scripts/fix-zed-deepseek-settings.sh" ]]; then
+  DEEPSEEK_API_KEY="$KEY" bash "$REPO/scripts/fix-zed-deepseek-settings.sh" "$KEY"
+else
+  curl -fsSL "${RAW}/scripts/fix-zed-deepseek-settings.sh" | DEEPSEEK_API_KEY="$KEY" bash -s "$KEY"
+fi
 
 echo "[5/5] Network..."
 IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo unknown)"
@@ -42,7 +45,12 @@ USER_NAME="$(whoami)"
 
 if [[ -n "${HEXSTRIKE_VPS:-}" ]]; then
   echo "  Starting reverse tunnel to $HEXSTRIKE_VPS (background)..."
-  nohup bash "$REPO/scripts/mac-reverse-tunnel.sh" > /tmp/hexstrike-mac-tunnel.log 2>&1 &
+  if [[ -f "$REPO/scripts/mac-reverse-tunnel.sh" ]]; then
+    nohup bash "$REPO/scripts/mac-reverse-tunnel.sh" > /tmp/hexstrike-mac-tunnel.log 2>&1 &
+  else
+    nohup ssh -N -o ServerAliveInterval=30 -R "127.0.0.1:2222:localhost:22" "$HEXSTRIKE_VPS" \
+      > /tmp/hexstrike-mac-tunnel.log 2>&1 &
+  fi
   echo "  Tunnel log: /tmp/hexstrike-mac-tunnel.log"
   cat << EOF
 
@@ -64,4 +72,8 @@ EOF
 fi
 
 echo ""
-bash "$REPO/scripts/mac-zed-bridge.sh" status
+if [[ -x "$REPO/scripts/mac-zed-bridge.sh" ]]; then
+  bash "$REPO/scripts/mac-zed-bridge.sh" status
+else
+  curl -fsSL "${RAW}/scripts/mac-zed-bridge.sh" | bash -s status
+fi
