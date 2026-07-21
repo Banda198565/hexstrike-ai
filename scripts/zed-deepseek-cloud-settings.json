@@ -1,0 +1,35 @@
+{
+  "_comment": "Merge into ~/.config/zed/settings.json — HexStrike DeepSeek CLOUD (API). Do NOT put API keys here.",
+  "assistant": {
+    "default_model": {
+      "provider": "deepseek",
+      "model": "deepseek-reasoner"
+    },
+    "version": "2"
+  },
+  "language_models": {
+    "deepseek": {
+      "api_url": "https://api.deepseek.com",
+      "available_models": [
+        {
+          "name": "deepseek-reasoner",
+          "display_name": "DeepSeek R1 (reasoner, cloud)",
+          "max_tokens": 65536,
+          "max_output_tokens": 8192
+        },
+        {
+          "name": "deepseek-v4-flash",
+          "display_name": "DeepSeek V4 Flash (cloud)",
+          "max_tokens": 128000,
+          "max_output_tokens": 8192
+        },
+        {
+          "name": "deepseek-v4-pro",
+          "display_name": "DeepSeek V4 Pro (cloud)",
+          "max_tokens": 128000,
+          "max_output_tokens": 8192
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "include": [
+    "samson",
+    "src",
+    "scripts",
+    "cmd",
+    "internal",
+    "mcp",
+    "agents",
+    "examples"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.git",
+    "**/hexstrike-env",
+    "**/.venv",
+    "**/venv",
+    "**/artifacts",
+    "**/rag-storage",
+    "**/.cursor",
+    "**/target-arena",
+    "**/docs/reports",
+    "**/tmp",
+    "**/.mypy_cache",
+    "**/.pytest_cache",
+    "**/dist",
+    "**/build"
+  ],
+  "ignore": [
+    "hexstrike-env",
+    "artifacts",
+    "rag-storage",
+    ".cursor",
+    "target-arena"
+  ],
+  "venvPath": ".",
+  "venv": "hexstrike-env",
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic"
+}
