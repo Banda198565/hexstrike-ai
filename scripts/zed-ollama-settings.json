@@ -1,0 +1,32 @@
+{
+  "_comment": "Merge into ~/.config/zed/settings.json — HexStrike Ollama DeepSeek R1 for Zed",
+  "assistant": {
+    "default_model": {
+      "provider": "ollama",
+      "model": "deepseek-r1:1.5b"
+    },
+    "version": "2"
+  },
+  "language_models": {
+    "ollama": {
+      "api_url": "http://127.0.0.1:11434",
+      "auto_discover": true,
+      "available_models": [
+        {
+          "name": "deepseek-r1:1.5b",
+          "display_name": "DeepSeek R1 1.5B (HexStrike)",
+          "max_tokens": 32768,
+          "supports_tools": true,
+          "supports_thinking": true
+        },
+        {
+          "name": "deepseek-r1:7b",
+          "display_name": "DeepSeek R1 7B (HexStrike)",
+          "max_tokens": 32768,
+          "supports_tools": true,
+          "supports_thinking": true
+        }
+      ]
+    }
+  }
+}
